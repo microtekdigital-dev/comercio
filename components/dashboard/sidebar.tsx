@@ -48,6 +48,8 @@ interface Profile {
 
 interface SidebarProps {
   user: Profile
+  canSeePurchaseOrders?: boolean
+  canSeeSuppliers?: boolean
 }
 
 const adminNavItems = [
@@ -75,13 +77,29 @@ const employeeNavItems = [
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ]
 
-export function DashboardSidebar({ user }: SidebarProps) {
+export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSuppliers = true }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
 
-  const navItems = user.role === "admin" ? adminNavItems : employeeNavItems
+  // Filtrar items del menú según permisos del plan
+  const baseAdminNavItems = [
+    { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
+    { href: "/dashboard/customers", label: "Clientes", icon: Users },
+    ...(canSeeSuppliers ? [{ href: "/dashboard/suppliers", label: "Proveedores", icon: Building2 }] : []),
+    ...(canSeePurchaseOrders ? [{ href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList }] : []),
+    { href: "/dashboard/products", label: "Productos", icon: Package },
+    { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+    { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+    { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
+    { href: "/dashboard/team", label: "Equipo", icon: Users },
+    { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
+    { href: "/dashboard/billing", label: "Facturación", icon: CreditCard },
+    { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+  ]
+
+  const navItems = user.role === "admin" ? baseAdminNavItems : employeeNavItems
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

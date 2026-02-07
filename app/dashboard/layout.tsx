@@ -2,7 +2,7 @@ import React from "react"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/actions/users"
 import { ensureTrialSubscription } from "@/lib/actions/subscriptions"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { DashboardSidebarServer } from "@/components/dashboard/sidebar-server"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { Toaster } from "sonner"
 
@@ -23,7 +23,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      <DashboardSidebar user={user} />
+      <DashboardSidebarServer />
       <div className="flex-1 flex flex-col">
         <DashboardHeader />
         <main className="flex-1 bg-muted/30 overflow-x-hidden">
@@ -33,4 +33,5 @@ export default async function DashboardLayout({
       <Toaster position="top-right" richColors />
     </div>
   )
+}
 }
