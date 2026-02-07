@@ -141,3 +141,89 @@ async function findTrialPlan(supabase: Awaited<ReturnType<typeof createClient>>)
 
   return byPrice || null;
 }
+
+/**
+ * Cancela una suscripción
+ */
+export async function cancelSubscription(subscriptionId: string) {
+  const supabase = await createClient();
+
+  try {
+    // Verificar que el usuario tenga permisos
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Usuario no autenticado" };
+    }
+
+    // Obtener el perfil del usuario
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id, role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.role !== "admin") {
+      return { error: "Solo los administradores pueden cancelar suscripciones" };
+    }
+
+    // Verificar que la suscripción pertenece a la empresa del usuario
+    const { data: subscription } = await supabase
+      .from("subscriptions")
+      .select("company_id, plan_id, status")
+      .eq("id", subscriptionId)
+      .single();
+
+    if (!subscription || subscription.company_id !== profile.company_id) {
+      return { error: "Suscripción no encontrada" };
+    }
+
+    if (subscription.status === "cancelled") {
+      return { error: "La suscripción ya está cancelada" };
+    }
+
+    // Cancelar la suscripción
+    const { error: updateError } = await supabase
+      .from("subscriptions")
+      .update({
+        status: "cancelled",
+        cancel_at_period_end: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", subscriptionId);
+
+    if (updateError) {
+      console.error("Error cancelling subscription:", updateError);
+      return { error: "Error al cancelar la suscripción" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in cancelSubscription:", error);
+    return { error: "Error al cancelar la suscripción" };
+  }
+}
+
+/**
+ * Verifica si un email ya usó el período Trial
+ */
+export async function checkTrialAlreadyUsed(email: string): Promise<boolean> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .rpc("check_trial_already_used", { p_email: email });
+
+    if (error) {
+      console.error("Error checking trial usage:", error);
+      return false;
+    }
+
+    return data || false;
+  } catch (error) {
+    console.error("Error in checkTrialAlreadyUsed:", error);
+    return false;
+  }
+}
