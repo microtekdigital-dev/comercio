@@ -145,16 +145,16 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Reportes Avanzados</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Reportes Avanzados</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
             Análisis detallado de tu negocio
           </p>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -166,27 +166,32 @@ export default function AnalyticsPage() {
         </Select>
       </div>
 
-      <Tabs defaultValue="sales" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="sales">
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Ventas
+      <Tabs defaultValue="sales" className="space-y-4 md:space-y-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 h-auto">
+          <TabsTrigger value="sales" className="text-xs sm:text-sm">
+            <BarChart3 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Ventas</span>
+            <span className="sm:hidden">Ventas</span>
           </TabsTrigger>
-          <TabsTrigger value="profitability">
-            <TrendingUp className="mr-2 h-4 w-4" />
-            Rentabilidad
+          <TabsTrigger value="profitability" className="text-xs sm:text-sm">
+            <TrendingUp className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Rentabilidad</span>
+            <span className="sm:hidden">Rent.</span>
           </TabsTrigger>
-          <TabsTrigger value="inventory">
-            <Package className="mr-2 h-4 w-4" />
-            Inventario
+          <TabsTrigger value="inventory" className="text-xs sm:text-sm">
+            <Package className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Inventario</span>
+            <span className="sm:hidden">Inv.</span>
           </TabsTrigger>
-          <TabsTrigger value="cashflow">
-            <DollarSign className="mr-2 h-4 w-4" />
-            Flujo de Caja
+          <TabsTrigger value="cashflow" className="text-xs sm:text-sm">
+            <DollarSign className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Flujo de Caja</span>
+            <span className="sm:hidden">Flujo</span>
           </TabsTrigger>
-          <TabsTrigger value="categories">
-            <PieChart className="mr-2 h-4 w-4" />
-            Categorías
+          <TabsTrigger value="categories" className="text-xs sm:text-sm col-span-2 sm:col-span-1">
+            <PieChart className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Categorías</span>
+            <span className="sm:hidden">Categ.</span>
           </TabsTrigger>
         </TabsList>
 
@@ -235,45 +240,45 @@ export default function AnalyticsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="profitability" className="space-y-6">
+        <TabsContent value="profitability" className="space-y-4 md:space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Análisis de Rentabilidad por Producto</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-lg md:text-xl">Análisis de Rentabilidad por Producto</CardTitle>
+                  <CardDescription className="text-sm">
                     Productos ordenados por ganancia total
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleExportProfitability}>
+                <Button variant="outline" size="sm" onClick={handleExportProfitability} className="w-full sm:w-auto">
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                   Exportar
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {profitabilityData.slice(0, 10).map((product, index) => (
                   <div
                     key={product.product_id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 md:p-4 border rounded-lg"
                   >
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold">#{index + 1}</span>
-                        <h4 className="font-medium">{product.product_name}</h4>
+                        <span className="font-semibold text-sm">#{index + 1}</span>
+                        <h4 className="font-medium text-sm md:text-base truncate">{product.product_name}</h4>
                       </div>
-                      <div className="flex gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
                         <span>Vendidos: {product.quantity_sold}</span>
                         <span>Ingresos: {formatCurrency(product.revenue)}</span>
-                        <span>Costo: {formatCurrency(product.cost)}</span>
+                        <span className="hidden sm:inline">Costo: {formatCurrency(product.cost)}</span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">
+                    <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2">
+                      <p className="text-base md:text-lg font-bold text-green-600">
                         {formatCurrency(product.profit)}
                       </p>
-                      <Badge variant={product.profit_margin > 30 ? "default" : "secondary"}>
+                      <Badge variant={product.profit_margin > 30 ? "default" : "secondary"} className="text-xs">
                         {product.profit_margin.toFixed(1)}% margen
                       </Badge>
                     </div>
@@ -284,46 +289,46 @@ export default function AnalyticsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="inventory" className="space-y-6">
+        <TabsContent value="inventory" className="space-y-4 md:space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Reporte de Inventario</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-lg md:text-xl">Reporte de Inventario</CardTitle>
+                  <CardDescription className="text-sm">
                     Estado actual del stock (ordenado por cantidad)
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleExportInventory}>
+                <Button variant="outline" size="sm" onClick={handleExportInventory} className="w-full sm:w-auto">
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                   Exportar
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-2 md:space-y-3">
                 {inventoryData.map((product) => (
                   <div
                     key={product.product_id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border rounded-lg"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium">{product.product_name}</h4>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h4 className="font-medium text-sm md:text-base truncate">{product.product_name}</h4>
                         {product.status === "low" && (
-                          <Badge variant="destructive">Stock Bajo</Badge>
+                          <Badge variant="destructive" className="text-xs">Stock Bajo</Badge>
                         )}
                       </div>
-                      <div className="flex gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
                         {product.sku && <span>SKU: {product.sku}</span>}
                         <span>{product.category}</span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">
+                    <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2">
+                      <p className="text-base md:text-lg font-bold">
                         {product.stock_quantity} / {product.min_stock_level}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs md:text-sm text-muted-foreground">
                         Valor: {formatCurrency(product.stock_value)}
                       </p>
                     </div>
@@ -360,15 +365,15 @@ export default function AnalyticsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="categories" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
+        <TabsContent value="categories" className="space-y-4 md:space-y-6">
+          <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Ventas por Categoría</CardTitle>
-                <CardDescription>Distribución de ingresos</CardDescription>
+                <CardTitle className="text-lg md:text-xl">Ventas por Categoría</CardTitle>
+                <CardDescription className="text-sm">Distribución de ingresos</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250}>
                   <RePieChart>
                     <Pie
                       data={categoryData}
@@ -376,7 +381,7 @@ export default function AnalyticsPage() {
                       nameKey="category"
                       cx="50%"
                       cy="50%"
-                      outerRadius={100}
+                      outerRadius={80}
                       label={(entry: any) => entry.category}
                     >
                       {categoryData.map((_entry, index) => (
@@ -391,29 +396,29 @@ export default function AnalyticsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Detalle por Categoría</CardTitle>
-                <CardDescription>Ingresos y cantidad de ventas</CardDescription>
+                <CardTitle className="text-lg md:text-xl">Detalle por Categoría</CardTitle>
+                <CardDescription className="text-sm">Ingresos y cantidad de ventas</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-2 md:space-y-3">
                   {categoryData.map((category, index) => (
                     <div
                       key={category.category}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="flex items-center justify-between gap-3 p-3 border rounded-lg"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
                         <div
-                          className="w-4 h-4 rounded"
+                          className="w-3 h-3 md:w-4 md:h-4 rounded flex-shrink-0"
                           style={{ backgroundColor: COLORS[index % COLORS.length] }}
                         />
-                        <div>
-                          <p className="font-medium">{category.category}</p>
-                          <p className="text-sm text-muted-foreground">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm md:text-base truncate">{category.category}</p>
+                          <p className="text-xs md:text-sm text-muted-foreground">
                             {category.sales} ventas • {category.quantity} unidades
                           </p>
                         </div>
                       </div>
-                      <p className="font-bold">{formatCurrency(category.revenue)}</p>
+                      <p className="font-bold text-sm md:text-base whitespace-nowrap">{formatCurrency(category.revenue)}</p>
                     </div>
                   ))}
                 </div>
