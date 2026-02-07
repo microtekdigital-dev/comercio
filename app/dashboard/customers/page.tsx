@@ -97,18 +97,18 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Clientes</h2>
+          <p className="text-muted-foreground text-sm md:text-base">
             Gestiona tu base de clientes
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-col sm:flex-row">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" />
                 Exportar
               </Button>
@@ -124,8 +124,8 @@ export default function CustomersPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Link href="/dashboard/customers/new">
-            <Button>
+          <Link href="/dashboard/customers/new" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Cliente
             </Button>
@@ -135,8 +135,8 @@ export default function CustomersPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
               <Users className="h-5 w-5" />
               Lista de Clientes ({customers.length})
             </CardTitle>
@@ -144,6 +144,7 @@ export default function CustomersPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
+              className="w-full sm:w-auto"
             >
               <Filter className="mr-2 h-4 w-4" />
               Filtros
@@ -164,7 +165,7 @@ export default function CustomersPage() {
 
           {/* Filters */}
           {showFilters && (
-            <div className="grid gap-4 md:grid-cols-2 p-4 border rounded-lg bg-muted/50">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 p-4 border rounded-lg bg-muted/50">
               <div className="space-y-2">
                 <Label>Estado</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -180,7 +181,7 @@ export default function CustomersPage() {
                 </Select>
               </div>
 
-              <div className="flex items-end">
+              <div className="flex items-end sm:col-span-2">
                 {hasActiveFilters && (
                   <Button
                     variant="outline"
@@ -204,15 +205,15 @@ export default function CustomersPage() {
           ) : customers.length === 0 ? (
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No hay clientes</h3>
-              <p className="text-muted-foreground mt-2">
+              <h3 className="mt-4 text-base md:text-lg font-semibold">No hay clientes</h3>
+              <p className="text-muted-foreground mt-2 text-sm md:text-base">
                 {hasActiveFilters
                   ? "No se encontraron clientes con los filtros aplicados"
                   : "Comienza agregando tu primer cliente"}
               </p>
               {!hasActiveFilters && (
-                <Link href="/dashboard/customers/new">
-                  <Button className="mt-4">
+                <Link href="/dashboard/customers/new" className="inline-block w-full sm:w-auto">
+                  <Button className="mt-4 w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" />
                     Nuevo Cliente
                   </Button>
@@ -220,7 +221,7 @@ export default function CustomersPage() {
               )}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {customers.map((customer) => (
                 <Link
                   key={customer.id}
@@ -228,15 +229,15 @@ export default function CustomersPage() {
                   className="block"
                 >
                   <Card className="hover:bg-muted/50 transition-colors h-full">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="font-semibold line-clamp-1">
+                    <CardContent className="p-3 md:p-4">
+                      <div className="flex items-start justify-between mb-2 md:mb-3">
+                        <h3 className="font-semibold line-clamp-1 text-sm md:text-base">
                           {customer.name}
                         </h3>
                         {getStatusBadge(customer.status)}
                       </div>
 
-                      <div className="space-y-2 text-sm text-muted-foreground">
+                      <div className="space-y-2 text-xs md:text-sm text-muted-foreground">
                         {customer.email && (
                           <div className="flex items-center gap-2">
                             <Mail className="h-4 w-4" />

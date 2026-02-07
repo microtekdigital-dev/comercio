@@ -135,18 +135,18 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Productos</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Productos</h2>
+          <p className="text-muted-foreground text-sm md:text-base">
             Gestiona tu catálogo de productos y servicios
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-col sm:flex-row">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" />
                 Exportar
               </Button>
@@ -167,8 +167,8 @@ export default function ProductsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           {canCreate && (
-            <Link href="/dashboard/products/new">
-              <Button>
+            <Link href="/dashboard/products/new" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Producto
               </Button>
@@ -179,8 +179,8 @@ export default function ProductsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
               <Package className="h-5 w-5" />
               Lista de Productos ({products.length})
             </CardTitle>
@@ -188,6 +188,7 @@ export default function ProductsPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
+              className="w-full sm:w-auto"
             >
               <Filter className="mr-2 h-4 w-4" />
               Filtros
@@ -208,7 +209,7 @@ export default function ProductsPage() {
 
           {/* Filters */}
           {showFilters && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 p-4 border rounded-lg bg-muted/50">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4 border rounded-lg bg-muted/50">
               <div className="space-y-2">
                 <Label>Categoría</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -271,7 +272,7 @@ export default function ProductsPage() {
                 </Label>
               </div>
 
-              <div className="flex items-end lg:col-span-2">
+              <div className="flex items-end lg:col-span-2 sm:col-span-1">
                 {hasActiveFilters && (
                   <Button
                     variant="outline"
@@ -295,15 +296,15 @@ export default function ProductsPage() {
           ) : products.length === 0 ? (
             <div className="text-center py-12">
               <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No hay productos</h3>
-              <p className="text-muted-foreground mt-2">
+              <h3 className="mt-4 text-base md:text-lg font-semibold">No hay productos</h3>
+              <p className="text-muted-foreground mt-2 text-sm md:text-base">
                 {hasActiveFilters
                   ? "No se encontraron productos con los filtros aplicados"
                   : "Comienza agregando tu primer producto"}
               </p>
               {!hasActiveFilters && (
-                <Link href="/dashboard/products/new">
-                  <Button className="mt-4">
+                <Link href="/dashboard/products/new" className="inline-block w-full sm:w-auto">
+                  <Button className="mt-4 w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" />
                     Nuevo Producto
                   </Button>
@@ -311,7 +312,7 @@ export default function ProductsPage() {
               )}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {products.map((product) => (
                 <Link
                   key={product.id}
@@ -319,9 +320,9 @@ export default function ProductsPage() {
                   className="block"
                 >
                   <Card className="hover:bg-muted/50 transition-colors h-full">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       {product.image_url && (
-                        <div className="relative w-full aspect-video mb-3 rounded-md overflow-hidden bg-muted">
+                        <div className="relative w-full aspect-video mb-2 md:mb-3 rounded-md overflow-hidden bg-muted">
                           <Image
                             src={product.image_url}
                             alt={product.name}
@@ -331,9 +332,9 @@ export default function ProductsPage() {
                           />
                         </div>
                       )}
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-2 md:mb-3">
                         <div className="flex-1">
-                          <h3 className="font-semibold line-clamp-1">
+                          <h3 className="font-semibold line-clamp-1 text-sm md:text-base">
                             {product.name}
                           </h3>
                           {product.sku && (
@@ -353,13 +354,13 @@ export default function ProductsPage() {
                         </Badge>
                       )}
 
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                      <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mb-2 md:mb-3">
                         {product.description || "Sin descripción"}
                       </p>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div>
-                          <p className="text-lg font-bold">
+                          <p className="text-base md:text-lg font-bold">
                             {formatCurrency(product.price)}
                           </p>
                           <Badge variant={product.type === "product" ? "default" : "secondary"}>
@@ -369,13 +370,14 @@ export default function ProductsPage() {
 
                         {product.track_inventory && (
                           <div className="text-right">
-                            <p className="text-sm font-medium">
+                            <p className="text-xs md:text-sm font-medium">
                               Stock: {product.stock_quantity}
                             </p>
                             {isLowStock(product) && (
                               <div className="flex items-center gap-1 text-xs text-destructive">
                                 <AlertTriangle className="h-3 w-3" />
-                                Stock bajo
+                                <span className="hidden sm:inline">Stock bajo</span>
+                                <span className="sm:hidden">Bajo</span>
                               </div>
                             )}
                           </div>

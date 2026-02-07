@@ -30,7 +30,7 @@ export async function ERPStats() {
   return (
     <>
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
@@ -102,7 +102,7 @@ export async function ERPStats() {
 
       {/* Alerts */}
       {(stats.pendingSales > 0 || stats.lowStockProducts > 0) && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
           {stats.pendingSales > 0 && (
             <Card className="border-yellow-500/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -136,7 +136,7 @@ export async function ERPStats() {
       )}
 
       {/* Top Products and Customers */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Productos Más Vendidos</CardTitle>

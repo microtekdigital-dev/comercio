@@ -83,17 +83,17 @@ export default function SuppliersPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Proveedores</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Proveedores</h2>
+          <p className="text-muted-foreground text-sm md:text-base">
             Gestiona tus proveedores y órdenes de compra
           </p>
         </div>
         {canCreate && (
-          <Link href="/dashboard/suppliers/new">
-            <Button>
+          <Link href="/dashboard/suppliers/new" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Proveedor
             </Button>
@@ -103,11 +103,11 @@ export default function SuppliersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Busca y filtra proveedores</CardDescription>
+          <CardTitle className="text-lg md:text-xl">Filtros</CardTitle>
+          <CardDescription className="text-sm">Busca y filtra proveedores</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -120,7 +120,7 @@ export default function SuppliersPage() {
               </div>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -137,15 +137,15 @@ export default function SuppliersPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No hay proveedores</h3>
-            <p className="text-muted-foreground text-center mb-4">
+            <h3 className="text-base md:text-lg font-semibold mb-2">No hay proveedores</h3>
+            <p className="text-muted-foreground text-center mb-4 text-sm md:text-base">
               {search || statusFilter !== "all"
                 ? "No se encontraron proveedores con los filtros aplicados"
                 : "Comienza agregando tu primer proveedor"}
             </p>
             {!search && statusFilter === "all" && (
-              <Link href="/dashboard/suppliers/new">
-                <Button>
+              <Link href="/dashboard/suppliers/new" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Crear Proveedor
                 </Button>
@@ -155,7 +155,8 @@ export default function SuppliersPage() {
         </Card>
       ) : (
         <Card>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Proveedor</TableHead>
@@ -239,10 +240,11 @@ export default function SuppliersPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </Card>
       )}
 
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground px-4 md:px-0">
         Mostrando {filteredSuppliers.length} de {suppliers.length} proveedores
       </div>
     </div>

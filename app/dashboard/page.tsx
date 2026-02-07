@@ -16,12 +16,12 @@ export default async function DashboardPage() {
   const employeeCount = teamMembers.filter((m) => m.role === "employee").length
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-2xl md:text-3xl font-bold">
           Bienvenido{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-muted-foreground mt-1 text-sm md:text-base">
           Resumen de tu negocio y organización
         </p>
       </div>
@@ -33,8 +33,8 @@ export default async function DashboardPage() {
 
       {/* Organization Stats */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Organización</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <h2 className="text-lg md:text-xl font-semibold mb-4">Organización</h2>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Miembros del Equipo</CardTitle>
