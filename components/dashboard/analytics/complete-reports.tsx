@@ -200,7 +200,7 @@ export function CompleteReports() {
                     <XAxis dataKey="date" tickFormatter={formatDate} />
                     <YAxis />
                     <Tooltip
-                      labelFormatter={formatDate}
+                      labelFormatter={(label) => formatDate(String(label))}
                       formatter={(value: any) => formatCurrency(value)}
                     />
                     <Legend />
