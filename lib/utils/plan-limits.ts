@@ -175,17 +175,10 @@ export async function hasFeature(
   // Verificar si la funcionalidad está en la lista de features del plan
   const features = limits.features as string[];
   
-  // Debug logging
-  console.log("hasFeature - Searching for:", featureName);
-  console.log("hasFeature - Features array:", features);
-  console.log("hasFeature - Features type:", typeof features, Array.isArray(features));
-  
   // Buscar la funcionalidad en el array de features
   const hasFeature = features.some((feature) =>
     feature.toLowerCase().includes(featureName.toLowerCase())
   );
-  
-  console.log("hasFeature - Result:", hasFeature);
 
   return hasFeature;
 }
@@ -197,7 +190,11 @@ export async function canAccessPurchaseOrders(companyId: string): Promise<{
   allowed: boolean;
   message?: string;
 }> {
-  const hasAccess = await hasFeature(companyId, "órdenes de compra");
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro y Empresarial tienen acceso a órdenes de compra
+  const allowedPlans = ["Pro", "Empresarial"];
+  const hasAccess = allowedPlans.includes(limits.planName);
   
   return {
     allowed: hasAccess,
@@ -212,7 +209,11 @@ export async function canAccessSuppliers(companyId: string): Promise<{
   allowed: boolean;
   message?: string;
 }> {
-  const hasAccess = await hasFeature(companyId, "proveedores");
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro y Empresarial tienen acceso a proveedores
+  const allowedPlans = ["Pro", "Empresarial"];
+  const hasAccess = allowedPlans.includes(limits.planName);
   
   return {
     allowed: hasAccess,
@@ -228,12 +229,10 @@ export async function canExportToExcel(companyId: string): Promise<{
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
-  const hasAccess = await hasFeature(companyId, "exportar");
   
-  // Debug logging
-  console.log("canExportToExcel - Plan:", limits.planName);
-  console.log("canExportToExcel - Features:", limits.features);
-  console.log("canExportToExcel - Has Access:", hasAccess);
+  // Solo Pro y Empresarial tienen acceso a exportar
+  const allowedPlans = ["Pro", "Empresarial"];
+  const hasAccess = allowedPlans.includes(limits.planName);
   
   return {
     allowed: hasAccess,
