@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Product, ProductFormData } from "@/lib/types/erp";
 import { requirePermission } from "@/lib/utils/permissions";
+import { canAddProduct } from "@/lib/utils/plan-limits";
 
 // Get all products for a company with filters
 export async function getProducts(filters?: {
@@ -119,6 +120,14 @@ export async function createProduct(formData: ProductFormData) {
 
     if (!profile?.company_id) {
       return { error: "No se encontró la empresa" };
+    }
+
+    // Verificar límite de productos del plan
+    const productLimit = await canAddProduct(profile.company_id);
+    if (!productLimit.allowed) {
+      return { 
+        error: productLimit.message || "Has alcanzado el límite de productos de tu plan" 
+      };
     }
 
     const { data, error } = await supabase

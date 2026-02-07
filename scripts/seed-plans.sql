@@ -2,10 +2,15 @@
 -- Run this in Supabase SQL Editor
 -- Actualizado con planes comerciales
 
--- Primero, eliminar planes existentes si los hay
-DELETE FROM public.plans;
+-- Agregar columnas si no existen (primero)
+ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS max_users INTEGER DEFAULT 3;
+ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS max_products INTEGER DEFAULT 500;
 
--- Insertar los nuevos planes
+-- Crear índice único en name si no existe (para ON CONFLICT)
+CREATE UNIQUE INDEX IF NOT EXISTS plans_name_unique ON public.plans(name);
+
+-- Actualizar planes existentes o insertar nuevos
+-- Usamos ON CONFLICT para actualizar si ya existen
 INSERT INTO public.plans (name, description, price, currency, interval, features, sort_order, is_active, max_users, max_products) VALUES
   (
     'Básico', 
@@ -81,11 +86,17 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
     999999,
     999999
   )
-ON CONFLICT DO NOTHING;
-
--- Agregar columnas si no existen
-ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS max_users INTEGER DEFAULT 3;
-ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS max_products INTEGER DEFAULT 500;
+ON CONFLICT (name) 
+DO UPDATE SET
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  currency = EXCLUDED.currency,
+  interval = EXCLUDED.interval,
+  features = EXCLUDED.features,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  max_users = EXCLUDED.max_users,
+  max_products = EXCLUDED.max_products;
 
 -- Comentarios
 COMMENT ON COLUMN plans.max_users IS 'Número máximo de usuarios permitidos en el plan';

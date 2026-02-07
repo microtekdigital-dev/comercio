@@ -3,6 +3,7 @@ import { getInvitations } from "@/lib/actions/invitations"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Mail, Building2, Shield } from "lucide-react"
 import { ERPStats } from "@/components/dashboard/erp-stats"
+import { PlanUsageServer } from "@/components/dashboard/plan-usage-server"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -92,6 +93,13 @@ export default async function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* Plan Usage - Solo para admins */}
+      {user?.role === "admin" && (
+        <Suspense fallback={<PlanUsageLoading />}>
+          <PlanUsageServer />
+        </Suspense>
+      )}
     </div>
   )
 }
@@ -113,5 +121,20 @@ function StatsLoading() {
         ))}
       </div>
     </div>
+  );
+}
+
+function PlanUsageLoading() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-4 w-24 mt-2" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </CardContent>
+    </Card>
   );
 }

@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidateTag } from "next/cache"
 import crypto from "crypto"
+import { canAddUser } from "@/lib/utils/plan-limits"
+import { canAddUser } from "@/lib/utils/plan-limits"
 
 export type InvitationResult = {
   success: boolean
@@ -39,6 +41,15 @@ export async function sendInvitation(
 
   if (profile.role !== "admin") {
     return { success: false, error: "Only admins can send invitations" }
+  }
+
+  // Verificar límite de usuarios del plan
+  const userLimit = await canAddUser(profile.company_id)
+  if (!userLimit.allowed) {
+    return { 
+      success: false, 
+      error: userLimit.message || "Has alcanzado el límite de usuarios de tu plan" 
+    }
   }
 
   // Check if email is already invited
