@@ -131,6 +131,7 @@
 ```sql
 -- En Supabase SQL Editor
 -- Copiar y pegar todo el contenido de scripts/seed-plans.sql
+-- ⚠️ ADVERTENCIA: Esto borrará todas las suscripciones y planes existentes
 -- Ejecutar
 ```
 

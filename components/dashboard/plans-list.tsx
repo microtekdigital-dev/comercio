@@ -11,7 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Check, Loader2, Sparkles } from "lucide-react";
 import type { Plan, PlanWithActive } from "@/lib/actions/plans";
 
 interface PlanCardProps {
@@ -50,6 +51,8 @@ export function PlanCard({
   };
 
   const features = Array.isArray(plan.features) ? plan.features : [];
+  const isAnnual = plan.interval === "year";
+  const isTrial = plan.name?.toLowerCase().includes("trial") || Number(plan.price) === 0;
 
   return (
     <Card
@@ -62,6 +65,20 @@ export function PlanCard({
       {isCurrentPlan && (
         <Badge className="absolute -top-3 left-1/2 -translate-x-1/2" variant="default">
           Plan Actual
+        </Badge>
+      )}
+      
+      {isAnnual && !isCurrentPlan && (
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600" variant="default">
+          <Sparkles className="h-3 w-3 mr-1" />
+          Ahorra 2 meses
+        </Badge>
+      )}
+
+      {isTrial && !isCurrentPlan && (
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600" variant="default">
+          <Sparkles className="h-3 w-3 mr-1" />
+          Gratis
         </Badge>
       )}
       
@@ -80,6 +97,11 @@ export function PlanCard({
           <span className="text-muted-foreground">
             /{plan.interval === "month" ? "mes" : "año"}
           </span>
+          {isAnnual && (
+            <div className="text-sm text-green-600 font-medium mt-1">
+              Equivalente a 10 meses
+            </div>
+          )}
         </div>
 
         <ul className="space-y-3">
@@ -108,6 +130,8 @@ export function PlanCard({
             "Plan Actual"
           ) : isTrialBlocked ? (
             "Trial no disponible"
+          ) : isTrial ? (
+            "Comenzar Trial Gratis"
           ) : (
             "Seleccionar Plan"
           )}
@@ -130,6 +154,7 @@ interface PlansListProps {
 export function PlansList({ plans, hasUsedTrial = false }: PlansListProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
 
   const handleSelectPlan = async (planId: string) => {
     setError(null);
@@ -164,6 +189,13 @@ export function PlansList({ plans, hasUsedTrial = false }: PlansListProps) {
     }
   };
 
+  // Separar planes por tipo
+  const trialPlans = plans.filter(p => p.name?.toLowerCase().includes("trial") || Number(p.price) === 0);
+  const monthlyPlans = plans.filter(p => p.interval === "month" && !p.name?.toLowerCase().includes("trial") && Number(p.price) > 0);
+  const yearlyPlans = plans.filter(p => p.interval === "year");
+
+  const displayPlans = billingInterval === "month" ? monthlyPlans : yearlyPlans;
+
   return (
     <div className="space-y-6">
       {error && (
@@ -172,23 +204,80 @@ export function PlansList({ plans, hasUsedTrial = false }: PlansListProps) {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {plans.map((plan) => {
-          const isTrialPlan = plan.name?.toLowerCase().includes("trial") || Number(plan.price) === 0;
-          const isTrialBlocked = isTrialPlan && hasUsedTrial;
+      {/* Trial Plans - Always show first if available */}
+      {trialPlans.length > 0 && (
+        <div className="space-y-4">
+          <div className="text-center">
+            <h3 className="text-2xl font-bold">Comienza Gratis</h3>
+            <p className="text-muted-foreground">Prueba todas las funciones sin compromiso</p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-md mx-auto">
+            {trialPlans.map((plan) => {
+              const isTrialBlocked = hasUsedTrial;
+              return (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  isCurrentPlan={plan.isActivePlan}
+                  onSelectPlan={handleSelectPlan}
+                  isLoading={isLoading}
+                  isTrialBlocked={isTrialBlocked}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-          return (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              isCurrentPlan={plan.isActivePlan}
-              onSelectPlan={handleSelectPlan}
-              isLoading={isLoading}
-              isTrialBlocked={isTrialBlocked}
-            />
-          );
-        })}
-      </div>
+      {/* Paid Plans with Monthly/Yearly Toggle */}
+      {(monthlyPlans.length > 0 || yearlyPlans.length > 0) && (
+        <div className="space-y-4">
+          <div className="text-center">
+            <h3 className="text-2xl font-bold">Elige tu Plan</h3>
+            <p className="text-muted-foreground">Ahorra hasta 2 meses con el pago anual</p>
+          </div>
+
+          <Tabs value={billingInterval} onValueChange={(v) => setBillingInterval(v as "month" | "year")} className="w-full">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+              <TabsTrigger value="month">Mensual</TabsTrigger>
+              <TabsTrigger value="year" className="relative">
+                Anual
+                <Badge className="ml-2 bg-green-600 text-xs" variant="default">
+                  -17%
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="month" className="mt-6">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {monthlyPlans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isCurrentPlan={plan.isActivePlan}
+                    onSelectPlan={handleSelectPlan}
+                    isLoading={isLoading}
+                  />
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="year" className="mt-6">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {yearlyPlans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isCurrentPlan={plan.isActivePlan}
+                    onSelectPlan={handleSelectPlan}
+                    isLoading={isLoading}
+                  />
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
     </div>
   );
 }
