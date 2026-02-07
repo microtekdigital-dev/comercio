@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +42,10 @@ export function UpgradePrompt({
           {message}
         </p>
         
-        <Button size="lg" className="w-full sm:w-auto">
-          Actualizar Plan
+        <Button size="lg" className="w-full sm:w-auto" asChild>
+          <Link href="/dashboard/billing">
+            Actualizar Plan
+          </Link>
         </Button>
       </CardContent>
     </Card>
