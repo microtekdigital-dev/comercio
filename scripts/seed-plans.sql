@@ -94,7 +94,7 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
       "Hasta 11 usuarios",
       "Órdenes de compra",
       "Gestión de proveedores",
-      "Reportes completos",
+      "Reportes avanzados",
       "Exportar a Excel",
       "Soporte prioritario"
     ]'::jsonb, 
@@ -117,7 +117,7 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
       "Hasta 11 usuarios",
       "Órdenes de compra",
       "Gestión de proveedores",
-      "Reportes completos",
+      "Reportes avanzados",
       "Exportar a Excel",
       "Soporte prioritario"
     ]'::jsonb, 
@@ -139,7 +139,7 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
       "Usuarios ilimitados",
       "Órdenes de compra",
       "Gestión de proveedores",
-      "Reportes avanzados",
+      "Reportes completos",
       "Exportar a Excel",
       "Soporte prioritario 24/7",
       "API access"
@@ -163,7 +163,7 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
       "Usuarios ilimitados",
       "Órdenes de compra",
       "Gestión de proveedores",
-      "Reportes avanzados",
+      "Reportes completos",
       "Exportar a Excel",
       "Soporte prioritario 24/7",
       "API access"

@@ -229,6 +229,47 @@ export async function canExportToExcel(companyId: string): Promise<{
 }
 
 /**
+ * Verifica si el plan tiene acceso a reportes avanzados
+ */
+export async function canAccessAdvancedReports(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Pro and Empresarial plans have access
+  const allowedPlans = ["Pro", "Empresarial"];
+  const hasAccess = allowedPlans.includes(limits.planName);
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "Los reportes avanzados están disponibles en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a reportes completos
+ */
+export async function canAccessCompleteReports(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Only Empresarial plan has access
+  const hasAccess = limits.planName === "Empresarial";
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "Los reportes completos están disponibles en el plan Empresarial. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
  * Obtiene información de uso actual vs límites del plan
  */
 export async function getPlanUsage(companyId: string) {
