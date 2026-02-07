@@ -7,6 +7,7 @@ import {
   canAccessCompleteReports,
   canAccessSuppliers,
   canAccessPurchaseOrders,
+  canExportToExcel,
 } from "@/lib/utils/plan-limits";
 import { BasicReports } from "@/components/dashboard/analytics/basic-reports";
 import { AdvancedReports } from "@/components/dashboard/analytics/advanced-reports";
@@ -23,6 +24,7 @@ export default function AnalyticsPage() {
   const [hasCompleteAccess, setHasCompleteAccess] = useState(false);
   const [hasSupplierAccess, setHasSupplierAccess] = useState(false);
   const [hasPurchaseOrderAccess, setHasPurchaseOrderAccess] = useState(false);
+  const [canExport, setCanExport] = useState(false);
   const [advancedMessage, setAdvancedMessage] = useState("");
   const [completeMessage, setCompleteMessage] = useState("");
 
@@ -55,17 +57,19 @@ export default function AnalyticsPage() {
       setCompanyId(profile.company_id);
 
       // Check all access levels
-      const [advancedAccess, completeAccess, supplierAccess, poAccess] = await Promise.all([
+      const [advancedAccess, completeAccess, supplierAccess, poAccess, exportAccess] = await Promise.all([
         canAccessAdvancedReports(profile.company_id),
         canAccessCompleteReports(profile.company_id),
         canAccessSuppliers(profile.company_id),
         canAccessPurchaseOrders(profile.company_id),
+        canExportToExcel(profile.company_id),
       ]);
 
       setHasAdvancedAccess(advancedAccess.allowed);
       setHasCompleteAccess(completeAccess.allowed);
       setHasSupplierAccess(supplierAccess.allowed);
       setHasPurchaseOrderAccess(poAccess.allowed);
+      setCanExport(exportAccess.allowed);
       setAdvancedMessage(advancedAccess.message || "");
       setCompleteMessage(completeAccess.message || "");
 
@@ -104,7 +108,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Basic Reports - Always visible */}
-      <BasicReports />
+      <BasicReports canExport={canExport} />
 
       <Separator className="my-8" />
 

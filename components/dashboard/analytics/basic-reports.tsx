@@ -47,7 +47,11 @@ import { toast } from "sonner";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-export function BasicReports() {
+interface BasicReportsProps {
+  canExport?: boolean;
+}
+
+export function BasicReports({ canExport = false }: BasicReportsProps) {
   const [period, setPeriod] = useState("30");
   const [salesData, setSalesData] = useState<any[]>([]);
   const [profitabilityData, setProfitabilityData] = useState<any[]>([]);
@@ -250,10 +254,12 @@ export function BasicReports() {
                     Productos ordenados por ganancia total
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleExportProfitability} className="w-full sm:w-auto">
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
+                {canExport && (
+                  <Button variant="outline" size="sm" onClick={handleExportProfitability} className="w-full sm:w-auto">
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Exportar
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -299,10 +305,12 @@ export function BasicReports() {
                     Estado actual del stock (ordenado por cantidad)
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleExportInventory} className="w-full sm:w-auto">
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
+                {canExport && (
+                  <Button variant="outline" size="sm" onClick={handleExportInventory} className="w-full sm:w-auto">
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Exportar
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
