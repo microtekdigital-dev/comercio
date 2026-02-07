@@ -63,7 +63,7 @@ const adminNavItems = [
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/team", label: "Equipo", icon: Users },
   { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
-  { href: "/dashboard/billing", label: "Facturación", icon: CreditCard },
+  { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ]
 
@@ -95,7 +95,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
     { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
     { href: "/dashboard/team", label: "Equipo", icon: Users },
     { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
-    { href: "/dashboard/billing", label: "Facturación", icon: CreditCard },
+    { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
     { href: "/dashboard/settings", label: "Configuración", icon: Settings },
   ]
 
