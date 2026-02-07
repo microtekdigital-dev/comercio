@@ -10,13 +10,13 @@ ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS max_products INTEGER DEFAULT 5
 DROP INDEX IF EXISTS plans_name_unique;
 CREATE UNIQUE INDEX IF NOT EXISTS plans_name_interval_unique ON public.plans(name, interval);
 
--- IMPORTANTE: NO borramos pagos ni suscripciones para mantener usuarios activos
--- Solo eliminamos los planes antiguos y los recreamos
+-- IMPORTANTE: Actualizamos planes existentes en lugar de borrarlos
+-- Esto mantiene las suscripciones activas de los usuarios
 
--- Eliminar todos los planes existentes
-DELETE FROM public.plans;
+-- Primero, desactivar todos los planes existentes
+UPDATE public.plans SET is_active = false;
 
--- Insertar los nuevos planes (trial + mensuales + anuales)
+-- Insertar o actualizar los nuevos planes
 INSERT INTO public.plans (name, description, price, currency, interval, features, sort_order, is_active, max_users, max_products) VALUES
   -- PLAN TRIAL (14 días gratis)
   (
@@ -207,7 +207,17 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
     true,
     999999,
     999999
-  );
+  )
+ON CONFLICT (name, interval) 
+DO UPDATE SET
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  currency = EXCLUDED.currency,
+  features = EXCLUDED.features,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  max_users = EXCLUDED.max_users,
+  max_products = EXCLUDED.max_products;
 
 -- Comentarios
 COMMENT ON COLUMN plans.max_users IS 'Número máximo de usuarios permitidos en el plan';
@@ -215,3 +225,4 @@ COMMENT ON COLUMN plans.max_products IS 'Número máximo de productos permitidos
 
 -- Nota: Las suscripciones y pagos existentes se mantienen activos
 -- Los usuarios en trial seguirán con su plan hasta que expire
+-- Los planes antiguos quedan desactivados (is_active = false)
