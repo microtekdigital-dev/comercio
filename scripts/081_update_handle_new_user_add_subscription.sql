@@ -1,6 +1,19 @@
 -- Update handle_new_user function to create Trial subscription
 -- This fixes the "Database error saving new user" issue
 
+-- First, add the unique constraint to company_users table if it doesn't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'company_users_company_user_unique'
+  ) THEN
+    ALTER TABLE public.company_users 
+    ADD CONSTRAINT company_users_company_user_unique 
+    UNIQUE (company_id, user_id);
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE

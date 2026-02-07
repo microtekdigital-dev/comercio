@@ -89,10 +89,10 @@ export default function PurchaseOrdersPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    const variants: Record<string, "default" | "secondary" | "destructive"> = {
       pending: "secondary",
       confirmed: "default",
-      received: "outline",
+      received: "default",
       cancelled: "destructive",
     };
 
@@ -114,7 +114,7 @@ export default function PurchaseOrdersPage() {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       pending: "secondary",
       partial: "default",
-      paid: "outline",
+      paid: "default",
     };
 
     const labels: Record<string, string> = {

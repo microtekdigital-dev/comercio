@@ -5,6 +5,7 @@ import { getProducts } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
 import { getUserPermissions } from "@/lib/utils/permissions";
 import { canExportToExcel } from "@/lib/utils/plan-limits";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,15 +49,29 @@ export default function ProductsPage() {
     loadCategories();
     loadProducts();
     checkPermissions();
+    checkExportPermissions();
   }, []);
 
   const checkPermissions = async () => {
     const permissions = await getUserPermissions();
     setCanCreate(permissions.canCreateProducts);
-    
-    // Check export permissions based on plan
-    const exportPermission = await canExportToExcel(permissions.companyId);
-    setCanExport(exportPermission.allowed);
+  };
+
+  const checkExportPermissions = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.company_id) {
+      const exportPermission = await canExportToExcel(profile.company_id);
+      setCanExport(exportPermission.allowed);
+    }
   };
 
   useEffect(() => {
