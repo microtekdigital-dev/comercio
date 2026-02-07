@@ -67,16 +67,16 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
     500
   ),
   
-  -- PLAN BÁSICO ANUAL (ahorra $6,000 al año)
+  -- PLAN BÁSICO ANUAL (ahorra $9,000 al año - 15% descuento)
   (
     'Básico', 
-    'Ideal para pequeños negocios - Pago anual con descuento', 
-    54000.00, 
+    'Ideal para pequeños negocios - Pago anual con 15% descuento', 
+    51000.00, 
     'ARS', 
     'year', 
     '[
-      "Ahorra $6,000 al año",
-      "Equivalente a 10.8 meses",
+      "Ahorra $9,000 al año (15% descuento)",
+      "Equivalente a 10.2 meses",
       "1 empresa",
       "1 usuario admin + 2 empleados",
       "Gestión de productos",
@@ -120,16 +120,16 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
     5000
   ),
   
-  -- PLAN PRO ANUAL (ahorra $14,000 al año)
+  -- PLAN PRO ANUAL (ahorra $42,000 al año - 29% descuento)
   (
     'Pro', 
-    'Para negocios en crecimiento - Pago anual con descuento', 
-    130000.00, 
+    'Para negocios en crecimiento - Pago anual con descuento especial', 
+    102000.00, 
     'ARS', 
     'year', 
     '[
-      "Ahorra $14,000 al año",
-      "Equivalente a 10.8 meses",
+      "Ahorra $42,000 al año (29% descuento)",
+      "Equivalente a 8.5 meses",
       "1 empresa",
       "1 admin + 10 empleados",
       "Gestión de productos",
@@ -153,7 +153,7 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
   (
     'Empresarial', 
     'Solución completa para empresas grandes con múltiples sucursales', 
-    15000.00, 
+    18000.00, 
     'ARS', 
     'month', 
     '[
@@ -178,16 +178,16 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
     999999
   ),
   
-  -- PLAN EMPRESARIAL ANUAL (ahorra $20,000 al año)
+  -- PLAN EMPRESARIAL ANUAL (ahorra $32,000 al año - 15% descuento)
   (
     'Empresarial', 
-    'Solución completa para empresas - Pago anual con descuento', 
-    200000.00, 
+    'Solución completa para empresas - Pago anual con 15% descuento', 
+    184000.00, 
     'ARS', 
     'year', 
     '[
-      "Ahorra $20,000 al año",
-      "Equivalente a 13.3 meses",
+      "Ahorra $32,000 al año (15% descuento)",
+      "Equivalente a 10.2 meses",
       "Empresas ilimitadas",
       "Usuarios ilimitados",
       "Gestión completa de ventas",

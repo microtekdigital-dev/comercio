@@ -59,7 +59,7 @@
 
 ### 🟢 Plan Básico
 **Mensual**: $5,000/mes  
-**Anual**: $54,000/año (ahorra $6,000)
+**Anual**: $51,000/año (ahorra $9,000 - 15% descuento)
 
 **Ideal para**: Pequeños negocios que están comenzando
 
@@ -89,7 +89,7 @@
 
 ### 🔵 Plan Pro
 **Mensual**: $12,000/mes  
-**Anual**: $130,000/año (ahorra $14,000)
+**Anual**: $102,000/año (ahorra $42,000 - 29% descuento)
 
 **Ideal para**: Negocios en crecimiento que necesitan más funcionalidades
 
@@ -115,8 +115,8 @@
 ---
 
 ### 🟣 Plan Empresarial
-**Mensual**: $15,000/mes  
-**Anual**: $200,000/año (ahorra $20,000)
+**Mensual**: $18,000/mes  
+**Anual**: $184,000/año (ahorra $32,000 - 15% descuento)
 
 **Ideal para**: Empresas grandes con múltiples sucursales
 
@@ -150,9 +150,9 @@
 | Plan | Mensual | Anual | Ahorro Anual | % Descuento |
 |---|---|---|---|---|
 | **Trial** | GRATIS (14 días) | - | - | - |
-| **Básico** | $5,000 | $54,000 | $6,000 | 10% |
-| **Pro** | $12,000 | $130,000 | $14,000 | 10% |
-| **Empresarial** | $15,000 | $200,000 | $20,000 | 11% |
+| **Básico** | $5,000 | $51,000 | $9,000 | 15% |
+| **Pro** | $12,000 | $102,000 | $42,000 | 29% |
+| **Empresarial** | $18,000 | $184,000 | $32,000 | 15% |
 
 ---
 

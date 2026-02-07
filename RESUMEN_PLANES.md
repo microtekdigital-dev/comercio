@@ -151,12 +151,12 @@ Empresarial  | 999999 | 999999 (anual)
 
 ## 📈 Límites por Plan
 
-| Plan | Usuarios | Productos | Precio Mensual | Precio Anual |
-|---|---|---|---|---|
-| **Trial** | 3 | 50 | GRATIS (14 días) | - |
-| **Básico** | 3 | 500 | $5,000 | $54,000 |
-| **Pro** | 11 | 5,000 | $12,000 | $130,000 |
-| **Empresarial** | ∞ | ∞ | $15,000 | $200,000 |
+| Plan | Usuarios | Productos | Precio Mensual | Precio Anual | Ahorro |
+|---|---|---|---|---|---|
+| **Trial** | 3 | 50 | GRATIS (14 días) | - | - |
+| **Básico** | 3 | 500 | $5,000 | $51,000 | $9,000 (15%) |
+| **Pro** | 11 | 5,000 | $12,000 | $102,000 | $42,000 (29%) |
+| **Empresarial** | ∞ | ∞ | $18,000 | $184,000 | $32,000 (15%) |
 
 ---
 
