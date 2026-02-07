@@ -1,7 +1,6 @@
 import React from "react"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/actions/users"
-import { ensureTrialSubscription } from "@/lib/actions/subscriptions"
 import { DashboardSidebarServer } from "@/components/dashboard/sidebar-server"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { SubscriptionGuard } from "@/components/dashboard/subscription-guard"
@@ -22,9 +21,7 @@ export default async function DashboardLayout({
   let subscriptionStatus: string | null = null;
 
   if (user.company_id) {
-    await ensureTrialSubscription(user.company_id)
-    
-    // Obtener el estado de la suscripción
+    // NO llamar a ensureTrialSubscription aquí - solo verificar el estado
     const supabase = await createClient();
     const { data: subscription } = await supabase
       .from("subscriptions")

@@ -158,12 +158,15 @@ export async function cancelSubscription(subscriptionId: string) {
   const supabase = await createClient();
 
   try {
+    console.log("[cancelSubscription] Starting cancellation for:", subscriptionId);
+
     // Verificar que el usuario tenga permisos
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      console.log("[cancelSubscription] No user found");
       return { error: "Usuario no autenticado" };
     }
 
@@ -174,7 +177,10 @@ export async function cancelSubscription(subscriptionId: string) {
       .eq("id", user.id)
       .single();
 
+    console.log("[cancelSubscription] User profile:", profile);
+
     if (!profile || profile.role !== "admin") {
+      console.log("[cancelSubscription] User is not admin");
       return { error: "Solo los administradores pueden cancelar suscripciones" };
     }
 
@@ -185,32 +191,40 @@ export async function cancelSubscription(subscriptionId: string) {
       .eq("id", subscriptionId)
       .single();
 
+    console.log("[cancelSubscription] Current subscription:", subscription);
+
     if (!subscription || subscription.company_id !== profile.company_id) {
+      console.log("[cancelSubscription] Subscription not found or doesn't belong to company");
       return { error: "Suscripción no encontrada" };
     }
 
     if (subscription.status === "cancelled") {
+      console.log("[cancelSubscription] Subscription already cancelled");
       return { error: "La suscripción ya está cancelada" };
     }
 
     // Cancelar la suscripción
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from("subscriptions")
       .update({
         status: "cancelled",
         cancel_at_period_end: true,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", subscriptionId);
+      .eq("id", subscriptionId)
+      .select();
+
+    console.log("[cancelSubscription] Update result:", { updated, updateError });
 
     if (updateError) {
-      console.error("Error cancelling subscription:", updateError);
+      console.error("[cancelSubscription] Error updating:", updateError);
       return { error: "Error al cancelar la suscripción" };
     }
 
+    console.log("[cancelSubscription] Subscription cancelled successfully");
     return { success: true };
   } catch (error) {
-    console.error("Error in cancelSubscription:", error);
+    console.error("[cancelSubscription] Exception:", error);
     return { error: "Error al cancelar la suscripción" };
   }
 }
