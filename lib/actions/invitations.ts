@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidateTag } from "next/cache"
 import crypto from "crypto"
 import { canAddUser } from "@/lib/utils/plan-limits"
-import { canAddUser } from "@/lib/utils/plan-limits"
 
 export type InvitationResult = {
   success: boolean

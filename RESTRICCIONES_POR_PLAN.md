@@ -1,21 +1,34 @@
 # 🔒 Restricciones por Plan Implementadas
 
-## ✅ Funcionalidades Bloqueadas
+## ✅ Límites y Funcionalidades Bloqueadas
 
-### Plan Trial y Básico
-❌ **Órdenes de Compra** - Bloqueado  
-❌ **Gestión de Proveedores** - Bloqueado  
-❌ **Exportar a Excel** - Bloqueado  
+### Plan Trial
+- ⚠️ **Límite de Usuarios**: 3 usuarios (1 admin + 2 empleados)
+- ⚠️ **Límite de Productos**: 50 productos
+- ❌ **Órdenes de Compra** - Bloqueado  
+- ❌ **Gestión de Proveedores** - Bloqueado  
+- ❌ **Exportar a Excel** - Bloqueado  
+
+### Plan Básico
+- ⚠️ **Límite de Usuarios**: 3 usuarios (1 admin + 2 empleados)
+- ⚠️ **Límite de Productos**: 500 productos
+- ❌ **Órdenes de Compra** - Bloqueado  
+- ❌ **Gestión de Proveedores** - Bloqueado  
+- ❌ **Exportar a Excel** - Bloqueado  
 
 ### Plan Pro
-✅ **Órdenes de Compra** - Disponible  
-✅ **Gestión de Proveedores** - Disponible  
-✅ **Exportar a Excel** - Disponible  
-❌ **API Access** - Bloqueado  
+- ⚠️ **Límite de Usuarios**: 11 usuarios (1 admin + 10 empleados)
+- ⚠️ **Límite de Productos**: 5,000 productos
+- ✅ **Órdenes de Compra** - Disponible  
+- ✅ **Gestión de Proveedores** - Disponible  
+- ✅ **Exportar a Excel** - Disponible  
+- ❌ **API Access** - Bloqueado  
 
 ### Plan Empresarial
-✅ **Todas las funcionalidades** - Disponible  
-✅ **API Access** - Disponible  
+- ✅ **Usuarios Ilimitados**
+- ✅ **Productos Ilimitados**
+- ✅ **Todas las funcionalidades** - Disponible  
+- ✅ **API Access** - Disponible  
 
 ---
 
@@ -23,7 +36,23 @@
 
 ### 1. Funciones de Validación (`lib/utils/plan-limits.ts`)
 
-#### `canAccessPurchaseOrders(companyId)`
+#### Límites de Usuarios y Productos
+
+**`canAddUser(companyId)`**
+Verifica si la empresa puede agregar más usuarios según el límite del plan.
+- **Retorna**: `{ allowed: boolean, currentCount: number, maxUsers: number, message?: string }`
+- **Mensaje de error**: "Has alcanzado el límite de X usuarios de tu plan..."
+- **Implementado en**: `lib/actions/invitations.ts`
+
+**`canAddProduct(companyId)`**
+Verifica si la empresa puede agregar más productos según el límite del plan.
+- **Retorna**: `{ allowed: boolean, currentCount: number, maxProducts: number, message?: string }`
+- **Mensaje de error**: "Has alcanzado el límite de X productos de tu plan..."
+- **Implementado en**: `lib/actions/products.ts`
+
+#### Acceso a Funcionalidades Premium
+
+**`canAccessPurchaseOrders(companyId)`**
 Verifica si el plan tiene acceso a órdenes de compra.
 - **Retorna**: `{ allowed: boolean, message?: string }`
 - **Mensaje de error**: "Las órdenes de compra están disponibles en el plan Pro o superior..."
@@ -40,7 +69,38 @@ Verifica si el plan tiene acceso a exportar Excel.
 
 ---
 
-### 2. Validaciones en Órdenes de Compra (`lib/actions/purchase-orders.ts`)
+### 2. Validaciones en Usuarios (`lib/actions/invitations.ts`)
+
+#### `sendInvitation()`
+- ✅ Verifica límite de usuarios antes de crear invitación
+- ✅ Retorna error con mensaje personalizado si alcanzó el límite
+
+**Ejemplo de error**:
+```typescript
+{
+  success: false,
+  error: "Has alcanzado el límite de 3 usuarios de tu plan Básico. Actualiza tu plan para agregar más usuarios."
+}
+```
+
+---
+
+### 3. Validaciones en Productos (`lib/actions/products.ts`)
+
+#### `createProduct()`
+- ✅ Verifica límite de productos antes de crear
+- ✅ Retorna error con mensaje personalizado si alcanzó el límite
+
+**Ejemplo de error**:
+```typescript
+{
+  error: "Has alcanzado el límite de 500 productos de tu plan Básico. Actualiza tu plan para agregar más productos."
+}
+```
+
+---
+
+### 4. Validaciones en Órdenes de Compra (`lib/actions/purchase-orders.ts`)
 
 #### `getPurchaseOrders()`
 - ✅ Verifica acceso antes de listar órdenes
@@ -59,7 +119,7 @@ Verifica si el plan tiene acceso a exportar Excel.
 
 ---
 
-### 3. Validaciones en Proveedores (`lib/actions/suppliers.ts`)
+### 5. Validaciones en Proveedores (`lib/actions/suppliers.ts`)
 
 #### `getSuppliers()`
 - ✅ Verifica acceso antes de listar proveedores
@@ -78,7 +138,7 @@ Verifica si el plan tiene acceso a exportar Excel.
 
 ---
 
-### 4. Validaciones en Exportación (`lib/utils/export.ts`)
+### 6. Validaciones en Exportación (`lib/utils/export.ts`)
 
 #### `checkExportAccess(companyId)`
 - ✅ Función auxiliar para verificar acceso
@@ -98,6 +158,22 @@ exportToExcel(data, filename);
 ---
 
 ## 🎯 Comportamiento por Funcionalidad
+
+### Límites de Usuarios
+
+| Acción | Trial (3) | Básico (3) | Pro (11) | Empresarial (∞) |
+|---|---|---|---|---|
+| Invitar usuario | ⚠️ Límite 3 | ⚠️ Límite 3 | ⚠️ Límite 11 | ✅ Ilimitado |
+| Ver equipo | ✅ Permitido | ✅ Permitido | ✅ Permitido | ✅ Permitido |
+| Mensaje al límite | ❌ Error | ❌ Error | ❌ Error | - |
+
+### Límites de Productos
+
+| Acción | Trial (50) | Básico (500) | Pro (5,000) | Empresarial (∞) |
+|---|---|---|---|---|
+| Crear producto | ⚠️ Límite 50 | ⚠️ Límite 500 | ⚠️ Límite 5,000 | ✅ Ilimitado |
+| Ver productos | ✅ Permitido | ✅ Permitido | ✅ Permitido | ✅ Permitido |
+| Mensaje al límite | ❌ Error | ❌ Error | ❌ Error | - |
 
 ### Órdenes de Compra
 
@@ -202,17 +278,22 @@ if (pathname.startsWith('/dashboard/purchase-orders')) {
 4. ✅ `lib/utils/export.ts` - Agregada función de verificación
 
 ### Funciones Agregadas
-- `canAccessPurchaseOrders(companyId)`
-- `canAccessSuppliers(companyId)`
-- `canExportToExcel(companyId)`
-- `checkExportAccess(companyId)`
+- `canAddUser(companyId)` - Valida límite de usuarios
+- `canAddProduct(companyId)` - Valida límite de productos
+- `canAccessPurchaseOrders(companyId)` - Valida acceso a órdenes de compra
+- `canAccessSuppliers(companyId)` - Valida acceso a proveedores
+- `canExportToExcel(companyId)` - Valida acceso a exportación
+- `checkExportAccess(companyId)` - Función auxiliar para exportación
 
 ### Validaciones Implementadas
-- ✅ Órdenes de compra bloqueadas en plan Básico
-- ✅ Proveedores bloqueados en plan Básico
-- ✅ Exportación Excel bloqueada en plan Básico
+- ✅ Límite de usuarios por plan (Trial/Básico: 3, Pro: 11, Empresarial: ∞)
+- ✅ Límite de productos por plan (Trial: 50, Básico: 500, Pro: 5,000, Empresarial: ∞)
+- ✅ Órdenes de compra bloqueadas en plan Básico y Trial
+- ✅ Proveedores bloqueados en plan Básico y Trial
+- ✅ Exportación Excel bloqueada en plan Básico y Trial
 - ✅ Mensajes de error personalizados
 - ✅ Retorno de arrays vacíos en listados
+- ✅ Visualización de uso en dashboard
 
 ---
 
