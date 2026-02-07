@@ -57,13 +57,16 @@ export function CurrentSubscription({ subscription }: CurrentSubscriptionProps) 
   const plan = subscription.plan;
   const isTrial = subscription.isTrial;
   const isActive = subscription.status === "activado";
+  const isCancelled = subscription.status === "cancelled";
   const willCancel = subscription.cancel_at_period_end;
-  const statusLabel =
-    subscription.status === "activado"
-      ? isTrial
-        ? "Trial activo"
-        : "Activado"
-      : subscription.status;
+  
+  // Determine status label
+  let statusLabel = subscription.status;
+  if (subscription.status === "activado") {
+    statusLabel = isTrial ? "Trial activo" : "Activado";
+  } else if (isCancelled) {
+    statusLabel = "Cancelado";
+  }
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
@@ -105,7 +108,7 @@ export function CurrentSubscription({ subscription }: CurrentSubscriptionProps) 
             <CreditCard className="h-5 w-5" />
             Suscripción Actual
           </CardTitle>
-          <Badge variant={isActive ? "default" : "secondary"}>
+          <Badge variant={isActive ? "default" : isCancelled ? "destructive" : "secondary"}>
             {statusLabel}
           </Badge>
         </div>
@@ -139,7 +142,7 @@ export function CurrentSubscription({ subscription }: CurrentSubscriptionProps) 
           </span>
         </div>
 
-        {willCancel && (
+        {willCancel && !isCancelled && (
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="h-4 w-4" />
             <span>
@@ -148,7 +151,16 @@ export function CurrentSubscription({ subscription }: CurrentSubscriptionProps) 
           </div>
         )}
 
-        {isActive && !willCancel && (
+        {isCancelled && (
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span>
+              Tu suscripción ha sido cancelada. Selecciona un plan de pago para continuar.
+            </span>
+          </div>
+        )}
+
+        {isActive && !willCancel && !isCancelled && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="w-full bg-transparent">
