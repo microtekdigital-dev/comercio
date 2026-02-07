@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { getSales } from "@/lib/actions/sales";
 import { getCustomers } from "@/lib/actions/customers";
+import { canExportToExcel } from "@/lib/utils/plan-limits";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +33,7 @@ export default function SalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canExport, setCanExport] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
@@ -42,7 +45,25 @@ export default function SalesPage() {
   useEffect(() => {
     loadCustomers();
     loadSales();
+    checkExportPermissions();
   }, []);
+
+  const checkExportPermissions = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.company_id) {
+      const exportPermission = await canExportToExcel(profile.company_id);
+      setCanExport(exportPermission.allowed);
+    }
+  };
 
   useEffect(() => {
     loadSales();
@@ -179,28 +200,30 @@ export default function SalesPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-col sm:flex-row">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportExcel}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Exportar a Excel
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportCSV}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Exportar a CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF}>
-                <FileText className="mr-2 h-4 w-4" />
-                Generar Reporte PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canExport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Exportar a Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Exportar a CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generar Reporte PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Link href="/dashboard/sales/new" className="w-full sm:w-auto">
             <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />

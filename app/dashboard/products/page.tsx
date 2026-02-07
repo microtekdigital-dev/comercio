@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getProducts } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
 import { getUserPermissions } from "@/lib/utils/permissions";
+import { canExportToExcel } from "@/lib/utils/plan-limits";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [canCreate, setCanCreate] = useState(false);
+  const [canExport, setCanExport] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -51,6 +53,10 @@ export default function ProductsPage() {
   const checkPermissions = async () => {
     const permissions = await getUserPermissions();
     setCanCreate(permissions.canCreateProducts);
+    
+    // Check export permissions based on plan
+    const exportPermission = await canExportToExcel(permissions.companyId);
+    setCanExport(exportPermission.allowed);
   };
 
   useEffect(() => {
@@ -144,28 +150,30 @@ export default function ProductsPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-col sm:flex-row">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportExcel}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Exportar a Excel
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportCSV}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Exportar a CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF}>
-                <FileText className="mr-2 h-4 w-4" />
-                Generar Reporte PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canExport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Exportar a Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Exportar a CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generar Reporte PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {canCreate && (
             <Link href="/dashboard/products/new" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto">
