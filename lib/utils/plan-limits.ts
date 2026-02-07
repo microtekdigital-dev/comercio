@@ -175,10 +175,17 @@ export async function hasFeature(
   // Verificar si la funcionalidad está en la lista de features del plan
   const features = limits.features as string[];
   
+  // Debug logging
+  console.log("hasFeature - Searching for:", featureName);
+  console.log("hasFeature - Features array:", features);
+  console.log("hasFeature - Features type:", typeof features, Array.isArray(features));
+  
   // Buscar la funcionalidad en el array de features
   const hasFeature = features.some((feature) =>
     feature.toLowerCase().includes(featureName.toLowerCase())
   );
+  
+  console.log("hasFeature - Result:", hasFeature);
 
   return hasFeature;
 }
