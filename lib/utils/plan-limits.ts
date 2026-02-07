@@ -220,7 +220,13 @@ export async function canExportToExcel(companyId: string): Promise<{
   allowed: boolean;
   message?: string;
 }> {
+  const limits = await getCurrentPlanLimits(companyId);
   const hasAccess = await hasFeature(companyId, "exportar");
+  
+  // Debug logging
+  console.log("canExportToExcel - Plan:", limits.planName);
+  console.log("canExportToExcel - Features:", limits.features);
+  console.log("canExportToExcel - Has Access:", hasAccess);
   
   return {
     allowed: hasAccess,

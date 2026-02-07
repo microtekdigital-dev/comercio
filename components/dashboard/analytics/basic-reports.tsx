@@ -60,6 +60,11 @@ export function BasicReports({ canExport = false }: BasicReportsProps) {
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Debug: Log canExport value
+  useEffect(() => {
+    console.log("BasicReports - canExport:", canExport);
+  }, [canExport]);
+
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps

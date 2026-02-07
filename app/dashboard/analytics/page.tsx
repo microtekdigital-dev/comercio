@@ -73,6 +73,9 @@ export default function AnalyticsPage() {
       setAdvancedMessage(advancedAccess.message || "");
       setCompleteMessage(completeAccess.message || "");
 
+      // Debug: Log export access
+      console.log("Analytics Page - Export Access:", exportAccess);
+
       // Determine current plan based on access
       if (completeAccess.allowed) {
         setCurrentPlan("Empresarial");
