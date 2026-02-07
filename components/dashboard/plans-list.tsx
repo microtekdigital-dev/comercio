@@ -211,7 +211,7 @@ export function PlansList({ plans, hasUsedTrial = false }: PlansListProps) {
             <h3 className="text-2xl font-bold">Comienza Gratis</h3>
             <p className="text-muted-foreground">Prueba todas las funciones sin compromiso</p>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-md mx-auto">
+          <div className="grid gap-6 justify-center md:grid-cols-1 lg:grid-cols-1 max-w-md mx-auto">
             {trialPlans.map((plan) => {
               const isTrialBlocked = hasUsedTrial;
               return (
