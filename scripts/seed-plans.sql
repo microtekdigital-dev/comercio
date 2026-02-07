@@ -29,7 +29,8 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
       "14 días gratis",
       "Hasta 50 productos",
       "Hasta 3 usuarios",
-      "Gestión básica",
+      "Ventas y clientes",
+      "Reportes básicos",
       "Soporte por email"
     ]'::jsonb, 
     0, 
@@ -48,6 +49,7 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
     '[
       "Hasta 500 productos",
       "Hasta 3 usuarios",
+      "Ventas y clientes",
       "Gestión completa",
       "Reportes básicos",
       "Soporte por email"
@@ -69,6 +71,7 @@ INSERT INTO public.plans (name, description, price, currency, interval, features
       "Ahorra $9,000 al año (15% descuento)",
       "Hasta 500 productos",
       "Hasta 3 usuarios",
+      "Ventas y clientes",
       "Gestión completa",
       "Reportes básicos",
       "Soporte por email"
