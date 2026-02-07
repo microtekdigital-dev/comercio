@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { PurchaseOrder, PurchaseOrderFormData } from "@/lib/types/erp";
+import { canAccessPurchaseOrders } from "@/lib/utils/plan-limits";
 
 // Get all purchase orders
 export async function getPurchaseOrders(filters?: {
@@ -23,6 +24,12 @@ export async function getPurchaseOrders(filters?: {
       .single();
 
     if (!profile?.company_id) return [];
+
+    // Verificar acceso a órdenes de compra según el plan
+    const access = await canAccessPurchaseOrders(profile.company_id);
+    if (!access.allowed) {
+      return [];
+    }
 
     let query = supabase
       .from("purchase_orders")
@@ -114,6 +121,12 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
 
     if (!["owner", "admin", "member"].includes(profile.role || "")) {
       return { error: "No tienes permisos para crear órdenes de compra" };
+    }
+
+    // Verificar acceso a órdenes de compra según el plan
+    const access = await canAccessPurchaseOrders(profile.company_id);
+    if (!access.allowed) {
+      return { error: access.message || "No tienes acceso a esta funcionalidad" };
     }
 
     // Calculate totals

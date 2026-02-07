@@ -184,6 +184,51 @@ export async function hasFeature(
 }
 
 /**
+ * Verifica si el plan tiene acceso a órdenes de compra
+ */
+export async function canAccessPurchaseOrders(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const hasAccess = await hasFeature(companyId, "órdenes de compra");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess ? undefined : "Las órdenes de compra están disponibles en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a proveedores
+ */
+export async function canAccessSuppliers(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const hasAccess = await hasFeature(companyId, "proveedores");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess ? undefined : "La gestión de proveedores está disponible en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a exportar Excel
+ */
+export async function canExportToExcel(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const hasAccess = await hasFeature(companyId, "exportar");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess ? undefined : "La exportación a Excel está disponible en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
  * Obtiene información de uso actual vs límites del plan
  */
 export async function getPlanUsage(companyId: string) {

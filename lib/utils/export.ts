@@ -2,6 +2,12 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { Sale, Product, Customer } from "@/lib/types/erp";
+import { canExportToExcel } from "@/lib/utils/plan-limits";
+
+// Verificar acceso antes de exportar
+async function checkExportAccess(companyId: string): Promise<{ allowed: boolean; message?: string }> {
+  return await canExportToExcel(companyId);
+}
 
 // Export to Excel/CSV
 export function exportToExcel(data: any[], filename: string, sheetName: string = "Data") {

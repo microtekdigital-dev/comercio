@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/utils/permissions";
 import type { Supplier, SupplierFormData } from "@/lib/types/erp";
+import { canAccessSuppliers } from "@/lib/utils/plan-limits";
 
 // Get all suppliers
 export async function getSuppliers(filters?: {
@@ -23,6 +24,12 @@ export async function getSuppliers(filters?: {
       .single();
 
     if (!profile?.company_id) return [];
+
+    // Verificar acceso a proveedores según el plan
+    const access = await canAccessSuppliers(profile.company_id);
+    if (!access.allowed) {
+      return [];
+    }
 
     let query = supabase
       .from("suppliers")
@@ -99,6 +106,12 @@ export async function createSupplier(formData: SupplierFormData) {
 
     if (!profile?.company_id) {
       return { error: "No se encontró la empresa" };
+    }
+
+    // Verificar acceso a proveedores según el plan
+    const access = await canAccessSuppliers(profile.company_id);
+    if (!access.allowed) {
+      return { error: access.message || "No tienes acceso a esta funcionalidad" };
     }
 
     const { data, error } = await supabase
