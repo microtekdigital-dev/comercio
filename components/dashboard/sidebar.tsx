@@ -13,7 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { createClient } from "@/lib/supabase/client"
+import { useState } from "react"
 import {
   Building2,
   LayoutDashboard,
@@ -29,6 +31,7 @@ import {
   FolderTree,
   BarChart3,
   ClipboardList,
+  Menu,
 } from "lucide-react"
 
 interface Profile {
@@ -76,6 +79,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [open, setOpen] = useState(false)
 
   const navItems = user.role === "admin" ? adminNavItems : employeeNavItems
 
@@ -97,11 +101,11 @@ export function DashboardSidebar({ user }: SidebarProps) {
     return email.slice(0, 2).toUpperCase()
   }
 
-  return (
-    <aside className="w-64 border-r bg-card flex flex-col">
+  const SidebarContent = () => (
+    <>
       {/* Header */}
       <div className="p-4 border-b">
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Building2 className="h-4 w-4 text-primary-foreground" />
           </div>
@@ -117,7 +121,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || 
@@ -127,6 +131,7 @@ export function DashboardSidebar({ user }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
                 isActive
@@ -179,6 +184,29 @@ export function DashboardSidebar({ user }: SidebarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 border-r bg-card flex-col">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Sidebar */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild className="md:hidden">
+          <Button variant="ghost" size="icon" className="fixed top-3 left-4 z-40">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-64">
+          <div className="flex flex-col h-full">
+            <SidebarContent />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }

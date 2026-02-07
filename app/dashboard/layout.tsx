@@ -22,11 +22,11 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col md:flex-row">
       <DashboardSidebar user={user} />
       <div className="flex-1 flex flex-col">
         <DashboardHeader />
-        <main className="flex-1 bg-muted/30">
+        <main className="flex-1 bg-muted/30 overflow-x-hidden">
           {children}
         </main>
       </div>
