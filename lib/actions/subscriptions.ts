@@ -51,22 +51,31 @@ export async function ensureTrialSubscription(companyId?: string | null) {
       await ensureCompanyUserMembership(supabase, user.id, companyId);
     }
 
-    const { data: existing, error: existingError } = await supabase
+    // Verificar si existe CUALQUIER suscripción (incluyendo canceladas)
+    const { data: anySubscription, error: anySubError } = await supabase
       .from("subscriptions")
-      .select("id")
+      .select("id, status")
       .eq("company_id", companyId)
-      .in("status", ["active", "pending"])
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
 
-    if (existingError && existingError.code !== "PGRST116") {
-      console.error("Error checking existing subscription:", existingError);
+    if (anySubError && anySubError.code !== "PGRST116") {
+      console.error("Error checking any subscription:", anySubError);
       return null;
     }
 
-    if (existing) return existing;
+    // Si existe una suscripción (activa, cancelada, etc.), no crear otra
+    if (anySubscription) {
+      // Solo retornar si está activa o pendiente
+      if (anySubscription.status === "active" || anySubscription.status === "pending") {
+        return anySubscription;
+      }
+      // Si está cancelada, no crear nueva suscripción
+      return null;
+    }
 
+    // Solo crear Trial si NO existe ninguna suscripción previa
     const trialPlan = await findTrialPlan(supabase);
     if (!trialPlan) return null;
 
