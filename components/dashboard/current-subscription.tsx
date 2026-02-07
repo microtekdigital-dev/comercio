@@ -80,6 +80,8 @@ export function CurrentSubscription({ subscription }: CurrentSubscriptionProps) 
   const handleCancelSubscription = async () => {
     setIsCancelling(true);
     try {
+      console.log("[Client] Cancelling subscription:", subscription.id);
+      
       const response = await fetch("/api/subscriptions/cancel", {
         method: "POST",
         headers: {
@@ -89,12 +91,18 @@ export function CurrentSubscription({ subscription }: CurrentSubscriptionProps) 
       });
 
       const result = await response.json();
+      console.log("[Client] Cancel response:", result);
 
       if (!response.ok || result.error) {
-        console.error(result.error || "Error al cancelar la suscripción");
+        console.error("[Client] Error:", result.error || "Error al cancelar la suscripción");
+        alert("Error: " + (result.error || "Error al cancelar la suscripción"));
       } else {
+        console.log("[Client] Cancellation successful, refreshing...");
         router.refresh();
       }
+    } catch (error) {
+      console.error("[Client] Exception:", error);
+      alert("Error al cancelar la suscripción");
     } finally {
       setIsCancelling(false);
     }

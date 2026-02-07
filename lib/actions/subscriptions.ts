@@ -212,6 +212,15 @@ export async function cancelSubscription(subscriptionId: string) {
 
     const now = new Date().toISOString();
 
+    // First, verify the subscription exists
+    const { data: beforeUpdate } = await adminClient
+      .from("subscriptions")
+      .select("id, status, company_id")
+      .eq("id", subscriptionId)
+      .single();
+
+    console.log("[cancelSubscription] Before update:", beforeUpdate);
+
     // Cancelar la suscripción usando admin client
     const { data: updated, error: updateError } = await adminClient
       .from("subscriptions")
@@ -219,26 +228,38 @@ export async function cancelSubscription(subscriptionId: string) {
         status: "cancelled",
         cancel_at_period_end: false,
         current_period_end: now,
-        updated_at: now,
       })
       .eq("id", subscriptionId)
-      .eq("company_id", profile.company_id)
       .select();
 
     console.log("[cancelSubscription] Update result:", { updated, updateError });
 
     if (updateError) {
       console.error("[cancelSubscription] Error updating:", updateError);
-      return { error: "Error al cancelar la suscripción" };
+      return { error: "Error al cancelar la suscripción: " + updateError.message };
     }
 
     if (!updated || updated.length === 0) {
       console.error("[cancelSubscription] No rows updated");
-      return { error: "No se pudo actualizar la suscripción" };
+      return { error: "No se pudo actualizar la suscripción. Verifica los permisos." };
+    }
+
+    // Verify the update actually happened
+    const { data: afterUpdate } = await adminClient
+      .from("subscriptions")
+      .select("id, status, company_id")
+      .eq("id", subscriptionId)
+      .single();
+
+    console.log("[cancelSubscription] After update:", afterUpdate);
+
+    if (afterUpdate?.status !== "cancelled") {
+      console.error("[cancelSubscription] Update did not persist! Status is still:", afterUpdate?.status);
+      return { error: "La cancelación no se guardó correctamente" };
     }
 
     console.log("[cancelSubscription] Subscription cancelled successfully:", updated[0]);
-    return { success: true };
+    return { success: true, subscription: afterUpdate };
   } catch (error) {
     console.error("[cancelSubscription] Exception:", error);
     return { error: "Error al cancelar la suscripción" };
