@@ -156,6 +156,7 @@ async function findTrialPlan(supabase: Awaited<ReturnType<typeof createClient>>)
  */
 export async function cancelSubscription(subscriptionId: string) {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
   try {
     console.log("[cancelSubscription] Starting cancellation for:", subscriptionId);
@@ -203,15 +204,25 @@ export async function cancelSubscription(subscriptionId: string) {
       return { error: "La suscripción ya está cancelada" };
     }
 
-    // Cancelar la suscripción
-    const { data: updated, error: updateError } = await supabase
+    // CRITICAL: Use admin client to bypass RLS and ensure update happens
+    if (!adminClient) {
+      console.error("[cancelSubscription] Admin client not available");
+      return { error: "Error de configuración del servidor" };
+    }
+
+    const now = new Date().toISOString();
+
+    // Cancelar la suscripción usando admin client
+    const { data: updated, error: updateError } = await adminClient
       .from("subscriptions")
       .update({
         status: "cancelled",
-        cancel_at_period_end: true,
-        updated_at: new Date().toISOString(),
+        cancel_at_period_end: false,
+        current_period_end: now,
+        updated_at: now,
       })
       .eq("id", subscriptionId)
+      .eq("company_id", profile.company_id)
       .select();
 
     console.log("[cancelSubscription] Update result:", { updated, updateError });
@@ -221,7 +232,12 @@ export async function cancelSubscription(subscriptionId: string) {
       return { error: "Error al cancelar la suscripción" };
     }
 
-    console.log("[cancelSubscription] Subscription cancelled successfully");
+    if (!updated || updated.length === 0) {
+      console.error("[cancelSubscription] No rows updated");
+      return { error: "No se pudo actualizar la suscripción" };
+    }
+
+    console.log("[cancelSubscription] Subscription cancelled successfully:", updated[0]);
     return { success: true };
   } catch (error) {
     console.error("[cancelSubscription] Exception:", error);
