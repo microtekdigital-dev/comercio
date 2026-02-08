@@ -32,11 +32,32 @@ export default async function DashboardLayout({
   // Check subscription for both admins and employees
   if (profile?.company_id) {
     const subscription = await getCompanySubscription(profile.company_id)
-    subscriptionStatus = subscription?.status || null
     
-    // If no subscription found, block access for everyone
-    if (!subscription) {
+    console.log("[DashboardLayout] Company ID:", profile.company_id)
+    console.log("[DashboardLayout] Subscription found:", subscription ? "YES" : "NO")
+    console.log("[DashboardLayout] Subscription status:", subscription?.status)
+    console.log("[DashboardLayout] Subscription period end:", subscription?.current_period_end)
+    
+    // Check if subscription exists and is not expired
+    if (subscription) {
+      const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null
+      const now = new Date()
+      
+      console.log("[DashboardLayout] Period end date:", periodEnd)
+      console.log("[DashboardLayout] Current date:", now)
+      console.log("[DashboardLayout] Is expired:", periodEnd ? periodEnd < now : "NO DATE")
+      
+      // If subscription is active but period has ended, mark as expired
+      if (subscription.status === "active" && periodEnd && periodEnd < now) {
+        subscriptionStatus = "expired"
+        console.log("[DashboardLayout] Subscription marked as EXPIRED")
+      } else {
+        subscriptionStatus = subscription.status
+        console.log("[DashboardLayout] Subscription status set to:", subscriptionStatus)
+      }
+    } else {
       subscriptionStatus = null
+      console.log("[DashboardLayout] No subscription found, status set to NULL")
     }
   }
 
