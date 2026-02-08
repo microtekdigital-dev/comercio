@@ -44,7 +44,8 @@ export async function ensureTrialSubscription(companyId?: string | null) {
   console.error("[ensureTrialSubscription] THIS FUNCTION IS DISABLED!");
   return null;
   
-  /* DISABLED CODE BELOW
+  /* DISABLED CODE BELOW */
+  /*
   if (!companyId) return null;
 
   const supabase = await createClient();
@@ -121,6 +122,7 @@ export async function ensureTrialSubscription(companyId?: string | null) {
     console.error("Error ensuring trial subscription:", error);
     return null;
   }
+  */ // END DISABLED CODE
 }
 
 async function findTrialPlan(supabase: Awaited<ReturnType<typeof createClient>>) {
