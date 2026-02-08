@@ -8,10 +8,11 @@ import { XCircle } from "lucide-react";
 
 interface SubscriptionGuardProps {
   subscriptionStatus: string | null;
+  userRole: string | null;
   children: React.ReactNode;
 }
 
-export function SubscriptionGuard({ subscriptionStatus, children }: SubscriptionGuardProps) {
+export function SubscriptionGuard({ subscriptionStatus, userRole, children }: SubscriptionGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -23,6 +24,8 @@ export function SubscriptionGuard({ subscriptionStatus, children }: Subscription
     return <>{children}</>;
   }
 
+  const isEmployee = userRole === "employee";
+
   // Si la suscripción está cancelada, mostrar mensaje y bloquear acceso
   if (subscriptionStatus === "cancelled") {
     return (
@@ -32,16 +35,20 @@ export function SubscriptionGuard({ subscriptionStatus, children }: Subscription
             <XCircle className="h-4 w-4" />
             <AlertTitle>Suscripción Cancelada</AlertTitle>
             <AlertDescription>
-              Tu suscripción ha sido cancelada. Para continuar usando la plataforma, 
-              por favor selecciona un plan de pago.
+              {isEmployee 
+                ? "La suscripción de tu empresa ha sido cancelada. Por favor contacta al administrador para reactivar el servicio."
+                : "Tu suscripción ha sido cancelada. Para continuar usando la plataforma, por favor selecciona un plan de pago."
+              }
             </AlertDescription>
           </Alert>
-          <Button 
-            onClick={() => router.push("/dashboard/billing")} 
-            className="w-full"
-          >
-            Ver Planes Disponibles
-          </Button>
+          {!isEmployee && (
+            <Button 
+              onClick={() => router.push("/dashboard/billing")} 
+              className="w-full"
+            >
+              Ver Planes Disponibles
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -55,15 +62,20 @@ export function SubscriptionGuard({ subscriptionStatus, children }: Subscription
           <Alert className="mb-4">
             <AlertTitle>Sin Suscripción Activa</AlertTitle>
             <AlertDescription>
-              No tienes una suscripción activa. Por favor selecciona un plan para continuar.
+              {isEmployee
+                ? "Tu empresa no tiene una suscripción activa. Por favor contacta al administrador para activar un plan."
+                : "No tienes una suscripción activa. Por favor selecciona un plan para continuar."
+              }
             </AlertDescription>
           </Alert>
-          <Button 
-            onClick={() => router.push("/dashboard/billing")} 
-            className="w-full"
-          >
-            Ver Planes Disponibles
-          </Button>
+          {!isEmployee && (
+            <Button 
+              onClick={() => router.push("/dashboard/billing")} 
+              className="w-full"
+            >
+              Ver Planes Disponibles
+            </Button>
+          )}
         </div>
       </div>
     );
