@@ -71,15 +71,15 @@ export default function SignUpPage() {
                 <CheckCircle2 className="h-6 w-6 text-green-600" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
+            <CardTitle className="text-2xl font-bold">Revisa tu correo</CardTitle>
             <CardDescription>
-              We&apos;ve sent a verification link to <strong>{email}</strong>. 
-              Please click the link to verify your account.
+              Hemos enviado un enlace de verificación a <strong>{email}</strong>. 
+              Por favor haz clic en el enlace para verificar tu cuenta.
             </CardDescription>
           </CardHeader>
           <CardFooter className="flex flex-col space-y-4">
             <Button asChild variant="outline" className="w-full bg-transparent">
-              <Link href="/auth/login">Back to login</Link>
+              <Link href="/auth/login">Volver al inicio de sesión</Link>
             </Button>
           </CardFooter>
         </Card>
@@ -97,12 +97,12 @@ export default function SignUpPage() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">
-            {inviteToken ? "Accept invitation" : "Create your account"}
+            {inviteToken ? "Aceptar invitación" : "Crea tu cuenta"}
           </CardTitle>
           <CardDescription>
             {inviteToken 
-              ? "Complete your account setup to join the team"
-              : "Start your 14-day free trial. No credit card required."
+              ? "Completa la configuración de tu cuenta para unirte al equipo"
+              : "Inicia tu prueba gratuita de 14 días. No se requiere tarjeta de crédito."
             }
           </CardDescription>
         </CardHeader>
@@ -114,11 +114,11 @@ export default function SignUpPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full name</Label>
+              <Label htmlFor="fullName">Nombre completo</Label>
               <Input
                 id="fullName"
                 type="text"
-                placeholder="John Doe"
+                placeholder="Juan Pérez"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -126,11 +126,11 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Work email</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@company.com"
+                placeholder="nombre@empresa.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -138,11 +138,11 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Create a strong password"
+                placeholder="Crea una contraseña segura"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -152,11 +152,11 @@ export default function SignUpPage() {
             </div>
             {!inviteToken && (
               <div className="space-y-2">
-                <Label htmlFor="companyName">Company name</Label>
+                <Label htmlFor="companyName">Nombre de la empresa</Label>
                 <Input
                   id="companyName"
                   type="text"
-                  placeholder="Acme Inc."
+                  placeholder="Mi Comercio S.A."
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   required
@@ -170,16 +170,16 @@ export default function SignUpPage() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  Creando cuenta...
                 </>
               ) : (
-                inviteToken ? "Join team" : "Create account"
+                inviteToken ? "Unirse al equipo" : "Crear cuenta"
               )}
             </Button>
             <p className="text-sm text-muted-foreground text-center">
-              Already have an account?{" "}
+              ¿Ya tienes una cuenta?{" "}
               <Link href="/auth/login" className="text-primary hover:underline font-medium">
-                Sign in
+                Iniciar sesión
               </Link>
             </p>
           </CardFooter>
