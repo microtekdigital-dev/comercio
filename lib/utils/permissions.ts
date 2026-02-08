@@ -118,8 +118,8 @@ export async function getUserPermissions(): Promise<UserPermissions> {
 
   // Employee tiene permisos limitados
   return {
-    canCreateProducts: false, // No puede crear productos
-    canEditProducts: false, // No puede editar productos
+    canCreateProducts: true, // Puede crear productos
+    canEditProducts: true, // Puede editar productos
     canDeleteProducts: false, // No puede eliminar productos
     canCreateCategories: false, // No puede crear categorías
     canEditCategories: false, // No puede editar categorías

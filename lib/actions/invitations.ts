@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidateTag } from "next/cache"
 import crypto from "crypto"
 import { canAddUser } from "@/lib/utils/plan-limits"
+import { sendInvitationEmail } from "@/lib/email/resend"
 
 export type InvitationResult = {
   success: boolean
@@ -81,6 +82,22 @@ export async function sendInvitation(
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 7) // 7 days expiry
 
+  // Get company name and inviter name
+  const { data: company } = await supabase
+    .from("companies")
+    .select("name")
+    .eq("id", profile.company_id)
+    .single()
+
+  const { data: inviterProfile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", user.id)
+    .single()
+
+  const companyName = company?.name || "la empresa"
+  const invitedBy = inviterProfile?.full_name || inviterProfile?.email || "el administrador"
+
   // Create invitation
   const { data: invitation, error: inviteError } = await supabase
     .from("invitations")
@@ -99,8 +116,23 @@ export async function sendInvitation(
     return { success: false, error: "Failed to create invitation" }
   }
 
-  // In a production app, you would send an email here using a service like Resend or SendGrid
-  // For now, we'll return the invitation details
+  // Send invitation email using Resend
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || "http://localhost:3000"
+  const inviteLink = `${siteUrl}/invite/${invitation.token}`
+  
+  const emailResult = await sendInvitationEmail(
+    email,
+    inviteLink,
+    companyName,
+    invitedBy,
+    role
+  )
+
+  if (!emailResult.success) {
+    console.error("[Invitations] Failed to send email:", emailResult.error)
+    // No fallar la invitación si el email falla, solo loguear
+    // El admin puede copiar el link manualmente si es necesario
+  }
   
   revalidateTag("invitations", "max")
 

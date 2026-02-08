@@ -37,6 +37,14 @@ async function ensureCompanyUserMembership(
 }
 
 export async function ensureTrialSubscription(companyId?: string | null) {
+  // ============================================================================
+  // THIS FUNCTION IS COMPLETELY DISABLED
+  // Trials are ONLY created by database trigger on user signup
+  // ============================================================================
+  console.error("[ensureTrialSubscription] THIS FUNCTION IS DISABLED!");
+  return null;
+  
+  /* DISABLED CODE BELOW
   if (!companyId) return null;
 
   const supabase = await createClient();
