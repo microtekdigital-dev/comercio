@@ -61,7 +61,20 @@ RESEND_API_KEY=re_tu_api_key_real
 RESEND_FROM_EMAIL=onboarding@tudominio.com
 ```
 
-### Paso 3: Deploy
+### Paso 3: Configurar Notificaciones de Trial en Supabase
+
+Para recibir notificaciones cuando alguien se registra con trial:
+
+1. Ve a Supabase → SQL Editor
+2. Ejecuta el script `scripts/092_notify_new_trials.sql`
+3. Esto creará un trigger que llama a tu API cuando se crea un trial
+
+**Opcional:** Configura la URL de tu API en Supabase:
+```sql
+ALTER DATABASE postgres SET app.settings.api_url = 'https://tu-dominio.vercel.app';
+```
+
+### Paso 4: Deploy
 
 Si estás en Vercel:
 1. Ve a tu proyecto en Vercel
