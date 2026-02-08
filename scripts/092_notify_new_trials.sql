@@ -1,8 +1,26 @@
 -- ============================================================================
 -- Script: Notificar Nuevos Trials por Email
--- Descripción: Envía notificación al administrador cuando un usuario se registra
+-- ⚠️ DESHABILITADO: Requiere extensión http (no disponible en plan Free)
+-- ============================================================================
+-- Este script está deshabilitado porque la extensión http de Supabase
+-- no está disponible en el plan Free
+--
+-- ERROR: schema "net" does not exist
+-- CAUSA: La extensión http no está habilitada o no está disponible
+--
+-- ALTERNATIVAS:
+-- 1. Habilitar extensión http (requiere plan Pro de Supabase)
+-- 2. Usar Supabase Webhooks en lugar de triggers
+-- 3. Enviar notificaciones desde el código de la aplicación
+-- 4. Usar Supabase Edge Functions
+--
+-- Por ahora, las notificaciones de nuevos trials están deshabilitadas
+-- Las notificaciones de pagos (MercadoPago webhook) siguen funcionando
 -- ============================================================================
 
+-- ⚠️ NO EJECUTAR ESTE SCRIPT - ESTÁ DESHABILITADO
+
+/*
 -- Habilitar la extensión http si no está habilitada
 CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
 
@@ -58,9 +76,15 @@ COMMENT ON TRIGGER on_trial_created ON subscriptions IS 'Trigger que notifica nu
 -- ============================================================================
 -- INSTRUCCIONES DE USO:
 -- ============================================================================
--- 1. Ejecuta este script en el SQL Editor de Supabase
--- 2. Configura la URL de tu API (opcional):
---    ALTER DATABASE postgres SET app.settings.api_url = 'https://tu-dominio.vercel.app';
--- 3. Asegúrate de tener configurada la variable ADMIN_NOTIFICATION_EMAIL en Vercel
--- 4. Prueba registrando un nuevo usuario
+-- ⚠️ NO EJECUTAR ESTE SCRIPT - ESTÁ DESHABILITADO
+-- 
+-- Si ya ejecutaste este script y estás viendo errores:
+-- 1. Ejecuta el script: docs-auth/DISABLE_NOTIFY_TRIAL_TRIGGER.sql
+-- 2. Eso eliminará el trigger problemático
+--
+-- Para habilitar notificaciones de trials en el futuro:
+-- 1. Actualizar a plan Pro de Supabase (para tener extensión http)
+-- 2. O usar Supabase Webhooks
+-- 3. O implementar notificaciones desde el código de la aplicación
 -- ============================================================================
+*/
