@@ -49,9 +49,9 @@ export default function LoginPage() {
               <Building2 className="h-6 w-6 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold">Bienvenido de nuevo</CardTitle>
           <CardDescription>
-            Enter your credentials to access your account
+            Ingresa tus credenciales para acceder a tu cuenta
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
@@ -62,11 +62,11 @@ export default function LoginPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@company.com"
+                placeholder="nombre@empresa.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -74,11 +74,11 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Ingresa tu contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -91,21 +91,21 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Iniciando sesión...
                 </>
               ) : (
-                "Sign in"
+                "Iniciar sesión"
               )}
             </Button>
             <p className="text-sm text-muted-foreground text-center">
               <Link href="/auth/forgot-password" className="text-primary hover:underline font-medium">
-                Forgot your password?
+                ¿Olvidaste tu contraseña?
               </Link>
             </p>
             <p className="text-sm text-muted-foreground text-center">
-              Don&apos;t have an account?{" "}
+              ¿No tienes una cuenta?{" "}
               <Link href="/auth/sign-up" className="text-primary hover:underline font-medium">
-                Create one
+                Crear una
               </Link>
             </p>
           </CardFooter>
