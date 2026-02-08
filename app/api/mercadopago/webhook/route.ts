@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getPaymentById } from "@/lib/mercadopago/client";
+import { sendNewSubscriptionNotification } from "@/lib/email/resend";
 
 // Use service role client for webhook operations
 const supabaseAdmin = createClient(
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
 
       const { data: plan, error: planError } = await supabaseAdmin
         .from("plans")
-        .select("id, price, currency, interval, interval_count")
+        .select("id, name, price, currency, interval, interval_count")
         .eq("id", planId)
         .single();
 
@@ -136,6 +137,8 @@ export async function POST(request: NextRequest) {
           periodEnd.setMonth(periodEnd.getMonth() + intervalCount);
         }
 
+        const isNewSubscription = !existingSub;
+
         if (existingSub) {
           // Update existing subscription
           await supabaseAdmin
@@ -177,6 +180,42 @@ export async function POST(request: NextRequest) {
               .from("payments")
               .update({ subscription_id: createdSub.id })
               .eq("external_reference", externalReference);
+          }
+        }
+
+        // Send notification email for new paid subscriptions
+        if (isNewSubscription) {
+          try {
+            // Get company and user details
+            const { data: company } = await supabaseAdmin
+              .from("companies")
+              .select("name")
+              .eq("id", companyId)
+              .single();
+
+            const { data: profile } = await supabaseAdmin
+              .from("profiles")
+              .select("full_name, id")
+              .eq("company_id", companyId)
+              .eq("role", "admin")
+              .single();
+
+            if (profile) {
+              const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+              
+              if (authUser?.user?.email && company) {
+                await sendNewSubscriptionNotification(
+                  authUser.user.email,
+                  profile.full_name || "Usuario",
+                  company.name || "Empresa",
+                  plan.name || "Plan",
+                  false // Not a trial, it's a paid subscription
+                );
+              }
+            }
+          } catch (emailError) {
+            console.error("Error sending subscription notification:", emailError);
+            // Don't fail the webhook if email fails
           }
         }
       }
