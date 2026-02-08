@@ -1,0 +1,13 @@
+feat: Permitir a empleados crear y editar productos
+
+- Actualizado sistema de permisos en lib/utils/permissions.ts
+- Empleados ahora pueden crear productos (canCreateProducts: true)
+- Empleados ahora pueden editar productos (canEditProducts: true)
+- Empleados NO pueden eliminar productos (solo admin)
+- Documentación agregada en docs-auth/PERMISOS_EMPLEADOS_PRODUCTOS.md
+
+Cambios:
+- lib/utils/permissions.ts: Permisos de employee actualizados
+- docs-auth/PERMISOS_EMPLEADOS_PRODUCTOS.md: Documentación completa
+
+Relacionado con: Gestión de inventario colaborativa
