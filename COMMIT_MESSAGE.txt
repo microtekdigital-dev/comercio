@@ -1,25 +1,20 @@
-fix: Corregir acceso de super admin a tickets de soporte
+fix: Mejorar consulta de tickets en panel de admin
 
-- Usar cliente admin con service role key para bypass RLS
-- Agregar manejo de errores y logs de debug
-- Crear scripts SQL de diagnóstico y corrección
-- Actualizar políticas RLS para super admin
+- Cambiar de joins a consultas separadas para evitar errores
+- Obtener tickets, companies y profiles por separado
+- Combinar datos manualmente en el servidor
+- Agregar logs detallados de debug
+- Mejorar manejo de errores
 
 Problema resuelto:
-El super admin no podía ver los tickets porque el cliente normal
-de Supabase respetaba las políticas RLS. Ahora usa el cliente
-admin que tiene acceso completo a todas las tablas.
+Los joins de Supabase fallaban con error vacío {}.
+Solución: Hacer 3 consultas separadas y combinar los datos.
 
 Archivos modificados:
-- app/dashboard/admin/support/page.tsx: Usar createAdminClient()
+- app/dashboard/admin/support/page.tsx: Consultas separadas
 
-Archivos nuevos:
-- docs-auth/DEBUG_SUPPORT_TICKETS.sql: Script de diagnóstico
-- docs-auth/FIX_SUPPORT_ADMIN_ACCESS.sql: Fix de políticas RLS
-- docs-auth/FIX_SUPPORT_ADMIN_ACCESS_READY.sql: Fix con email configurado
-
-Cambios técnicos:
-✅ Cliente admin bypasea RLS
-✅ Políticas RLS actualizadas con email del super admin
-✅ Manejo de errores mejorado
-✅ Logs de debug agregados
+Resultado:
+✅ Super admin puede ver todos los tickets
+✅ Se muestran datos de empresa y usuario
+✅ Logs de debug para troubleshooting
+✅ Manejo robusto de errores

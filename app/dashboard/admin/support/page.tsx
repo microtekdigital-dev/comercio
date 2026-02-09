@@ -36,20 +36,52 @@ export default async function AdminSupportPage() {
     );
   }
 
-  const { data: tickets, error: ticketsError } = await adminClient
-    .from("support_tickets")
-    .select(`
-      *,
-      company:companies(name),
-      user:profiles!support_tickets_user_id_fkey(email, full_name)
-    `)
-    .order("created_at", { ascending: false });
+  // Fetch tickets without joins (more reliable)
+  let tickets = null;
 
-  if (ticketsError) {
-    console.error("Error fetching tickets:", ticketsError);
+  try {
+    const { data: ticketsData, error: ticketsError } = await adminClient
+      .from("support_tickets")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (ticketsError) {
+      console.error("[AdminSupport] Error fetching tickets:", ticketsError);
+      tickets = [];
+    } else {
+      console.log("[AdminSupport] Tickets fetched:", ticketsData?.length || 0);
+      
+      // Fetch related data separately
+      if (ticketsData && ticketsData.length > 0) {
+        const companyIds = [...new Set(ticketsData.map(t => t.company_id))];
+        const userIds = [...new Set(ticketsData.map(t => t.user_id))];
+
+        const { data: companies } = await adminClient
+          .from("companies")
+          .select("id, name")
+          .in("id", companyIds);
+
+        const { data: users } = await adminClient
+          .from("profiles")
+          .select("id, email, full_name")
+          .in("id", userIds);
+
+        // Combine data
+        tickets = ticketsData.map(ticket => ({
+          ...ticket,
+          company: companies?.find(c => c.id === ticket.company_id) || null,
+          user: users?.find(u => u.id === ticket.user_id) || null,
+        }));
+
+        console.log("[AdminSupport] Related data fetched and combined");
+      } else {
+        tickets = ticketsData || [];
+      }
+    }
+  } catch (error) {
+    console.error("[AdminSupport] Exception fetching tickets:", error);
+    tickets = [];
   }
-
-  console.log("[AdminSupport] Tickets fetched:", tickets?.length || 0);
 
   return (
     <div className="flex-1 h-screen overflow-hidden">
