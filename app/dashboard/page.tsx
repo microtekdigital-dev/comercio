@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Users, Mail, Building2, Shield } from "lucide-react"
 import { ERPStats } from "@/components/dashboard/erp-stats"
 import { PlanUsageServer } from "@/components/dashboard/plan-usage-server"
+import { TutorialBanner } from "@/components/dashboard/tutorial-banner"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -26,6 +27,9 @@ export default async function DashboardPage() {
           Resumen de tu negocio y organización
         </p>
       </div>
+
+      {/* Tutorial Banner */}
+      <TutorialBanner />
 
       {/* ERP Statistics */}
       <Suspense fallback={<StatsLoading />}>
