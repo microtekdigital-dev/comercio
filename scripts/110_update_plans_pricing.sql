@@ -185,8 +185,7 @@ DO UPDATE SET
   sort_order = EXCLUDED.sort_order,
   is_active = EXCLUDED.is_active,
   max_users = EXCLUDED.max_users,
-  max_products = EXCLUDED.max_products,
-  updated_at = NOW();
+  max_products = EXCLUDED.max_products;
 
 -- Verificar los planes actualizados
 SELECT 
