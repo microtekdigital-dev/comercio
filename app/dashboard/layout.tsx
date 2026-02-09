@@ -10,6 +10,10 @@ import { getUnreadMessageCount } from "@/lib/actions/support"
 import { Toaster } from "sonner"
 import { createClient } from "@/lib/supabase/server"
 
+// Deshabilitar caché para que los cambios de plan se reflejen inmediatamente
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function DashboardLayout({
   children,
 }: {
