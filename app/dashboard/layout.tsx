@@ -5,6 +5,8 @@ import { getCompanySubscription } from "@/lib/actions/plans"
 import { DashboardSidebarServer } from "@/components/dashboard/sidebar-server"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { SubscriptionGuard } from "@/components/dashboard/subscription-guard"
+import { SupportChatButton } from "@/components/dashboard/support-chat-button"
+import { getUnreadMessageCount } from "@/lib/actions/support"
 import { Toaster } from "sonner"
 import { createClient } from "@/lib/supabase/server"
 
@@ -61,6 +63,9 @@ export default async function DashboardLayout({
     }
   }
 
+  // Get unread message count for support chat
+  const unreadCount = await getUnreadMessageCount()
+
   return (
     <SubscriptionGuard subscriptionStatus={subscriptionStatus} userRole={profile?.role || null}>
       <div className="min-h-screen flex flex-col md:flex-row">
@@ -72,6 +77,7 @@ export default async function DashboardLayout({
           </main>
         </div>
         <Toaster position="top-right" richColors />
+        <SupportChatButton unreadCount={unreadCount} />
       </div>
     </SubscriptionGuard>
   )
