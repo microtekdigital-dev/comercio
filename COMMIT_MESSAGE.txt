@@ -1,31 +1,25 @@
-feat: Integrar sistema de chat de soporte con tiempo real
+fix: Corregir acceso de super admin a tickets de soporte
 
-- Agregar botón flotante de soporte en dashboard layout
-- Integrar contador de mensajes no leídos
-- Configurar variable de entorno para super admin
-- Crear documentación de instalación completa
+- Usar cliente admin con service role key para bypass RLS
+- Agregar manejo de errores y logs de debug
+- Crear scripts SQL de diagnóstico y corrección
+- Actualizar políticas RLS para super admin
+
+Problema resuelto:
+El super admin no podía ver los tickets porque el cliente normal
+de Supabase respetaba las políticas RLS. Ahora usa el cliente
+admin que tiene acceso completo a todas las tablas.
 
 Archivos modificados:
-- app/dashboard/layout.tsx: Integración del botón de soporte
-- .env.local: Variable NEXT_PUBLIC_SUPER_ADMIN_EMAIL
+- app/dashboard/admin/support/page.tsx: Usar createAdminClient()
 
 Archivos nuevos:
-- CHAT_SOPORTE_INSTALADO.md: Guía de instalación
-- components/dashboard/support-chat-button.tsx
-- components/dashboard/support-chat-widget.tsx
-- components/dashboard/admin-support-dashboard.tsx
-- components/dashboard/support-stats-cards.tsx
-- components/dashboard/support-tickets-list.tsx
-- app/dashboard/support/page.tsx
-- app/dashboard/admin/support/page.tsx
-- lib/actions/support.ts
-- lib/types/support.ts
-- scripts/100_create_support_chat.sql
-- docs-auth/SUPPORT_CHAT_*.md
+- docs-auth/DEBUG_SUPPORT_TICKETS.sql: Script de diagnóstico
+- docs-auth/FIX_SUPPORT_ADMIN_ACCESS.sql: Fix de políticas RLS
+- docs-auth/FIX_SUPPORT_ADMIN_ACCESS_READY.sql: Fix con email configurado
 
-Sistema completo de soporte con:
-✅ Chat en tiempo real con Supabase Realtime
-✅ Panel de administración exclusivo para super admin
-✅ Gestión de tickets con estados y prioridades
-✅ Seguridad con Row Level Security
-✅ Notificaciones de mensajes no leídos
+Cambios técnicos:
+✅ Cliente admin bypasea RLS
+✅ Políticas RLS actualizadas con email del super admin
+✅ Manejo de errores mejorado
+✅ Logs de debug agregados
