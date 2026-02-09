@@ -192,13 +192,13 @@ export async function canAccessPurchaseOrders(companyId: string): Promise<{
 }> {
   const limits = await getCurrentPlanLimits(companyId);
   
-  // Solo Pro y Empresarial tienen acceso a órdenes de compra
-  const allowedPlans = ["Pro", "Empresarial"];
+  // Solo Pro/Profesional y Empresarial tienen acceso a órdenes de compra
+  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
   const hasAccess = allowedPlans.includes(limits.planName);
   
   return {
     allowed: hasAccess,
-    message: hasAccess ? undefined : "Las órdenes de compra están disponibles en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+    message: hasAccess ? undefined : "Las órdenes de compra están disponibles en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
   };
 }
 
@@ -211,13 +211,13 @@ export async function canAccessSuppliers(companyId: string): Promise<{
 }> {
   const limits = await getCurrentPlanLimits(companyId);
   
-  // Solo Pro y Empresarial tienen acceso a proveedores
-  const allowedPlans = ["Pro", "Empresarial"];
+  // Solo Pro/Profesional y Empresarial tienen acceso a proveedores
+  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
   const hasAccess = allowedPlans.includes(limits.planName);
   
   return {
     allowed: hasAccess,
-    message: hasAccess ? undefined : "La gestión de proveedores está disponible en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+    message: hasAccess ? undefined : "La gestión de proveedores está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
   };
 }
 
@@ -230,13 +230,13 @@ export async function canExportToExcel(companyId: string): Promise<{
 }> {
   const limits = await getCurrentPlanLimits(companyId);
   
-  // Solo Pro y Empresarial tienen acceso a exportar
-  const allowedPlans = ["Pro", "Empresarial"];
+  // Solo Pro/Profesional y Empresarial tienen acceso a exportar
+  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
   const hasAccess = allowedPlans.includes(limits.planName);
   
   return {
     allowed: hasAccess,
-    message: hasAccess ? undefined : "La exportación a Excel está disponible en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+    message: hasAccess ? undefined : "La exportación a Excel está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
   };
 }
 
@@ -249,15 +249,15 @@ export async function canAccessAdvancedReports(companyId: string): Promise<{
 }> {
   const limits = await getCurrentPlanLimits(companyId);
   
-  // Pro and Empresarial plans have access
-  const allowedPlans = ["Pro", "Empresarial"];
+  // Pro/Profesional y Empresarial tienen acceso
+  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
   const hasAccess = allowedPlans.includes(limits.planName);
   
   return {
     allowed: hasAccess,
     message: hasAccess 
       ? undefined 
-      : "Los reportes avanzados están disponibles en el plan Pro o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+      : "Los reportes avanzados están disponibles en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
   };
 }
 
