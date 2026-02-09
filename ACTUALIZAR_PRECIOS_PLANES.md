@@ -121,29 +121,17 @@ Todos los planes ahora incluyen:
 
 ### Suscripciones Existentes
 
-- Las suscripciones activas NO se ven afectadas
-- Los usuarios mantienen su precio actual
+- **Los usuarios existentes NO se ven afectados** - mantienen sus planes y precios actuales
+- Las suscripciones activas continúan sin cambios
+- Los usuarios pueden seguir renovando a sus precios actuales
 - Solo los nuevos usuarios verán los nuevos precios
 
-### Migración de Usuarios
+### Planes Actualizados
 
-Si querés migrar usuarios existentes:
-
-```sql
--- Ver usuarios con planes antiguos
-SELECT 
-  u.email,
-  c.name as company,
-  s.status,
-  p.name as plan,
-  p.price
-FROM subscriptions s
-JOIN profiles u ON s.user_id = u.id
-JOIN companies c ON u.company_id = c.id
-JOIN plans p ON s.plan_id = p.id
-WHERE s.status = 'active'
-AND p.is_active = false;
-```
+El script usa `ON CONFLICT (name, interval) DO UPDATE` para:
+- Actualizar la información de los planes existentes
+- Mantener las suscripciones activas intactas
+- Permitir que nuevos usuarios vean los precios actualizados
 
 ---
 

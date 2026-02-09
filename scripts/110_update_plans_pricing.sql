@@ -2,10 +2,10 @@
 -- Nuevos precios: Básico $8.000, Profesional $15.000, Empresarial $30.000
 -- Planes anuales con 20% de descuento
 
--- Desactivar todos los planes existentes
-UPDATE public.plans SET is_active = false;
+-- IMPORTANTE: Los usuarios existentes mantienen sus suscripciones actuales
+-- Este script solo actualiza los planes para nuevos usuarios
 
--- Insertar o actualizar los nuevos planes con precios actualizados
+-- Insertar o actualizar los planes con precios actualizados
 INSERT INTO public.plans (name, description, price, currency, interval, features, sort_order, is_active, max_users, max_products) VALUES
   -- PLAN TRIAL (14 días gratis)
   (
