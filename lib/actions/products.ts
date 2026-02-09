@@ -122,6 +122,11 @@ export async function createProduct(formData: ProductFormData) {
       return { error: "No se encontró la empresa" };
     }
 
+    // Validar longitud del nombre
+    if (formData.name.length > 35) {
+      return { error: "El nombre del producto no puede exceder 35 caracteres" };
+    }
+
     // Verificar límite de productos del plan
     const productLimit = await canAddProduct(profile.company_id);
     if (!productLimit.allowed) {
@@ -169,6 +174,11 @@ export async function updateProduct(id: string, formData: ProductFormData) {
 
     if (!profile?.company_id) {
       return { error: "No se encontró la empresa" };
+    }
+
+    // Validar longitud del nombre
+    if (formData.name.length > 35) {
+      return { error: "El nombre del producto no puede exceder 35 caracteres" };
     }
 
     const { data, error } = await supabase

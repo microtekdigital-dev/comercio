@@ -124,12 +124,16 @@ export default function NewProductPage() {
                   <Input
                     id="name"
                     required
+                    maxLength={35}
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
                     placeholder="Nombre del producto"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.name.length}/35 caracteres
+                  </p>
                 </div>
 
                 <div className="space-y-2">

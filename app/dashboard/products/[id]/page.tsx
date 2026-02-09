@@ -210,12 +210,16 @@ export default function ProductDetailPage() {
                   <Input
                     id="name"
                     required
+                    maxLength={35}
                     disabled={!canEdit}
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.name.length}/35 caracteres
+                  </p>
                 </div>
 
                 <div className="space-y-2">

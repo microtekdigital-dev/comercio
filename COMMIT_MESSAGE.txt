@@ -1,20 +1,58 @@
-fix: Mejorar consulta de tickets en panel de admin
+feat: Limitar nombre de productos a 35 caracteres y migrar plan Pro a Profesional
 
-- Cambiar de joins a consultas separadas para evitar errores
-- Obtener tickets, companies y profiles por separado
-- Combinar datos manualmente en el servidor
-- Agregar logs detallados de debug
-- Mejorar manejo de errores
+## Cambios Principales
 
-Problema resuelto:
-Los joins de Supabase fallaban con error vacío {}.
-Solución: Hacer 3 consultas separadas y combinar los datos.
+### 1. Límite de Nombre de Productos (35 caracteres)
+- Frontend: Agregado maxLength={35} y contador de caracteres en formularios
+- Backend: Validación en createProduct() y updateProduct()
+- Base de datos: Script para modificar columna de VARCHAR(255) a VARCHAR(35)
+- Archivos modificados:
+  * app/dashboard/products/new/page.tsx
+  * app/dashboard/products/[id]/page.tsx
+  * lib/actions/products.ts
+  * scripts/113_limit_product_name_length.sql (nuevo)
+  * LIMITE_NOMBRE_PRODUCTOS.md (nuevo)
 
-Archivos modificados:
-- app/dashboard/admin/support/page.tsx: Consultas separadas
+### 2. Migración Plan "Pro" a "Profesional"
+- Migradas todas las suscripciones de "Pro" a "Profesional"
+- Eliminado plan "Pro" de la base de datos
+- Código actualizado para reconocer ambos nombres (compatibilidad)
+- Archivos:
+  * docs-auth/MIGRATE_PRO_TO_PROFESIONAL.sql
+  * docs-auth/DELETE_PRO_PLAN.sql
+  * docs-auth/RESUMEN_MIGRACION_PRO_A_PROFESIONAL.md (nuevo)
+  * lib/utils/plan-limits.ts (actualizado previamente)
 
-Resultado:
-✅ Super admin puede ver todos los tickets
-✅ Se muestran datos de empresa y usuario
-✅ Logs de debug para troubleshooting
-✅ Manejo robusto de errores
+### 3. Corrección Planes Anuales
+- Verificado funcionamiento correcto de planes anuales
+- Webhook de MercadoPago maneja correctamente intervalos anuales
+- Activado plan anual para Bazar Lili (vanithegameplay)
+- Archivos:
+  * docs-auth/ACTIVATE_BAZAR_LILI_ANNUAL.sql
+  * docs-auth/RESUMEN_CORRECCION_PLANES_ANUALES.md (nuevo)
+
+## Mejoras de UX
+- Contador visual de caracteres en nombre de productos
+- Validación en tiempo real en formularios
+- Mensajes de error claros y específicos
+
+## Mejoras de Seguridad
+- Validación en 3 capas: frontend, backend y base de datos
+- Prevención de bypass de validaciones frontend
+
+## Documentación
+- LIMITE_NOMBRE_PRODUCTOS.md: Guía completa de implementación
+- RESUMEN_MIGRACION_PRO_A_PROFESIONAL.md: Proceso de migración
+- RESUMEN_CORRECCION_PLANES_ANUALES.md: Verificación planes anuales
+
+## Scripts de Base de Datos
+- scripts/113_limit_product_name_length.sql: Limitar nombre productos
+- docs-auth/MIGRATE_PRO_TO_PROFESIONAL.sql: Migrar suscripciones
+- docs-auth/DELETE_PRO_PLAN.sql: Eliminar plan Pro
+- docs-auth/ACTIVATE_BAZAR_LILI_ANNUAL.sql: Activar plan anual
+
+## Notas
+- Los cambios de código están aplicados y funcionando
+- Scripts de base de datos listos para ejecutar
+- Sin breaking changes para usuarios existentes
+- Compatibilidad mantenida con datos históricos
