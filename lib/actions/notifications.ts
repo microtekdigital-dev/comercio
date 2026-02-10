@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export type NotificationType = 'low_stock' | 'pending_payment' | 'new_sale' | 'payment_received' | 'system';
+export type NotificationType = 'low_stock' | 'pending_payment' | 'new_sale' | 'payment_received' | 'system' | 'subscription_expiry' | 'subscription_expired';
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export interface Notification {
@@ -319,6 +319,12 @@ export async function runNotificationChecks() {
     
     // Run pending payment check
     await supabase.rpc('check_pending_payment_notifications');
+    
+    // Run subscription expiry check (5 days before)
+    await supabase.rpc('check_subscription_expiry_notifications');
+    
+    // Run expired subscriptions check
+    await supabase.rpc('check_expired_subscriptions');
     
     return { success: true };
   } catch (error) {

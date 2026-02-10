@@ -17,16 +17,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Customer, Product, SaleItemFormData } from "@/lib/types/erp";
+import type { Customer, Product, SaleItemFormData, Sale } from "@/lib/types/erp";
+import { QuickPaymentModal } from "@/components/dashboard/quick-payment-modal";
 
 export default function NewSalePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdSale, setCreatedSale] = useState<Sale | null>(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     status: "completed" as "draft" | "completed" | "cancelled",
@@ -139,15 +142,38 @@ export default function NewSalePage() {
 
       if (result.error) {
         toast.error(result.error);
-      } else {
+      } else if (result.data) {
         toast.success("Venta creada exitosamente");
-        router.push("/dashboard/sales");
-        router.refresh();
+        
+        // Mostrar modal de pago solo si la venta está completada
+        if (result.data.status === 'completed') {
+          setCreatedSale(result.data);
+          setShowPaymentModal(true);
+        } else {
+          // Si es borrador, redirigir directamente
+          router.push("/dashboard/sales");
+          router.refresh();
+        }
       }
     } catch (error) {
       toast.error("Error al crear la venta");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false);
+    router.push("/dashboard/sales");
+    router.refresh();
+  };
+
+  const handleModalClose = (open: boolean) => {
+    setShowPaymentModal(open);
+    if (!open && createdSale) {
+      // Usuario cerró sin pagar, redirigir a lista
+      router.push("/dashboard/sales");
+      router.refresh();
     }
   };
 
@@ -240,27 +266,6 @@ export default function NewSalePage() {
                     }
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="payment_method">Método de Pago</Label>
-                  <Select
-                    value={formData.payment_method || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, payment_method: value === "none" ? "" : value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar método" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin especificar</SelectItem>
-                      <SelectItem value="cash">Efectivo</SelectItem>
-                      <SelectItem value="card">Tarjeta</SelectItem>
-                      <SelectItem value="transfer">Transferencia</SelectItem>
-                      <SelectItem value="mercadopago">MercadoPago</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -280,7 +285,10 @@ export default function NewSalePage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Items de Venta</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Items de Venta
+              </CardTitle>
               <Button type="button" onClick={addItem} size="sm">
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Item
@@ -288,8 +296,13 @@ export default function NewSalePage() {
             </CardHeader>
             <CardContent>
               {formData.items.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No hay items. Haz clic en "Agregar Item" para comenzar.
+                <div className="relative text-center py-16 text-muted-foreground">
+                  <div className="absolute inset-0 flex items-center justify-center opacity-5">
+                    <ShoppingCart className="h-32 w-32" />
+                  </div>
+                  <p className="relative z-10">
+                    No hay items. Haz clic en "Agregar Item" para comenzar.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -429,10 +442,19 @@ export default function NewSalePage() {
           </Link>
           <Button type="submit" disabled={loading || formData.items.length === 0}>
             <Save className="mr-2 h-4 w-4" />
-            {loading ? "Guardando..." : "Guardar Venta"}
+            {loading ? "Procesando..." : formData.status === "completed" ? "Crear y Pagar" : "Guardar Borrador"}
           </Button>
         </div>
       </form>
+
+      {createdSale && (
+        <QuickPaymentModal
+          sale={createdSale}
+          open={showPaymentModal}
+          onOpenChange={handleModalClose}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }
