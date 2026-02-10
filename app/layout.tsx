@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "ERP SaaS - Multi-tenant Business Management",
   description:
     "Modern ERP platform for growing businesses. Manage teams, track resources, and scale with ease.",
+  // Force rebuild: 2026-02-10
   icons: {
     icon: [
       {
