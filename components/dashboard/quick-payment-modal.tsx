@@ -1,5 +1,6 @@
 "use client";
 
+// Modal de pago rápido con calculadora de vuelto
 import { useState } from "react";
 import { Sale } from "@/lib/types/erp";
 import { addSalePayment } from "@/lib/actions/sales";

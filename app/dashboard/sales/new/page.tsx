@@ -1,5 +1,6 @@
 "use client";
 
+// Página de nueva venta con imagen de fondo en estado vacío
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createSale } from "@/lib/actions/sales";
