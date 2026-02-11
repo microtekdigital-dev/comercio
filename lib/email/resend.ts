@@ -112,6 +112,145 @@ export async function sendInvitationEmail(
 }
 
 /**
+ * Envía un presupuesto por email al cliente
+ */
+export async function sendQuoteEmail(
+  to: string,
+  subject: string,
+  message: string,
+  quoteData: {
+    quoteNumber: string
+    companyName: string
+    customerName: string
+    quoteDate: string
+    validUntil: string
+    total: string
+    currency: string
+    items: Array<{
+      product_name: string
+      quantity: number
+      unit_price: number
+      total: number
+    }>
+  }
+) {
+  try {
+    // Verificar que la API key esté configurada
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_dummy_key_for_build") {
+      console.warn("[Resend] API key not configured. Email will not be sent.");
+      return { 
+        success: false, 
+        error: "Resend API key not configured. Please add RESEND_API_KEY to your environment variables." 
+      };
+    }
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+      to,
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Presupuesto ${quoteData.quoteNumber}</title>
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f3f4f6;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">Presupuesto ${quoteData.quoteNumber}</h1>
+              <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">${quoteData.companyName}</p>
+            </div>
+            
+            <div style="background: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+              <p style="font-size: 16px; margin-bottom: 20px;">Estimado/a ${quoteData.customerName},</p>
+              
+              <p style="font-size: 16px; margin-bottom: 30px; white-space: pre-line;">${message}</p>
+              
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Fecha:</td>
+                    <td style="padding: 8px 0; text-align: right;">${quoteData.quoteDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Válido hasta:</td>
+                    <td style="padding: 8px 0; text-align: right;">${quoteData.validUntil}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #1f2937;">Detalle</h2>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #e5e7eb; background-color: #f9fafb;">
+                    <th style="padding: 12px 8px; text-align: left; font-size: 14px; font-weight: 600; color: #6b7280;">Producto</th>
+                    <th style="padding: 12px 8px; text-align: right; font-size: 14px; font-weight: 600; color: #6b7280;">Cant.</th>
+                    <th style="padding: 12px 8px; text-align: right; font-size: 14px; font-weight: 600; color: #6b7280;">Precio</th>
+                    <th style="padding: 12px 8px; text-align: right; font-size: 14px; font-weight: 600; color: #6b7280;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${quoteData.items.map(item => `
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 12px 8px; font-size: 14px;">${item.product_name}</td>
+                      <td style="padding: 12px 8px; text-align: right; font-size: 14px;">${item.quantity}</td>
+                      <td style="padding: 12px 8px; text-align: right; font-size: 14px;">${new Intl.NumberFormat("es-AR", { style: "currency", currency: quoteData.currency }).format(item.unit_price)}</td>
+                      <td style="padding: 12px 8px; text-align: right; font-size: 14px; font-weight: 600;">${new Intl.NumberFormat("es-AR", { style: "currency", currency: quoteData.currency }).format(item.total)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 20px; font-weight: 700; color: #1f2937;">Total:</span>
+                  <span style="font-size: 24px; font-weight: 700; color: #667eea;">${quoteData.total}</span>
+                </div>
+              </div>
+              
+              <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #92400e; font-size: 14px;">
+                  <strong>⏰ Importante:</strong> Este presupuesto es válido hasta el ${quoteData.validUntil}.
+                </p>
+              </div>
+              
+              <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+                Quedamos a su disposición para cualquier consulta o aclaración.
+              </p>
+              
+              <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+                Saludos cordiales,<br/>
+                <strong>${quoteData.companyName}</strong>
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding: 20px; color: #9ca3af; font-size: 12px;">
+              <p>Este email fue enviado por ${quoteData.companyName}</p>
+              <p style="margin-top: 10px;">© ${new Date().getFullYear()} Todos los derechos reservados</p>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("[Resend] Error sending quote email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Resend] Quote email sent successfully:", data?.id);
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    console.error("[Resend] Exception sending quote email:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Error desconocido" 
+    };
+  }
+}
+
+/**
  * Envía notificación al administrador cuando hay una nueva suscripción
  */
 export async function sendNewSubscriptionNotification(

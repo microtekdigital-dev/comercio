@@ -325,3 +325,72 @@ export interface PurchaseOrderItemFormData {
   tax_rate: number;
   discount_percent: number;
 }
+
+// =====================================================
+// Quote Types (Presupuestos)
+// =====================================================
+
+export interface Quote {
+  id: string;
+  company_id: string;
+  customer_id: string | null;
+  quote_number: string;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  quote_date: string;
+  valid_until: string;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  total: number;
+  currency: string;
+  notes: string | null;
+  terms: string | null;
+  sent_at: string | null;
+  sent_to_email: string | null;
+  accepted_at: string | null;
+  rejected_at: string | null;
+  converted_to_sale_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  customer?: Customer;
+  items?: QuoteItem[];
+}
+
+export interface QuoteItem {
+  id: string;
+  quote_id: string;
+  product_id: string | null;
+  product_name: string;
+  product_sku: string | null;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;
+  discount_percent: number;
+  subtotal: number;
+  tax_amount: number;
+  total: number;
+  created_at: string;
+  product?: Product;
+}
+
+// Form types
+export interface QuoteFormData {
+  customer_id?: string;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  quote_date: string;
+  valid_until: string;
+  notes?: string;
+  terms?: string;
+  items: QuoteItemFormData[];
+}
+
+export interface QuoteItemFormData {
+  product_id?: string;
+  product_name: string;
+  product_sku?: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;
+  discount_percent: number;
+}

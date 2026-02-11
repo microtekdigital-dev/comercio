@@ -32,6 +32,7 @@ import {
   BarChart3,
   ClipboardList,
   Menu,
+  FileText,
 } from "lucide-react"
 
 interface Profile {
@@ -60,6 +61,7 @@ const adminNavItems = [
   { href: "/dashboard/products", label: "Productos", icon: Package },
   { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+  { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/team", label: "Equipo", icon: Users },
   { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
@@ -73,6 +75,7 @@ const employeeNavItems = [
   { href: "/dashboard/products", label: "Productos", icon: Package },
   { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+  { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ]
@@ -92,6 +95,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
     { href: "/dashboard/products", label: "Productos", icon: Package },
     { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
     { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+    { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
     { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
     { href: "/dashboard/team", label: "Equipo", icon: Users },
     { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
