@@ -1,5 +1,11 @@
 import { getCurrentUser } from "@/lib/actions/users";
-import { canAccessPurchaseOrders, canAccessSuppliers } from "@/lib/utils/plan-limits";
+import { 
+  canAccessPurchaseOrders, 
+  canAccessSuppliers,
+  canAccessStockHistory,
+  canAccessPriceHistory,
+  canAccessCashRegister
+} from "@/lib/utils/plan-limits";
 import { DashboardSidebar } from "./sidebar";
 
 // Deshabilitar caché para que los permisos se actualicen inmediatamente
@@ -22,6 +28,18 @@ export async function DashboardSidebarServer() {
     ? (await canAccessSuppliers(user.company_id)).allowed 
     : false;
 
+  const canSeeStockHistory = user.company_id
+    ? (await canAccessStockHistory(user.company_id)).allowed
+    : false;
+
+  const canSeePriceHistory = user.company_id
+    ? (await canAccessPriceHistory(user.company_id)).allowed
+    : false;
+
+  const canSeeCashRegister = user.company_id
+    ? (await canAccessCashRegister(user.company_id)).allowed
+    : false;
+
   // Serializar los datos para evitar problemas de hidratación
   const serializedUser = {
     id: user.id,
@@ -40,6 +58,9 @@ export async function DashboardSidebarServer() {
       user={serializedUser} 
       canSeePurchaseOrders={canSeePurchaseOrders}
       canSeeSuppliers={canSeeSuppliers}
+      canSeeStockHistory={canSeeStockHistory}
+      canSeePriceHistory={canSeePriceHistory}
+      canSeeCashRegister={canSeeCashRegister}
     />
   );
 }

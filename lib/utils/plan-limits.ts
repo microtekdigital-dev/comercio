@@ -282,6 +282,66 @@ export async function canAccessCompleteReports(companyId: string): Promise<{
 }
 
 /**
+ * Verifica si el plan tiene acceso a historial de stock
+ */
+export async function canAccessStockHistory(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Trial no tiene acceso, todos los demás planes sí
+  const hasAccess = limits.planName !== "Trial";
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "El historial de stock está disponible en planes de pago. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a historial de precios
+ */
+export async function canAccessPriceHistory(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Trial no tiene acceso, todos los demás planes sí
+  const hasAccess = limits.planName !== "Trial";
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "El historial de precios está disponible en planes de pago. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a cierre de caja
+ */
+export async function canAccessCashRegister(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Trial no tiene acceso, todos los demás planes sí
+  const hasAccess = limits.planName !== "Trial";
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "El cierre de caja está disponible en planes de pago. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
  * Obtiene información de uso actual vs límites del plan
  */
 export async function getPlanUsage(companyId: string) {
