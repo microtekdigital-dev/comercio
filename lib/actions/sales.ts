@@ -201,7 +201,9 @@ export async function createSale(formData: SaleFormData) {
 
     if (itemsError) throw itemsError;
 
-    // Update product stock if needed
+    // Update product stock if needed and log movement
+    const { logSaleStockMovement } = await import("@/lib/actions/stock-movements");
+    
     for (const item of items) {
       if (item.product_id) {
         const { data: product } = await supabase
@@ -211,12 +213,24 @@ export async function createSale(formData: SaleFormData) {
           .single();
 
         if (product?.track_inventory) {
+          const stockBefore = product.stock_quantity;
+          const stockAfter = stockBefore - item.quantity;
+          
           await supabase
             .from("products")
             .update({
-              stock_quantity: product.stock_quantity - item.quantity,
+              stock_quantity: stockAfter,
             })
             .eq("id", item.product_id);
+          
+          // Log stock movement
+          await logSaleStockMovement(
+            sale.id,
+            item.product_id,
+            item.quantity,
+            stockBefore,
+            stockAfter
+          );
         }
       }
     }
