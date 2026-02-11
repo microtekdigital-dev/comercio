@@ -22,9 +22,22 @@ export async function DashboardSidebarServer() {
     ? (await canAccessSuppliers(user.company_id)).allowed 
     : false;
 
+  // Serializar los datos para evitar problemas de hidratación
+  const serializedUser = {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    role: user.role,
+    companies: user.companies ? {
+      id: user.companies.id,
+      name: user.companies.name,
+      slug: user.companies.slug,
+    } : null,
+  };
+
   return (
     <DashboardSidebar 
-      user={user} 
+      user={serializedUser} 
       canSeePurchaseOrders={canSeePurchaseOrders}
       canSeeSuppliers={canSeeSuppliers}
     />

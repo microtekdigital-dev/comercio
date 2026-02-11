@@ -394,3 +394,35 @@ export interface QuoteItemFormData {
   tax_rate: number;
   discount_percent: number;
 }
+
+// =====================================================
+// Cash Register Types (Cierre de Caja)
+// =====================================================
+
+export interface CashRegisterClosure {
+  id: string;
+  company_id: string;
+  closure_date: string;
+  shift: string | null;
+  closed_by: string;
+  closed_by_name: string;
+  total_sales_count: number;
+  total_sales_amount: number;
+  cash_sales: number;
+  card_sales: number;
+  transfer_sales: number;
+  other_sales: number;
+  cash_counted: number | null;
+  cash_difference: number | null;
+  notes: string | null;
+  currency: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashRegisterClosureFormData {
+  closure_date: string;
+  shift?: string;
+  cash_counted?: number;
+  notes?: string;
+}

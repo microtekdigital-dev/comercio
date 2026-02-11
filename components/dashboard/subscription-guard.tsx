@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
@@ -14,6 +15,12 @@ interface SubscriptionGuardProps {
 export function SubscriptionGuard({ subscriptionStatus, userRole, children }: SubscriptionGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  // Evitar problemas de hidratación
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Permitir acceso a la página de billing siempre
   const isBillingPage = pathname === "/dashboard/billing";
@@ -24,6 +31,11 @@ export function SubscriptionGuard({ subscriptionStatus, userRole, children }: Su
   }
 
   const isEmployee = userRole === "employee";
+
+  // Mostrar contenido solo después de montar en el cliente
+  if (!mounted) {
+    return <>{children}</>;
+  }
 
   // Si la suscripción está cancelada, mostrar mensaje y bloquear acceso
   if (subscriptionStatus === "cancelled") {

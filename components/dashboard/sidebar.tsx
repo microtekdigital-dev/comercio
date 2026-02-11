@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { createClient } from "@/lib/supabase/client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Building2,
   LayoutDashboard,
@@ -33,6 +33,7 @@ import {
   ClipboardList,
   Menu,
   FileText,
+  DollarSign,
 } from "lucide-react"
 
 interface Profile {
@@ -62,6 +63,7 @@ const adminNavItems = [
   { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+  { href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/team", label: "Equipo", icon: Users },
   { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
@@ -76,6 +78,7 @@ const employeeNavItems = [
   { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+  { href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ]
@@ -85,6 +88,12 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Evitar problemas de hidratación
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Filtrar items del menú según permisos del plan
   const baseAdminNavItems = [
@@ -96,6 +105,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
     { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
     { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+    { href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign },
     { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
     { href: "/dashboard/team", label: "Equipo", icon: Users },
     { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
@@ -146,8 +156,8 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href || 
-            (item.href !== "/dashboard" && pathname.startsWith(item.href))
+          const isActive = mounted && (pathname === item.href || 
+            (item.href !== "/dashboard" && pathname.startsWith(item.href)))
 
           return (
             <Link
