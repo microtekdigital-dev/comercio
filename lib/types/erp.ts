@@ -426,3 +426,83 @@ export interface CashRegisterClosureFormData {
   cash_counted?: number;
   notes?: string;
 }
+
+// =====================================================
+// Stock Movement Types (Historial de Stock)
+// =====================================================
+
+export interface StockMovement {
+  id: string;
+  company_id: string;
+  product_id: string;
+  movement_type: 'purchase' | 'sale' | 'adjustment_in' | 'adjustment_out' | 'return_in' | 'return_out';
+  quantity: number;
+  stock_before: number;
+  stock_after: number;
+  sale_id: string | null;
+  purchase_order_id: string | null;
+  created_by: string;
+  created_by_name: string;
+  notes: string | null;
+  created_at: string;
+  product?: Product;
+}
+
+export interface StockMovementFormData {
+  product_id: string;
+  movement_type: 'adjustment_in' | 'adjustment_out';
+  quantity: number;
+  notes?: string;
+}
+
+export interface StockMovementFilters {
+  productId?: string;
+  movementType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  employeeId?: string;
+  purchaseOrderId?: string;
+}
+
+export interface StockMovementStats {
+  totalIn: number;
+  totalOut: number;
+  purchases: number;
+  sales: number;
+  adjustmentsIn: number;
+  adjustmentsOut: number;
+}
+
+// =====================================================
+// Price Change Types (Historial de Precios)
+// =====================================================
+
+export interface PriceChange {
+  id: string;
+  company_id: string;
+  product_id: string;
+  price_type: 'sale_price' | 'cost_price';
+  old_value: number;
+  new_value: number;
+  changed_by: string;
+  changed_by_name: string;
+  changed_by_role: string;
+  reason: string | null;
+  created_at: string;
+  product?: Product;
+}
+
+export interface PriceChangeFilters {
+  productId?: string;
+  priceType?: 'sale_price' | 'cost_price';
+  dateFrom?: string;
+  dateTo?: string;
+  employeeId?: string;
+}
+
+export interface PriceChangeFormData {
+  product_id: string;
+  price_type: 'sale_price' | 'cost_price';
+  new_value: number;
+  reason?: string;
+}

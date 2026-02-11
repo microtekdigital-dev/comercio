@@ -4,12 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getProduct, updateProduct, deleteProduct } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
+import { getProductStockHistory } from "@/lib/actions/stock-movements";
+import { getProductPriceHistory } from "@/lib/actions/price-changes";
 import { getUserPermissions } from "@/lib/utils/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -29,11 +32,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Trash2, History, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Product, Category } from "@/lib/types/erp";
+import type { Product, Category, StockMovement, PriceChange } from "@/lib/types/erp";
 import { ImageUpload } from "@/components/dashboard/image-upload";
+import { StockHistoryTable } from "@/components/dashboard/stock-history-table";
+import { ProductPriceHistory } from "@/components/dashboard/product-price-history";
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -41,6 +46,8 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [stockHistory, setStockHistory] = useState<StockMovement[]>([]);
+  const [priceHistory, setPriceHistory] = useState<PriceChange[]>([]);
   const [canEdit, setCanEdit] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
   const [formData, setFormData] = useState({
@@ -72,14 +79,18 @@ export default function ProductDetailPage() {
   };
 
   const loadData = async () => {
-    const [productData, categoriesData] = await Promise.all([
+    const [productData, categoriesData, historyData, priceHistoryData] = await Promise.all([
       getProduct(params.id as string),
       getCategories(),
+      getProductStockHistory(params.id as string),
+      getProductPriceHistory(params.id as string),
     ]);
 
     if (productData) {
       setProduct(productData);
       setCategories(categoriesData);
+      setStockHistory(historyData);
+      setPriceHistory(priceHistoryData);
       setFormData({
         name: productData.name,
         sku: productData.sku || "",
@@ -195,8 +206,24 @@ export default function ProductDetailPage() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 md:grid-cols-2">
+      <Tabs defaultValue="details" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="details">Detalles</TabsTrigger>
+          <TabsTrigger value="price-history">
+            <DollarSign className="mr-2 h-4 w-4" />
+            Historial de Precios
+          </TabsTrigger>
+          {product.track_inventory && (
+            <TabsTrigger value="history">
+              <History className="mr-2 h-4 w-4" />
+              Historial de Stock
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="details">
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-6 md:grid-cols-2">
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Información Básica</CardTitle>
@@ -452,22 +479,47 @@ export default function ProductDetailPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
 
-        <div className="flex justify-end gap-4 mt-6">
-          <Link href="/dashboard/products">
-            <Button type="button" variant="outline">
-              {canEdit ? "Cancelar" : "Volver"}
-            </Button>
-          </Link>
-          {canEdit && (
-            <Button type="submit" disabled={loading}>
-              <Save className="mr-2 h-4 w-4" />
-              {loading ? "Guardando..." : "Guardar Cambios"}
-            </Button>
-          )}
-        </div>
-      </form>
+          <div className="flex justify-end gap-4 mt-6">
+            <Link href="/dashboard/products">
+              <Button type="button" variant="outline">
+                {canEdit ? "Cancelar" : "Volver"}
+              </Button>
+            </Link>
+            {canEdit && (
+              <Button type="submit" disabled={loading}>
+                <Save className="mr-2 h-4 w-4" />
+                {loading ? "Guardando..." : "Guardar Cambios"}
+              </Button>
+            )}
+          </div>
+        </form>
+      </TabsContent>
+
+      <TabsContent value="price-history">
+        <ProductPriceHistory 
+          changes={priceHistory}
+          currencySymbol={product.currency === "USD" ? "$" : product.currency === "EUR" ? "€" : "$"}
+        />
+      </TabsContent>
+
+      {product.track_inventory && (
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle>Historial de Movimientos de Stock</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Registro completo de todos los movimientos de inventario para este producto
+              </p>
+            </CardHeader>
+            <CardContent>
+              <StockHistoryTable movements={stockHistory} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      )}
+    </Tabs>
     </div>
   );
 }

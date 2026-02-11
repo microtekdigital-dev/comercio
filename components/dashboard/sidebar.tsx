@@ -34,6 +34,8 @@ import {
   Menu,
   FileText,
   DollarSign,
+  History,
+  TrendingUp,
 } from "lucide-react"
 
 interface Profile {
@@ -61,6 +63,8 @@ const adminNavItems = [
   { href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList },
   { href: "/dashboard/products", label: "Productos", icon: Package },
   { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+  { href: "/dashboard/stock-history", label: "Historial de Stock", icon: History },
+  { href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
   { href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign },
@@ -76,6 +80,8 @@ const employeeNavItems = [
   { href: "/dashboard/customers", label: "Clientes", icon: Users },
   { href: "/dashboard/products", label: "Productos", icon: Package },
   { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+  { href: "/dashboard/stock-history", label: "Historial de Stock", icon: History },
+  { href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
   { href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign },
@@ -103,6 +109,8 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
     ...(canSeePurchaseOrders ? [{ href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList }] : []),
     { href: "/dashboard/products", label: "Productos", icon: Package },
     { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+    { href: "/dashboard/stock-history", label: "Historial de Stock", icon: History },
+    { href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp },
     { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
     { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
     { href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign },
