@@ -25,11 +25,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { exportProductsToExcel, exportProductsToCSV, exportProductsReportToPDF } from "@/lib/utils/export";
 import { toast } from "sonner";
+import { BulkAssignSuppliersDialog } from "@/components/dashboard/bulk-assign-suppliers-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Product, Category } from "@/lib/types/erp";
 
 export default function ProductsPage() {
@@ -44,6 +46,8 @@ export default function ProductsPage() {
   const [lowStockFilter, setLowStockFilter] = useState(false);
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(undefined);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -153,6 +157,29 @@ export default function ProductsPage() {
     } catch (error) {
       toast.error("Error al generar PDF");
     }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.length === products.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(products.map(p => p.id));
+    }
+  };
+
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProducts(prev => {
+      if (prev.includes(productId)) {
+        return prev.filter(id => id !== productId);
+      } else {
+        return [...prev, productId];
+      }
+    });
+  };
+
+  const handleBulkAssignSuccess = () => {
+    setSelectedProducts([]);
+    loadProducts();
   };
 
   return (
@@ -337,13 +364,23 @@ export default function ProductsPage() {
           ) : (
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {products.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/dashboard/products/${product.id}`}
-                  className="block"
-                >
-                  <Card className="hover:bg-muted/50 transition-colors h-full">
-                    <CardContent className="p-3 md:p-4">
+                <div key={product.id} className="relative">
+                  <div
+                    className="absolute top-2 left-2 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedProducts.includes(product.id)}
+                      onCheckedChange={() => handleSelectProduct(product.id)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <Link
+                    href={`/dashboard/products/${product.id}`}
+                    className="block"
+                  >
+                    <Card className="hover:bg-muted/50 transition-colors h-full">
+                      <CardContent className="p-3 md:p-4">
                       {product.image_url && (
                         <div className="relative w-full aspect-video mb-2 md:mb-3 rounded-md overflow-hidden bg-muted">
                           <Image
@@ -420,11 +457,56 @@ export default function ProductsPage() {
                     </CardContent>
                   </Card>
                 </Link>
+              </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk Actions Bar */}
+      {selectedProducts.length > 0 && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Card className="shadow-lg">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={selectedProducts.length === products.length}
+                  onCheckedChange={handleSelectAll}
+                />
+                <span className="text-sm font-medium">
+                  {selectedProducts.length} seleccionado(s)
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setShowBulkAssignDialog(true)}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Asignar Proveedor
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedProducts([])}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Bulk Assign Suppliers Dialog */}
+      <BulkAssignSuppliersDialog
+        open={showBulkAssignDialog}
+        onOpenChange={setShowBulkAssignDialog}
+        selectedProductIds={selectedProducts}
+        onSuccess={handleBulkAssignSuccess}
+      />
     </div>
   );
 }

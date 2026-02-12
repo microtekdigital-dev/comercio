@@ -344,6 +344,38 @@ export async function getLowStockProducts(): Promise<Product[]> {
   }
 }
 
+// Get products by IDs (minimal data for checking supplier assignment)
+export async function getProductsByIds(productIds: string[]): Promise<Pick<Product, 'id' | 'name' | 'supplier_id'>[]> {
+  const supabase = await createClient();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) return [];
+
+    if (!productIds || productIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, name, supplier_id")
+      .eq("company_id", profile.company_id)
+      .in("id", productIds);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching products by IDs:", error);
+    return [];
+  }
+}
+
 // Get products by supplier
 export async function getProductsBySupplier(supplierId: string | null): Promise<Product[]> {
   const supabase = await createClient();
