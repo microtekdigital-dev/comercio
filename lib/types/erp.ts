@@ -40,6 +40,7 @@ export interface Product {
   id: string;
   company_id: string;
   category_id: string | null;
+  supplier_id: string | null; // Proveedor asociado al producto
   sku: string | null;
   name: string;
   description: string | null;
@@ -57,6 +58,7 @@ export interface Product {
   created_at: string;
   updated_at: string;
   category?: Category;
+  supplier?: Supplier; // Relación con proveedor para consultas JOIN
 }
 
 export interface Sale {
@@ -130,6 +132,7 @@ export interface CustomerFormData {
 
 export interface ProductFormData {
   category_id?: string;
+  supplier_id?: string; // Proveedor del producto (opcional)
   sku?: string;
   name: string;
   description?: string;

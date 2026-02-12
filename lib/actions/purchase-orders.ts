@@ -153,28 +153,81 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
 
     const total = subtotal + taxAmount;
 
-    // Create purchase order
-    const { data: order, error: orderError } = await supabase
-      .from("purchase_orders")
-      .insert({
-        company_id: profile.company_id,
-        supplier_id: formData.supplier_id,
-        status: formData.status,
-        order_date: formData.order_date,
-        expected_date: formData.expected_date || null,
-        subtotal,
-        tax_amount: taxAmount,
-        discount_amount: 0,
-        total,
-        currency: "ARS",
-        payment_status: "pending",
-        notes: formData.notes || null,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    // Generate order number with retry logic
+    let order;
+    let orderError;
+    let attempts = 0;
+    const maxAttempts = 10;
 
-    if (orderError) throw orderError;
+    while (attempts < maxAttempts) {
+      attempts++;
+      
+      // Get the maximum order number for this company
+      const { data: orders } = await supabase
+        .from("purchase_orders")
+        .select("order_number")
+        .eq("company_id", profile.company_id)
+        .not("order_number", "is", null)
+        .order("order_number", { ascending: false })
+        .limit(10);
+
+      let nextNumber = 1;
+      if (orders && orders.length > 0) {
+        // Find the highest number from all orders
+        const numbers = orders
+          .map(o => {
+            const match = o.order_number?.match(/PO-(\d+)/);
+            return match ? parseInt(match[1]) : 0;
+          })
+          .filter(n => !isNaN(n));
+        
+        if (numbers.length > 0) {
+          nextNumber = Math.max(...numbers) + 1;
+        }
+      }
+
+      // Add attempt number to avoid collisions on retry
+      const orderNumber = `PO-${String(nextNumber + attempts - 1).padStart(6, "0")}`;
+
+      // Try to create purchase order with generated number
+      const result = await supabase
+        .from("purchase_orders")
+        .insert({
+          company_id: profile.company_id,
+          supplier_id: formData.supplier_id,
+          order_number: orderNumber,
+          status: formData.status,
+          order_date: formData.order_date,
+          expected_date: formData.expected_date || null,
+          subtotal,
+          tax_amount: taxAmount,
+          discount_amount: 0,
+          total,
+          currency: "ARS",
+          payment_status: "pending",
+          notes: formData.notes || null,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      order = result.data;
+      orderError = result.error;
+
+      // If successful or error is not duplicate, break
+      if (!orderError || orderError.code !== "23505") {
+        break;
+      }
+
+      // If duplicate, add small delay and retry
+      await new Promise(resolve => setTimeout(resolve, 50 * attempts));
+    }
+
+    if (orderError) {
+      console.error("Error creating purchase order:", orderError);
+      throw orderError;
+    }
+    if (!order) throw new Error("Failed to create order after multiple attempts");
 
     // Create purchase order items
     const itemsToInsert = items.map(item => ({
@@ -250,6 +303,18 @@ export async function receiveItems(orderId: string, items: { itemId: string; qua
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "No autenticado" };
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id, full_name, email")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return { error: "No se encontró la empresa" };
+    }
+
+    const userName = profile.full_name || profile.email;
+
     // Update received quantities
     for (const item of items) {
       const { data: orderItem } = await supabase
@@ -276,14 +341,34 @@ export async function receiveItems(orderId: string, items: { itemId: string; qua
             .single();
 
           if (product?.track_inventory) {
+            const stockBefore = product.stock_quantity;
+            const stockAfter = stockBefore + item.quantity;
+
+            // Update product stock
             await supabase
               .from("products")
               .update({
-                stock_quantity: product.stock_quantity + item.quantity,
+                stock_quantity: stockAfter,
                 last_purchase_cost: orderItem.unit_cost,
                 last_purchase_date: new Date().toISOString().split("T")[0],
               })
               .eq("id", orderItem.product_id);
+
+            // Register stock movement
+            await supabase
+              .from("stock_movements")
+              .insert({
+                company_id: profile.company_id,
+                product_id: orderItem.product_id,
+                movement_type: "purchase",
+                quantity: item.quantity,
+                stock_before: stockBefore,
+                stock_after: stockAfter,
+                purchase_order_id: orderId,
+                created_by: user.id,
+                created_by_name: userName,
+                notes: "Recepción de mercadería de orden de compra",
+              });
           }
         }
       }

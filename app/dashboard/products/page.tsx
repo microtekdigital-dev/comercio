@@ -377,6 +377,17 @@ export default function ProductsPage() {
                         </Badge>
                       )}
 
+                      {product.supplier && (
+                        <Badge variant="outline" className="mb-2 ml-1">
+                          {product.supplier.name}
+                        </Badge>
+                      )}
+                      {!product.supplier && (
+                        <span className="text-xs text-muted-foreground italic mb-2 block">
+                          Sin proveedor
+                        </span>
+                      )}
+
                       <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mb-2 md:mb-3">
                         {product.description || "Sin descripción"}
                       </p>

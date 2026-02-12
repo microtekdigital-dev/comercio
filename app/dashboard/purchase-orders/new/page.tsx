@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseOrder } from "@/lib/actions/purchase-orders";
 import { getSuppliers } from "@/lib/actions/suppliers";
-import { getProducts } from "@/lib/actions/products";
+import { getProducts, getProductsBySupplier } from "@/lib/actions/products";
 import type { PurchaseOrderFormData, PurchaseOrderItemFormData, Supplier, Product } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,15 +26,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function NewPurchaseOrderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     supplier_id: "",
     order_date: new Date().toISOString().split("T")[0],
@@ -48,13 +50,29 @@ export default function NewPurchaseOrderPage() {
     loadData();
   }, []);
 
+  // Filtrar productos cuando cambia el proveedor
+  useEffect(() => {
+    filterProductsBySupplier();
+  }, [formData.supplier_id, products]);
+
   const loadData = async () => {
     const [suppliersData, productsData] = await Promise.all([
       getSuppliers({ status: "active" }),
-      getProducts({ status: "active" }),
+      getProducts({ isActive: true }),
     ]);
     setSuppliers(suppliersData);
     setProducts(productsData);
+  };
+
+  const filterProductsBySupplier = async () => {
+    if (formData.supplier_id) {
+      // Filtrar productos del proveedor seleccionado
+      const filtered = await getProductsBySupplier(formData.supplier_id);
+      setAvailableProducts(filtered);
+    } else {
+      // Sin proveedor seleccionado, mostrar todos los productos
+      setAvailableProducts(products);
+    }
   };
 
   const addItem = () => {
@@ -277,6 +295,24 @@ export default function NewPurchaseOrderPage() {
                   placeholder="Notas adicionales..."
                 />
               </div>
+
+              {formData.supplier_id && availableProducts.length === 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    No hay productos asociados a este proveedor. Puedes agregar productos manualmente o asignar productos a este proveedor desde el catálogo.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {formData.supplier_id && availableProducts.length > 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Mostrando {availableProducts.length} producto(s) de este proveedor.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
 
@@ -326,11 +362,17 @@ export default function NewPurchaseOrderPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">Producto manual</SelectItem>
-                              {products.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.name}
+                              {availableProducts.length === 0 && formData.supplier_id ? (
+                                <SelectItem value="no-products" disabled>
+                                  No hay productos de este proveedor
                                 </SelectItem>
-                              ))}
+                              ) : (
+                                availableProducts.map((product) => (
+                                  <SelectItem key={product.id} value={product.id}>
+                                    {product.name}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                           {!item.product_id && (

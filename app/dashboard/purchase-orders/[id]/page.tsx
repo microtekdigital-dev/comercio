@@ -251,7 +251,19 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
           )}
 
           {balance > 0 && order.status !== "cancelled" && (
-            <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+            <Dialog 
+              open={paymentDialogOpen} 
+              onOpenChange={(open) => {
+                setPaymentDialogOpen(open);
+                // Cuando se abre el modal, establecer el monto al saldo pendiente
+                if (open) {
+                  setPaymentData((prev) => ({
+                    ...prev,
+                    amount: balance,
+                  }));
+                }
+              }}
+            >
                 <DialogTrigger asChild>
                   <Button variant="outline">
                     <DollarSign className="mr-2 h-4 w-4" />

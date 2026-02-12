@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createProduct } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
+import { getSuppliers } from "@/lib/actions/suppliers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,19 +21,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Category } from "@/lib/types/erp";
+import type { Category, Supplier } from "@/lib/types/erp";
 import { ImageUpload } from "@/components/dashboard/image-upload";
 
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
     description: "",
     type: "product" as "product" | "service",
     category_id: "",
+    supplier_id: "",
     price: 0,
     cost: 0,
     currency: "ARS",
@@ -46,11 +49,18 @@ export default function NewProductPage() {
 
   useEffect(() => {
     loadCategories();
+    loadSuppliers();
   }, []);
 
   const loadCategories = async () => {
     const data = await getCategories();
     setCategories(data);
+  };
+
+  const loadSuppliers = async () => {
+    const data = await getSuppliers();
+    // Filtrar solo proveedores activos
+    setSuppliers(data.filter(s => s.status === 'active'));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -182,6 +192,28 @@ export default function NewProductPage() {
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="supplier_id">Proveedor</Label>
+                  <Select
+                    value={formData.supplier_id || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, supplier_id: value === "none" ? "" : value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar proveedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin proveedor</SelectItem>
+                      {suppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

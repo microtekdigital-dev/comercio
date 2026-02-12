@@ -30,7 +30,7 @@ export async function getProducts(filters?: {
 
     let query = supabase
       .from("products")
-      .select("*, category:categories(*)")
+      .select("*, category:categories(*), supplier:suppliers(*)")
       .eq("company_id", profile.company_id);
 
     // Apply filters
@@ -88,7 +88,7 @@ export async function getProduct(id: string): Promise<Product | null> {
 
     const { data, error } = await supabase
       .from("products")
-      .select("*, category:categories(*)")
+      .select("*, category:categories(*), supplier:suppliers(*)")
       .eq("id", id)
       .eq("company_id", profile.company_id)
       .single();
@@ -168,7 +168,7 @@ export async function updateProduct(id: string, formData: ProductFormData) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("company_id")
+      .select("company_id, full_name, email")
       .eq("id", user.id)
       .single();
 
@@ -181,9 +181,24 @@ export async function updateProduct(id: string, formData: ProductFormData) {
       return { error: "El nombre del producto no puede exceder 35 caracteres" };
     }
 
+    // Get current product to check if stock changed
+    const { data: currentProduct } = await supabase
+      .from("products")
+      .select("stock_quantity, track_inventory")
+      .eq("id", id)
+      .eq("company_id", profile.company_id)
+      .single();
+
+    // Limpiar campos UUID vacíos (convertir "" a null)
+    const cleanedFormData = {
+      ...formData,
+      category_id: formData.category_id || null,
+      supplier_id: formData.supplier_id || null,
+    };
+
     const { data, error } = await supabase
       .from("products")
-      .update(formData)
+      .update(cleanedFormData)
       .eq("id", id)
       .eq("company_id", profile.company_id)
       .select()
@@ -191,7 +206,36 @@ export async function updateProduct(id: string, formData: ProductFormData) {
 
     if (error) throw error;
 
+    // If stock changed and inventory is tracked, register stock movement
+    if (
+      currentProduct &&
+      currentProduct.track_inventory &&
+      formData.stock_quantity !== undefined &&
+      formData.stock_quantity !== currentProduct.stock_quantity
+    ) {
+      const stockBefore = currentProduct.stock_quantity;
+      const stockAfter = formData.stock_quantity;
+      const quantity = stockAfter - stockBefore;
+      const movementType = quantity > 0 ? 'adjustment_in' : 'adjustment_out';
+      const userName = profile.full_name || profile.email;
+
+      await supabase
+        .from("stock_movements")
+        .insert({
+          company_id: profile.company_id,
+          product_id: id,
+          movement_type: movementType,
+          quantity: quantity,
+          stock_before: stockBefore,
+          stock_after: stockAfter,
+          created_by: user.id,
+          created_by_name: userName,
+          notes: "Ajuste manual de inventario",
+        });
+    }
+
     revalidatePath("/dashboard/products");
+    revalidatePath(`/dashboard/products/${id}`);
     return { data };
   } catch (error: any) {
     console.error("Error updating product:", error);
@@ -254,7 +298,7 @@ export async function searchProducts(query: string): Promise<Product[]> {
 
     const { data, error } = await supabase
       .from("products")
-      .select("*, category:categories(*)")
+      .select("*, category:categories(*), supplier:suppliers(*)")
       .eq("company_id", profile.company_id)
       .or(`name.ilike.%${query}%,sku.ilike.%${query}%,description.ilike.%${query}%`)
       .order("created_at", { ascending: false })
@@ -286,7 +330,7 @@ export async function getLowStockProducts(): Promise<Product[]> {
 
     const { data, error } = await supabase
       .from("products")
-      .select("*, category:categories(*)")
+      .select("*, category:categories(*), supplier:suppliers(*)")
       .eq("company_id", profile.company_id)
       .eq("track_inventory", true)
       .filter("stock_quantity", "lte", "min_stock_level")
@@ -297,5 +341,90 @@ export async function getLowStockProducts(): Promise<Product[]> {
   } catch (error) {
     console.error("Error fetching low stock products:", error);
     return [];
+  }
+}
+
+// Get products by supplier
+export async function getProductsBySupplier(supplierId: string | null): Promise<Product[]> {
+  const supabase = await createClient();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) return [];
+
+    let query = supabase
+      .from("products")
+      .select("*, category:categories(*), supplier:suppliers(*)")
+      .eq("company_id", profile.company_id)
+      .eq("is_active", true);
+
+    // Si hay proveedor seleccionado, filtrar por ese proveedor
+    // Si no hay proveedor, mostrar todos los productos
+    if (supplierId) {
+      query = query.eq("supplier_id", supplierId);
+    }
+
+    query = query.order("name", { ascending: true });
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching products by supplier:", error);
+    return [];
+  }
+}
+
+// Bulk update supplier for multiple products
+export async function bulkUpdateSupplier(productIds: string[], supplierId: string | null) {
+  const supabase = await createClient();
+  
+  try {
+    // Verificar permisos
+    await requirePermission("canEditProducts");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return { error: "No se encontró la empresa" };
+    }
+
+    if (!productIds || productIds.length === 0) {
+      return { error: "Debe seleccionar al menos un producto" };
+    }
+
+    // Update all products
+    const { error } = await supabase
+      .from("products")
+      .update({ supplier_id: supplierId || null })
+      .in("id", productIds)
+      .eq("company_id", profile.company_id);
+
+    if (error) throw error;
+
+    revalidatePath("/dashboard/products");
+    return { 
+      success: true, 
+      message: `${productIds.length} producto(s) actualizado(s) correctamente` 
+    };
+  } catch (error: any) {
+    console.error("Error bulk updating supplier:", error);
+    return { error: error.message || "Error al actualizar los productos" };
   }
 }

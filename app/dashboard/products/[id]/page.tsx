@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getProduct, updateProduct, deleteProduct } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
+import { getSuppliers } from "@/lib/actions/suppliers";
 import { getProductStockHistory } from "@/lib/actions/stock-movements";
 import { getProductPriceHistory } from "@/lib/actions/price-changes";
 import { getUserPermissions } from "@/lib/utils/permissions";
@@ -35,7 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2, History, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Product, Category, StockMovement, PriceChange } from "@/lib/types/erp";
+import type { Product, Category, Supplier, StockMovement, PriceChange } from "@/lib/types/erp";
 import { ImageUpload } from "@/components/dashboard/image-upload";
 import { StockHistoryTable } from "@/components/dashboard/stock-history-table";
 import { ProductPriceHistory } from "@/components/dashboard/product-price-history";
@@ -46,6 +47,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [stockHistory, setStockHistory] = useState<StockMovement[]>([]);
   const [priceHistory, setPriceHistory] = useState<PriceChange[]>([]);
   const [canEdit, setCanEdit] = useState(false);
@@ -56,6 +58,7 @@ export default function ProductDetailPage() {
     description: "",
     type: "product" as "product" | "service",
     category_id: "",
+    supplier_id: "",
     price: 0,
     cost: 0,
     currency: "ARS",
@@ -79,9 +82,10 @@ export default function ProductDetailPage() {
   };
 
   const loadData = async () => {
-    const [productData, categoriesData, historyData, priceHistoryData] = await Promise.all([
+    const [productData, categoriesData, suppliersData, historyData, priceHistoryData] = await Promise.all([
       getProduct(params.id as string),
       getCategories(),
+      getSuppliers(),
       getProductStockHistory(params.id as string),
       getProductPriceHistory(params.id as string),
     ]);
@@ -89,6 +93,7 @@ export default function ProductDetailPage() {
     if (productData) {
       setProduct(productData);
       setCategories(categoriesData);
+      setSuppliers(suppliersData.filter(s => s.status === 'active'));
       setStockHistory(historyData);
       setPriceHistory(priceHistoryData);
       setFormData({
@@ -97,6 +102,7 @@ export default function ProductDetailPage() {
         description: productData.description || "",
         type: productData.type,
         category_id: productData.category_id || "",
+        supplier_id: productData.supplier_id || "",
         price: productData.price,
         cost: productData.cost,
         currency: productData.currency,
@@ -297,6 +303,29 @@ export default function ProductDetailPage() {
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="supplier_id">Proveedor</Label>
+                  <Select
+                    disabled={!canEdit}
+                    value={formData.supplier_id || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, supplier_id: value === "none" ? "" : value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar proveedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin proveedor</SelectItem>
+                      {suppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
