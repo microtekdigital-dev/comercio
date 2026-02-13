@@ -203,7 +203,7 @@ export default function SignUpPage() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  O continuar con
+                  O
                 </span>
               </div>
             </div>
