@@ -382,7 +382,7 @@ export default function ProductsPage() {
               )}
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {products.map((product) => (
                 <div key={product.id} className="relative">
                   <div
@@ -411,17 +411,17 @@ export default function ProductsPage() {
                         />
                       </div>
                       <div className="flex items-start justify-between mb-2 md:mb-3">
-                        <div className="flex-1">
-                          <h3 className="font-semibold line-clamp-1 text-sm md:text-base">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold line-clamp-2 text-sm md:text-base break-words">
                             {product.name}
                           </h3>
                           {product.sku && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground truncate">
                               SKU: {product.sku}
                             </p>
                           )}
                         </div>
-                        <div className="flex flex-col gap-1 items-end">
+                        <div className="flex flex-col gap-1 items-end flex-shrink-0 ml-2">
                           {!product.is_active && (
                             <Badge variant="secondary">Inactivo</Badge>
                           )}
@@ -455,7 +455,7 @@ export default function ProductsPage() {
 
                       <div className="flex items-center justify-between gap-2">
                         <div>
-                          <p className="text-base md:text-lg font-bold">
+                          <p className="text-lg md:text-xl font-bold">
                             {formatCurrency(product.price)}
                           </p>
                           <Badge variant={product.type === "product" ? "default" : "secondary"}>

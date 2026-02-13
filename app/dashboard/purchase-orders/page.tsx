@@ -223,44 +223,87 @@ export default function PurchaseOrdersPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Proveedor</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Pago</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">
-                    {order.order_number}
-                  </TableCell>
-                  <TableCell>{order.supplier?.name}</TableCell>
-                  <TableCell>{formatDate(order.order_date)}</TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(order.total)}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(order.status)}</TableCell>
-                  <TableCell>{getPaymentStatusBadge(order.payment_status)}</TableCell>
-                  <TableCell className="text-right">
-                    <Link href={`/dashboard/purchase-orders/${order.id}`}>
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </Link>
-                  </TableCell>
+        <>
+          {/* Vista de tabla para escritorio */}
+          <Card className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número</TableHead>
+                  <TableHead>Proveedor</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Pago</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">
+                      {order.order_number}
+                    </TableCell>
+                    <TableCell>{order.supplier?.name}</TableCell>
+                    <TableCell>{formatDate(order.order_date)}</TableCell>
+                    <TableCell className="font-medium">
+                      {formatCurrency(order.total)}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(order.status)}</TableCell>
+                    <TableCell>{getPaymentStatusBadge(order.payment_status)}</TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/dashboard/purchase-orders/${order.id}`}>
+                        <Button variant="ghost" size="sm">
+                          Ver detalles
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+
+          {/* Vista de tarjetas para móvil */}
+          <div className="block md:hidden space-y-3">
+            {filteredOrders.map((order) => (
+              <Card key={order.id} className="p-4">
+                <div className="space-y-3">
+                  {/* Header con número y badges */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{order.order_number}</p>
+                      <p className="text-xs text-muted-foreground truncate">{order.supplier?.name}</p>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                      {getStatusBadge(order.status)}
+                      {getPaymentStatusBadge(order.payment_status)}
+                    </div>
+                  </div>
+
+                  {/* Información principal */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Fecha</p>
+                      <p className="font-medium">{formatDate(order.order_date)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="font-bold">{formatCurrency(order.total)}</p>
+                    </div>
+                  </div>
+
+                  {/* Botón de acción */}
+                  <Link href={`/dashboard/purchase-orders/${order.id}`} className="block">
+                    <Button variant="outline" size="sm" className="w-full">
+                      Ver detalles
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="text-sm text-muted-foreground">

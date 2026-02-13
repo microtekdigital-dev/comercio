@@ -372,32 +372,46 @@ export default function SalesPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {sales.map((sale) => (
                 <Link
                   key={sale.id}
                   href={`/dashboard/sales/${sale.id}`}
                   className="block"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-sm md:text-base">{sale.sale_number}</h3>
-                        {getStatusBadge(sale.status)}
-                        {getPaymentStatusBadge(sale.payment_status)}
+                  <Card className="p-4 hover:bg-muted/50 transition-colors">
+                    <div className="space-y-3">
+                      {/* Header con número y badges */}
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm md:text-base truncate">
+                            {sale.sale_number}
+                          </p>
+                          {sale.customer && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {sale.customer.name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 justify-end flex-shrink-0">
+                          {getStatusBadge(sale.status)}
+                          {getPaymentStatusBadge(sale.payment_status)}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
-                        {sale.customer && (
-                          <span>{sale.customer.name}</span>
-                        )}
-                        <span>{formatDate(sale.sale_date)}</span>
-                        <span>{sale.items?.length || 0} items</span>
+
+                      {/* Información secundaria */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm text-muted-foreground">
+                        <div className="flex flex-wrap gap-2">
+                          <span>{formatDate(sale.sale_date)}</span>
+                          <span>•</span>
+                          <span>{sale.items?.length || 0} items</span>
+                        </div>
+                        <p className="text-base md:text-lg font-bold text-foreground">
+                          {formatCurrency(sale.total)}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-left sm:text-right">
-                      <p className="text-base md:text-lg font-bold">{formatCurrency(sale.total)}</p>
-                    </div>
-                  </div>
+                  </Card>
                 </Link>
               ))}
             </div>
