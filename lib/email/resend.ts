@@ -371,3 +371,145 @@ export async function sendNewSubscriptionNotification(
     };
   }
 }
+
+/**
+ * Envía un email de bienvenida cuando un usuario se registra
+ */
+export async function sendWelcomeEmail(
+  to: string,
+  userName: string,
+  companyName: string
+) {
+  try {
+    // Verificar que la API key esté configurada
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_dummy_key_for_build") {
+      console.warn("[Resend] API key not configured. Welcome email will not be sent.");
+      return { 
+        success: false, 
+        error: "Resend API key not configured" 
+      };
+    }
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+      to,
+      subject: `¡Bienvenido a tu ERP! 🎉`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Bienvenido</title>
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f3f4f6;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 32px;">¡Bienvenido! 🎉</h1>
+              <p style="color: rgba(255, 255, 255, 0.9); margin: 15px 0 0 0; font-size: 18px;">Estamos felices de tenerte con nosotros</p>
+            </div>
+            
+            <div style="background: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+              <p style="font-size: 18px; margin-bottom: 20px;">Hola <strong>${userName}</strong>,</p>
+              
+              <p style="font-size: 16px; margin-bottom: 20px;">
+                ¡Gracias por registrarte en nuestro sistema ERP! Tu cuenta para <strong>${companyName}</strong> ha sido creada exitosamente.
+              </p>
+              
+              <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin: 30px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #065f46; font-size: 16px; font-weight: 600;">
+                  ✅ Tu prueba gratuita de 14 días ha comenzado
+                </p>
+                <p style="margin: 10px 0 0 0; color: #065f46; font-size: 14px;">
+                  Tienes acceso completo a todas las funcionalidades durante este período.
+                </p>
+              </div>
+
+              <h2 style="color: #1f2937; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">
+                Primeros pasos
+              </h2>
+              
+              <div style="margin-bottom: 15px;">
+                <div style="display: flex; align-items: start; margin-bottom: 15px;">
+                  <div style="background: #667eea; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; margin-right: 15px;">1</div>
+                  <div>
+                    <p style="margin: 0; font-weight: 600; color: #1f2937; font-size: 15px;">Configura tu empresa</p>
+                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Personaliza la información de tu empresa en Configuración</p>
+                  </div>
+                </div>
+                
+                <div style="display: flex; align-items: start; margin-bottom: 15px;">
+                  <div style="background: #667eea; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; margin-right: 15px;">2</div>
+                  <div>
+                    <p style="margin: 0; font-weight: 600; color: #1f2937; font-size: 15px;">Agrega tus productos</p>
+                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Crea tu catálogo de productos y servicios</p>
+                  </div>
+                </div>
+                
+                <div style="display: flex; align-items: start; margin-bottom: 15px;">
+                  <div style="background: #667eea; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; margin-right: 15px;">3</div>
+                  <div>
+                    <p style="margin: 0; font-weight: 600; color: #1f2937; font-size: 15px;">Registra tus clientes</p>
+                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Mantén organizada tu base de clientes</p>
+                  </div>
+                </div>
+                
+                <div style="display: flex; align-items: start;">
+                  <div style="background: #667eea; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; margin-right: 15px;">4</div>
+                  <div>
+                    <p style="margin: 0; font-weight: 600; color: #1f2937; font-size: 15px;">Comienza a vender</p>
+                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Registra tus primeras ventas y gestiona tu inventario</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align: center; margin: 40px 0 30px 0;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://tu-dominio.com'}/dashboard" 
+                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                          color: white; 
+                          padding: 14px 40px; 
+                          text-decoration: none; 
+                          border-radius: 8px; 
+                          font-weight: 600; 
+                          font-size: 16px;
+                          display: inline-block;
+                          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                  Ir al Dashboard
+                </a>
+              </div>
+
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-top: 30px;">
+                <p style="margin: 0 0 10px 0; font-weight: 600; color: #1f2937; font-size: 15px;">¿Necesitas ayuda?</p>
+                <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                  Estamos aquí para ayudarte. Si tienes alguna pregunta, no dudes en contactarnos a través del chat de soporte en tu dashboard.
+                </p>
+              </div>
+              
+              <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+                ¡Que tengas un excelente día!
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding: 20px; color: #9ca3af; font-size: 12px;">
+              <p>Este email fue enviado porque te registraste en nuestro sistema ERP</p>
+              <p style="margin-top: 10px;">© ${new Date().getFullYear()} Todos los derechos reservados</p>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("[Resend] Error sending welcome email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Resend] Welcome email sent successfully:", data?.id);
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    console.error("[Resend] Exception sending welcome email:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Error desconocido" 
+    };
+  }
+}

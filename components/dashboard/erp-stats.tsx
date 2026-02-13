@@ -1,4 +1,5 @@
 import { getDashboardStats, getTopProducts, getTopCustomers } from "@/lib/actions/analytics";
+import { getLowStockProducts } from "@/lib/actions/products";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   ShoppingCart, 
@@ -9,11 +10,13 @@ import {
   TrendingUp,
   TrendingDown
 } from "lucide-react";
+import Link from "next/link";
 
 export async function ERPStats() {
   const stats = await getDashboardStats();
   const topProducts = await getTopProducts(5);
   const topCustomers = await getTopCustomers(5);
+  const lowStockProducts = await getLowStockProducts();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -26,6 +29,32 @@ export async function ERPStats() {
   const formatPercent = (value: number) => {
     return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
   };
+
+  // Handle null stats case
+  if (!stats) {
+    return (
+      <div className="grid gap-4 grid-cols-1">
+        <Card>
+          <CardHeader>
+            <CardTitle>Bienvenido al Dashboard</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              No hay datos disponibles en este momento. Esto puede deberse a:
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+              <li>Tu cuenta aún no tiene productos o ventas registradas</li>
+              <li>Necesitas permisos adicionales para ver esta información</li>
+              <li>Hay un problema temporal con la conexión</li>
+            </ul>
+            <p className="text-sm text-muted-foreground mt-4">
+              Comienza agregando productos y clientes para ver tus estadísticas aquí.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -133,6 +162,77 @@ export async function ERPStats() {
             </Card>
           )}
         </div>
+      )}
+
+      {/* Low Stock Products Detail */}
+      {lowStockProducts.length > 0 && (
+        <Card className="border-red-500/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <CardTitle>Productos con Stock Bajo</CardTitle>
+              </div>
+              <Link 
+                href="/dashboard/products" 
+                className="text-sm text-primary hover:underline"
+              >
+                Ver todos
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {lowStockProducts.slice(0, 10).map((product) => (
+                <div 
+                  key={product.id} 
+                  className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                        {product.name}
+                      </p>
+                      {product.sku && (
+                        <span className="text-xs text-red-600 dark:text-red-400">
+                          ({product.sku})
+                        </span>
+                      )}
+                    </div>
+                    {product.category && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                        {(product.category as any).name}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-red-700 dark:text-red-300">
+                          {product.stock_quantity} unidades
+                        </p>
+                        <p className="text-xs text-red-600 dark:text-red-400">
+                          Mínimo: {product.min_stock_level}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/dashboard/products/${product.id}`}
+                        className="ml-2 text-xs text-primary hover:underline"
+                      >
+                        Editar
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {lowStockProducts.length > 10 && (
+                <p className="text-xs text-center text-muted-foreground pt-2">
+                  Y {lowStockProducts.length - 10} productos más con stock bajo
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Top Products and Customers */}

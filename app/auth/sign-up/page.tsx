@@ -60,6 +60,22 @@ export default function SignUpPage() {
       return
     }
 
+    // Send welcome email (don't block on this)
+    try {
+      await fetch('/api/welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          userName: fullName,
+          companyName: companyName || 'Tu Empresa'
+        })
+      });
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail registration if email fails
+    }
+
     setSuccess(true)
     setLoading(false)
   }
