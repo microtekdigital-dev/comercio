@@ -63,6 +63,13 @@ export const VariantStockTable = memo(function VariantStockTable({
     }
   }, [variantType])
 
+  // Sync variants from props when they change (e.g., when loading existing product)
+  useEffect(() => {
+    if (variants.length > 0 && localVariants.length === 0) {
+      setLocalVariants(variants)
+    }
+  }, [variants])
+
   const loadTemplates = async () => {
     const data = await getVariantTemplates()
     setTemplates(data)
@@ -82,23 +89,27 @@ export const VariantStockTable = memo(function VariantStockTable({
       return
     }
 
-    // If switching to predefined type (shirts or pants), always regenerate variants
+    // If switching to predefined type (shirts or pants), only regenerate if no variants exist
     if (variantType === 'shirts' || variantType === 'pants') {
-      const sizes = VARIANT_TYPES[variantType].sizes
-      const newVariants: ProductVariantFormData[] = sizes.map((size, index) => ({
-        variant_name: size,
-        sku: '',
-        stock_quantity: 0,
-        min_stock_level: 0,
-        sort_order: index
-      }))
-      setLocalVariants(newVariants)
-      onChange(newVariants)
+      // Only regenerate if we don't have variants already (new product or switching types)
+      if (variants.length === 0) {
+        const sizes = VARIANT_TYPES[variantType].sizes
+        const newVariants: ProductVariantFormData[] = sizes.map((size, index) => ({
+          variant_name: size,
+          sku: '',
+          stock_quantity: 0,
+          min_stock_level: 0,
+          sort_order: index
+        }))
+        setLocalVariants(newVariants)
+        onChange(newVariants)
+      }
       return
     }
     
-    // For custom type, always clear variants when switching to it
-    if (variantType === 'custom') {
+    // For custom type, only clear variants if we're switching from another type
+    // Don't clear if we're loading existing variants
+    if (variantType === 'custom' && variants.length === 0) {
       setLocalVariants([])
       onChange([])
       setSelectedTemplateId("")
