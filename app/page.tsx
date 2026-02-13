@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Building2, Users, Shield, Zap, ArrowRight } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Building2, Users, Shield, Zap, ArrowRight, Check, Star } from "lucide-react"
 
 export default function HomePage() {
   return (
@@ -204,6 +205,319 @@ export default function HomePage() {
               <p className="text-sm text-muted-foreground">
                 Sin contratos a largo plazo. Cancela tu suscripción en cualquier momento sin penalizaciones
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="container mx-auto px-4 py-24">
+        <div className="max-w-3xl mx-auto text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Planes que se adaptan a tu negocio
+          </h2>
+          <p className="text-lg text-muted-foreground">
+            Comienza gratis y escala conforme creces. Sin sorpresas, sin costos ocultos.
+          </p>
+        </div>
+        
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {/* Plan Básico */}
+          <div className="rounded-lg border bg-card p-8 flex flex-col">
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold mb-2">Básico</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-4xl font-bold">$4.990</span>
+                <span className="text-muted-foreground">/mes</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Perfecto para emprendedores y pequeños comercios
+              </p>
+            </div>
+            
+            <ul className="space-y-3 mb-8 flex-grow">
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Hasta 500 productos</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Hasta 100 clientes</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">1 usuario</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Gestión de inventario</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Ventas y facturación</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Reportes básicos</span>
+              </li>
+            </ul>
+            
+            <Button asChild className="w-full" variant="outline">
+              <Link href="/auth/sign-up">Comenzar gratis</Link>
+            </Button>
+          </div>
+
+          {/* Plan Profesional - Destacado */}
+          <div className="rounded-lg border-2 border-primary bg-card p-8 flex flex-col relative">
+            <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
+              Más popular
+            </Badge>
+            
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold mb-2">Profesional</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-4xl font-bold">$9.990</span>
+                <span className="text-muted-foreground">/mes</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Ideal para comercios en crecimiento
+              </p>
+            </div>
+            
+            <ul className="space-y-3 mb-8 flex-grow">
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Hasta 2.000 productos</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Hasta 500 clientes</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Hasta 3 usuarios</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Todo lo del plan Básico</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Órdenes de compra</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Gestión de proveedores</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Reportes avanzados</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Soporte prioritario</span>
+              </li>
+            </ul>
+            
+            <Button asChild className="w-full">
+              <Link href="/auth/sign-up">Comenzar gratis</Link>
+            </Button>
+          </div>
+
+          {/* Plan Empresarial */}
+          <div className="rounded-lg border bg-card p-8 flex flex-col">
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold mb-2">Empresarial</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-4xl font-bold">$19.990</span>
+                <span className="text-muted-foreground">/mes</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Para negocios establecidos con múltiples sucursales
+              </p>
+            </div>
+            
+            <ul className="space-y-3 mb-8 flex-grow">
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Productos ilimitados</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Clientes ilimitados</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Hasta 10 usuarios</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Todo lo del plan Profesional</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Múltiples sucursales</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">API de integración</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Reportes personalizados</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <span className="text-sm">Soporte dedicado 24/7</span>
+              </li>
+            </ul>
+            
+            <Button asChild className="w-full" variant="outline">
+              <Link href="/auth/sign-up">Comenzar gratis</Link>
+            </Button>
+          </div>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground mt-8">
+          Todos los planes incluyen 14 días de prueba gratuita. No se requiere tarjeta de crédito.
+        </p>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="container mx-auto px-4 py-24 bg-muted/30">
+        <div className="max-w-3xl mx-auto text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Lo que dicen nuestros clientes
+          </h2>
+          <p className="text-lg text-muted-foreground">
+            Comercios reales que han transformado su gestión con nuestro sistema
+          </p>
+        </div>
+        
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {/* Testimonio 1 */}
+          <div className="rounded-lg border bg-card p-6">
+            <div className="flex gap-1 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <p className="text-sm mb-4">
+              "Antes llevaba todo en cuadernos y Excel. Ahora con este sistema puedo ver mi inventario en tiempo real y saber exactamente qué productos se venden más. Ha sido un cambio total para mi negocio."
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold">MC</span>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">María Contreras</p>
+                <p className="text-xs text-muted-foreground">Bazar Lili, Santiago</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonio 2 */}
+          <div className="rounded-lg border bg-card p-6">
+            <div className="flex gap-1 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <p className="text-sm mb-4">
+              "Lo mejor es que puedo acceder desde mi celular cuando estoy fuera de la tienda. Mis empleados registran las ventas y yo puedo ver todo en tiempo real. Muy recomendado para pequeños comercios."
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold">JR</span>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Juan Rodríguez</p>
+                <p className="text-xs text-muted-foreground">Ferretería El Tornillo, Valparaíso</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonio 3 */}
+          <div className="rounded-lg border bg-card p-6">
+            <div className="flex gap-1 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <p className="text-sm mb-4">
+              "El sistema es muy fácil de usar. En menos de una hora ya estaba cargando mis productos y haciendo ventas. El soporte técnico responde rápido cuando tengo dudas. Excelente relación precio-calidad."
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold">AS</span>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Andrea Silva</p>
+                <p className="text-xs text-muted-foreground">Librería Mundo Papel, Concepción</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonio 4 */}
+          <div className="rounded-lg border bg-card p-6">
+            <div className="flex gap-1 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <p className="text-sm mb-4">
+              "Tengo dos locales y antes era un caos controlar el stock de ambos. Ahora puedo ver el inventario de las dos tiendas desde un solo lugar. Me ahorra muchísimo tiempo y evita errores."
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold">PM</span>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Pedro Morales</p>
+                <p className="text-xs text-muted-foreground">Minimarket Don Pedro, La Serena</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonio 5 */}
+          <div className="rounded-lg border bg-card p-6">
+            <div className="flex gap-1 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <p className="text-sm mb-4">
+              "Los reportes me ayudan a tomar mejores decisiones. Puedo ver qué productos no se venden y cuáles necesito comprar más. Además, las facturas se generan automáticamente. Muy profesional."
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold">LG</span>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Laura González</p>
+                <p className="text-xs text-muted-foreground">Boutique Elegancia, Viña del Mar</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonio 6 */}
+          <div className="rounded-lg border bg-card p-6">
+            <div className="flex gap-1 mb-4">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              ))}
+            </div>
+            <p className="text-sm mb-4">
+              "Probé varios sistemas antes y este es el más completo por el precio. Tiene todo lo que necesito: inventario, ventas, clientes, proveedores. Y lo mejor es que no necesito instalar nada."
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold">CF</span>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Carlos Fuentes</p>
+                <p className="text-xs text-muted-foreground">Repuestos Automotriz CF, Temuco</p>
+              </div>
             </div>
           </div>
         </div>
