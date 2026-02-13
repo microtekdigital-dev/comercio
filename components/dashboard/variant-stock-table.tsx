@@ -81,6 +81,8 @@ export const VariantStockTable = memo(function VariantStockTable({
     if (previousVariantTypeRef.current === variantType) {
       return
     }
+    
+    const previousType = previousVariantTypeRef.current
     previousVariantTypeRef.current = variantType
 
     if (variantType === 'none') {
@@ -89,10 +91,14 @@ export const VariantStockTable = memo(function VariantStockTable({
       return
     }
 
-    // If switching to predefined type (shirts or pants), only regenerate if no variants exist
+    // If switching to predefined type (shirts or pants)
     if (variantType === 'shirts' || variantType === 'pants') {
-      // Only regenerate if we don't have variants already (new product or switching types)
-      if (variants.length === 0) {
+      // Only regenerate if:
+      // 1. We're switching from another type (previousType exists and is different)
+      // 2. OR we don't have variants (new product)
+      const shouldRegenerate = (previousType !== null && previousType !== variantType) || variants.length === 0
+      
+      if (shouldRegenerate) {
         const sizes = VARIANT_TYPES[variantType].sizes
         const newVariants: ProductVariantFormData[] = sizes.map((size, index) => ({
           variant_name: size,
@@ -107,12 +113,21 @@ export const VariantStockTable = memo(function VariantStockTable({
       return
     }
     
-    // For custom type, only clear variants if we're switching from another type
-    // Don't clear if we're loading existing variants
-    if (variantType === 'custom' && variants.length === 0) {
-      setLocalVariants([])
-      onChange([])
-      setSelectedTemplateId("")
+    // For custom type
+    if (variantType === 'custom') {
+      // If we're switching from a predefined type, clear variants
+      if (previousType === 'shirts' || previousType === 'pants') {
+        setLocalVariants([])
+        onChange([])
+        setSelectedTemplateId("")
+      }
+      // If previousType is null (initial load) and no variants, also clear
+      else if (previousType === null && variants.length === 0) {
+        setLocalVariants([])
+        onChange([])
+        setSelectedTemplateId("")
+      }
+      // Otherwise keep existing variants (loading existing product)
     }
   }, [variantType, onChange])
 
