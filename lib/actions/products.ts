@@ -333,11 +333,16 @@ export async function getLowStockProducts(): Promise<Product[]> {
       .select("*, category:categories(*), supplier:suppliers(*)")
       .eq("company_id", profile.company_id)
       .eq("track_inventory", true)
-      .filter("stock_quantity", "lte", "min_stock_level")
       .order("stock_quantity", { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    
+    // Filter products where stock_quantity <= min_stock_level
+    const lowStockProducts = (data || []).filter(
+      product => product.stock_quantity <= product.min_stock_level
+    );
+    
+    return lowStockProducts;
   } catch (error) {
     console.error("Error fetching low stock products:", error);
     return [];
