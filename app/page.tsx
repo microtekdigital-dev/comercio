@@ -224,10 +224,13 @@ export default function HomePage() {
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {/* Plan Básico */}
           <div className="rounded-lg border bg-card p-8 flex flex-col">
+            <Badge className="w-fit mb-4 bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/20">
+              14 días gratis
+            </Badge>
             <div className="mb-6">
               <h3 className="text-2xl font-bold mb-2">Básico</h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-bold">$4.990</span>
+                <span className="text-4xl font-bold">$8.000</span>
                 <span className="text-muted-foreground">/mes</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -272,11 +275,14 @@ export default function HomePage() {
             <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
               Más popular
             </Badge>
+            <Badge className="w-fit mb-4 bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/20">
+              14 días gratis
+            </Badge>
             
             <div className="mb-6">
               <h3 className="text-2xl font-bold mb-2">Profesional</h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-bold">$9.990</span>
+                <span className="text-4xl font-bold">$15.000</span>
                 <span className="text-muted-foreground">/mes</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -326,10 +332,13 @@ export default function HomePage() {
 
           {/* Plan Empresarial */}
           <div className="rounded-lg border bg-card p-8 flex flex-col">
+            <Badge className="w-fit mb-4 bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/20">
+              14 días gratis
+            </Badge>
             <div className="mb-6">
               <h3 className="text-2xl font-bold mb-2">Empresarial</h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-bold">$19.990</span>
+                <span className="text-4xl font-bold">$30.000</span>
                 <span className="text-muted-foreground">/mes</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -378,9 +387,17 @@ export default function HomePage() {
           </div>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Todos los planes incluyen 14 días de prueba gratuita. No se requiere tarjeta de crédito.
-        </p>
+        <div className="mt-12 text-center">
+          <div className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary/10 border-2 border-primary/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+              <Check className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-lg">Prueba gratuita de 14 días</p>
+              <p className="text-sm text-muted-foreground">Sin tarjeta de crédito. Cancela cuando quieras.</p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Testimonials Section */}
@@ -411,7 +428,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-sm">María Contreras</p>
-                <p className="text-xs text-muted-foreground">Bazar Lili, Santiago</p>
+                <p className="text-xs text-muted-foreground">Bazar Lili, Buenos Aires</p>
               </div>
             </div>
           </div>
@@ -432,7 +449,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-sm">Juan Rodríguez</p>
-                <p className="text-xs text-muted-foreground">Ferretería El Tornillo, Valparaíso</p>
+                <p className="text-xs text-muted-foreground">Ferretería El Tornillo, Córdoba</p>
               </div>
             </div>
           </div>
@@ -453,7 +470,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-sm">Andrea Silva</p>
-                <p className="text-xs text-muted-foreground">Librería Mundo Papel, Concepción</p>
+                <p className="text-xs text-muted-foreground">Librería Mundo Papel, Rosario</p>
               </div>
             </div>
           </div>
@@ -474,7 +491,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-sm">Pedro Morales</p>
-                <p className="text-xs text-muted-foreground">Minimarket Don Pedro, La Serena</p>
+                <p className="text-xs text-muted-foreground">Minimarket Don Pedro, Mendoza</p>
               </div>
             </div>
           </div>
@@ -495,7 +512,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-sm">Laura González</p>
-                <p className="text-xs text-muted-foreground">Boutique Elegancia, Viña del Mar</p>
+                <p className="text-xs text-muted-foreground">Boutique Elegancia, Mar del Plata</p>
               </div>
             </div>
           </div>
@@ -516,7 +533,7 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-sm">Carlos Fuentes</p>
-                <p className="text-xs text-muted-foreground">Repuestos Automotriz CF, Temuco</p>
+                <p className="text-xs text-muted-foreground">Repuestos Automotriz CF, Tucumán</p>
               </div>
             </div>
           </div>
