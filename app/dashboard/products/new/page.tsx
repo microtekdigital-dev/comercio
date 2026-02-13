@@ -282,6 +282,41 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
+          {formData.track_inventory && (
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Gestión de Variantes</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Configura si este producto tiene variantes (tallas, colores, etc.)
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ProductVariantSelector
+                  value={variantType}
+                  onChange={handleVariantTypeChange}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {formData.track_inventory && formData.has_variants && (
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Variantes del Producto</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Gestiona el stock de cada variante del producto
+                </p>
+              </CardHeader>
+              <CardContent>
+                <VariantStockTable
+                  variants={variants}
+                  onChange={handleVariantsChange}
+                  variantType={variantType}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Precios</CardTitle>
@@ -418,29 +453,6 @@ export default function NewProductPage() {
               </div>
             </CardContent>
           </Card>
-
-          {formData.track_inventory && (
-            <Card className="md:col-span-2">
-              <CardContent className="pt-6">
-                <ProductVariantSelector
-                  value={variantType}
-                  onChange={handleVariantTypeChange}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {formData.track_inventory && formData.has_variants && (
-            <Card className="md:col-span-2">
-              <CardContent className="pt-6">
-                <VariantStockTable
-                  variants={variants}
-                  onChange={handleVariantsChange}
-                  variantType={variantType}
-                />
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         <div className="flex justify-end gap-4 mt-6">
