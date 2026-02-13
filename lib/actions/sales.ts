@@ -186,6 +186,8 @@ export async function createSale(formData: SaleFormData) {
       product_id: item.product_id || null,
       product_name: item.product_name,
       product_sku: item.product_sku || null,
+      variant_id: item.variant_id || null,
+      variant_name: item.variant_name || null,
       quantity: item.quantity,
       unit_price: item.unit_price,
       tax_rate: item.tax_rate,
@@ -206,31 +208,74 @@ export async function createSale(formData: SaleFormData) {
     
     for (const item of items) {
       if (item.product_id) {
+        // Check if product has variants
         const { data: product } = await supabase
           .from("products")
-          .select("stock_quantity, track_inventory")
+          .select("stock_quantity, track_inventory, has_variants")
           .eq("id", item.product_id)
           .single();
 
         if (product?.track_inventory) {
-          const stockBefore = product.stock_quantity;
-          const stockAfter = stockBefore - item.quantity;
-          
-          await supabase
-            .from("products")
-            .update({
-              stock_quantity: stockAfter,
-            })
-            .eq("id", item.product_id);
-          
-          // Log stock movement
-          await logSaleStockMovement(
-            sale.id,
-            item.product_id,
-            item.quantity,
-            stockBefore,
-            stockAfter
-          );
+          // If product has variants, update variant stock
+          if (product.has_variants && item.variant_id) {
+            const { data: variant } = await supabase
+              .from("product_variants")
+              .select("stock_quantity")
+              .eq("id", item.variant_id)
+              .single();
+
+            if (variant) {
+              const stockBefore = variant.stock_quantity;
+              const stockAfter = stockBefore - item.quantity;
+
+              // Validate sufficient stock
+              if (stockAfter < 0) {
+                throw new Error(`Stock insuficiente para ${item.product_name} - ${item.variant_name}`);
+              }
+
+              await supabase
+                .from("product_variants")
+                .update({
+                  stock_quantity: stockAfter,
+                })
+                .eq("id", item.variant_id);
+
+              // Log stock movement with variant_id
+              await logSaleStockMovement(
+                sale.id,
+                item.product_id,
+                item.quantity,
+                stockBefore,
+                stockAfter,
+                item.variant_id
+              );
+            }
+          } else {
+            // Product without variants - use traditional stock
+            const stockBefore = product.stock_quantity;
+            const stockAfter = stockBefore - item.quantity;
+
+            // Validate sufficient stock
+            if (stockAfter < 0) {
+              throw new Error(`Stock insuficiente para ${item.product_name}`);
+            }
+
+            await supabase
+              .from("products")
+              .update({
+                stock_quantity: stockAfter,
+              })
+              .eq("id", item.product_id);
+
+            // Log stock movement without variant_id
+            await logSaleStockMovement(
+              sale.id,
+              item.product_id,
+              item.quantity,
+              stockBefore,
+              stockAfter
+            );
+          }
         }
       }
     }
@@ -325,7 +370,7 @@ export async function deleteSale(id: string) {
     // Get sale items to restore stock
     const { data: items } = await supabase
       .from("sale_items")
-      .select("product_id, quantity")
+      .select("product_id, variant_id, quantity")
       .eq("sale_id", id);
 
     // Restore stock
@@ -334,17 +379,36 @@ export async function deleteSale(id: string) {
         if (item.product_id) {
           const { data: product } = await supabase
             .from("products")
-            .select("stock_quantity, track_inventory")
+            .select("stock_quantity, track_inventory, has_variants")
             .eq("id", item.product_id)
             .single();
 
           if (product?.track_inventory) {
-            await supabase
-              .from("products")
-              .update({
-                stock_quantity: product.stock_quantity + item.quantity,
-              })
-              .eq("id", item.product_id);
+            // If product has variants, restore variant stock
+            if (product.has_variants && item.variant_id) {
+              const { data: variant } = await supabase
+                .from("product_variants")
+                .select("stock_quantity")
+                .eq("id", item.variant_id)
+                .single();
+
+              if (variant) {
+                await supabase
+                  .from("product_variants")
+                  .update({
+                    stock_quantity: variant.stock_quantity + item.quantity,
+                  })
+                  .eq("id", item.variant_id);
+              }
+            } else {
+              // Product without variants - restore traditional stock
+              await supabase
+                .from("products")
+                .update({
+                  stock_quantity: product.stock_quantity + item.quantity,
+                })
+                .eq("id", item.product_id);
+            }
           }
         }
       }

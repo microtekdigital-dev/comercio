@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createPurchaseOrder } from "@/lib/actions/purchase-orders";
 import { getSuppliers } from "@/lib/actions/suppliers";
 import { getProducts, getProductsBySupplier } from "@/lib/actions/products";
-import type { PurchaseOrderFormData, PurchaseOrderItemFormData, Supplier, Product } from "@/lib/types/erp";
+import { getProductVariants } from "@/lib/actions/product-variants";
+import type { PurchaseOrderFormData, PurchaseOrderItemFormData, Supplier, Product, ProductVariant } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,7 @@ export default function NewPurchaseOrderPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+  const [productVariants, setProductVariants] = useState<Record<string, ProductVariant[]>>({});
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     supplier_id: "",
     order_date: new Date().toISOString().split("T")[0],
@@ -84,6 +86,8 @@ export default function NewPurchaseOrderPage() {
           product_id: "",
           product_name: "",
           product_sku: "",
+          variant_id: "",
+          variant_name: "",
           quantity: 1,
           unit_cost: 0,
           tax_rate: 21,
@@ -114,6 +118,21 @@ export default function NewPurchaseOrderPage() {
               updated.product_name = product.name;
               updated.product_sku = product.sku || "";
               updated.unit_cost = product.cost;
+              
+              // Reset variant selection when product changes
+              updated.variant_id = "";
+              updated.variant_name = "";
+            }
+          }
+          
+          // If variant selected, update variant name
+          if (field === "variant_id" && value) {
+            const productId = item.product_id;
+            if (productId && productVariants[productId]) {
+              const variant = productVariants[productId].find((v) => v.id === value);
+              if (variant) {
+                updated.variant_name = variant.variant_name;
+              }
             }
           }
           
@@ -123,6 +142,26 @@ export default function NewPurchaseOrderPage() {
       }),
     }));
   };
+
+  // Load variants when items change
+  useEffect(() => {
+    const loadVariantsForItems = async () => {
+      for (const item of formData.items) {
+        if (item.product_id && !productVariants[item.product_id]) {
+          const product = products.find((p) => p.id === item.product_id);
+          if (product?.has_variants) {
+            const variants = await getProductVariants(item.product_id);
+            setProductVariants(prev => ({
+              ...prev,
+              [item.product_id!]: variants
+            }));
+          }
+        }
+      }
+    };
+    
+    loadVariantsForItems();
+  }, [formData.items, products, productVariants]);
 
   const calculateItemTotal = (item: PurchaseOrderItemFormData) => {
     const subtotal = item.quantity * item.unit_cost;
@@ -339,6 +378,7 @@ export default function NewPurchaseOrderPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Producto</TableHead>
+                      <TableHead>Variante</TableHead>
                       <TableHead>Cantidad</TableHead>
                       <TableHead>Costo Unit.</TableHead>
                       <TableHead>Desc. %</TableHead>
@@ -348,109 +388,141 @@ export default function NewPurchaseOrderPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {formData.items.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Select
-                            value={item.product_id || "none"}
-                            onValueChange={(value) =>
-                              updateItem(index, "product_id", value === "none" ? "" : value)
-                            }
-                          >
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue placeholder="Seleccionar" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Producto manual</SelectItem>
-                              {availableProducts.length === 0 && formData.supplier_id ? (
-                                <SelectItem value="no-products" disabled>
-                                  No hay productos de este proveedor
-                                </SelectItem>
-                              ) : (
-                                availableProducts.map((product) => (
-                                  <SelectItem key={product.id} value={product.id}>
-                                    {product.name}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                          {!item.product_id && (
-                            <Input
-                              placeholder="Nombre del producto"
-                              value={item.product_name}
-                              onChange={(e) =>
-                                updateItem(index, "product_name", e.target.value)
+                    {formData.items.map((item, index) => {
+                      const selectedProduct = products.find(p => p.id === item.product_id);
+                      const hasVariants = selectedProduct?.has_variants;
+                      const variants = item.product_id ? productVariants[item.product_id] || [] : [];
+                      
+                      return (
+                        <TableRow key={index}>
+                          <TableCell>
+                            <Select
+                              value={item.product_id || "none"}
+                              onValueChange={(value) =>
+                                updateItem(index, "product_id", value === "none" ? "" : value)
                               }
-                              className="mt-2"
+                            >
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Seleccionar" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Producto manual</SelectItem>
+                                {availableProducts.length === 0 && formData.supplier_id ? (
+                                  <SelectItem value="no-products" disabled>
+                                    No hay productos de este proveedor
+                                  </SelectItem>
+                                ) : (
+                                  availableProducts.map((product) => (
+                                    <SelectItem key={product.id} value={product.id}>
+                                      {product.name}
+                                      {product.has_variants && " (con variantes)"}
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                            {!item.product_id && (
+                              <Input
+                                placeholder="Nombre del producto"
+                                value={item.product_name}
+                                onChange={(e) =>
+                                  updateItem(index, "product_name", e.target.value)
+                                }
+                                className="mt-2"
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {hasVariants && variants.length > 0 ? (
+                              <Select
+                                value={item.variant_id || ""}
+                                onValueChange={(value) =>
+                                  updateItem(index, "variant_id", value)
+                                }
+                              >
+                                <SelectTrigger className="w-[150px]">
+                                  <SelectValue placeholder="Seleccionar talle" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {variants.map((variant) => (
+                                    <SelectItem key={variant.id} value={variant.id}>
+                                      {variant.variant_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : hasVariants && variants.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">Cargando...</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              value={item.quantity}
+                              onChange={(e) =>
+                                updateItem(index, "quantity", parseFloat(e.target.value) || 0)
+                              }
+                              className="w-24"
                             />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              updateItem(index, "quantity", parseFloat(e.target.value) || 0)
-                            }
-                            className="w-24"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.unit_cost}
-                            onChange={(e) =>
-                              updateItem(index, "unit_cost", parseFloat(e.target.value) || 0)
-                            }
-                            className="w-28"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={item.discount_percent}
-                            onChange={(e) =>
-                              updateItem(index, "discount_percent", parseFloat(e.target.value) || 0)
-                            }
-                            className="w-20"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={item.tax_rate}
-                            onChange={(e) =>
-                              updateItem(index, "tax_rate", parseFloat(e.target.value) || 0)
-                            }
-                            className="w-20"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(calculateItemTotal(item))}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeItem(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.unit_cost}
+                              onChange={(e) =>
+                                updateItem(index, "unit_cost", parseFloat(e.target.value) || 0)
+                              }
+                              className="w-28"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={item.discount_percent}
+                              onChange={(e) =>
+                                updateItem(index, "discount_percent", parseFloat(e.target.value) || 0)
+                              }
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={item.tax_rate}
+                              onChange={(e) =>
+                                updateItem(index, "tax_rate", parseFloat(e.target.value) || 0)
+                              }
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(calculateItemTotal(item))}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeItem(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}

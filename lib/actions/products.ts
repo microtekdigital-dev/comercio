@@ -50,6 +50,26 @@ export async function getProducts(filters?: {
       query = query.eq("is_active", filters.isActive);
     }
 
+    // Apply low stock filter using SQL function (before ordering)
+    if (filters?.lowStock) {
+      const { data: lowStockIds, error: rpcError } = await supabase
+        .rpc('get_products_with_low_stock', { p_company_id: profile.company_id });
+      
+      if (rpcError) {
+        console.error("Error calling get_products_with_low_stock:", rpcError);
+        // Fallback to empty result if function fails
+        return [];
+      }
+      
+      if (lowStockIds && lowStockIds.length > 0) {
+        const productIds = lowStockIds.map((item: any) => item.product_id);
+        query = query.in('id', productIds);
+      } else {
+        // No products with low stock, return empty array
+        return [];
+      }
+    }
+
     query = query.order("created_at", { ascending: false });
 
     const { data, error } = await query;
@@ -58,9 +78,20 @@ export async function getProducts(filters?: {
 
     let products = data || [];
 
-    // Filter low stock in memory (can't do complex comparison in Supabase query easily)
-    if (filters?.lowStock) {
-      products = products.filter(p => p.track_inventory && p.stock_quantity <= p.min_stock_level);
+    // For products with variants, calculate total stock
+    for (const product of products) {
+      if (product.has_variants) {
+        const { data: variants } = await supabase
+          .from("product_variants")
+          .select("stock_quantity")
+          .eq("product_id", product.id)
+          .eq("company_id", profile.company_id)
+          .eq("is_active", true);
+        
+        if (variants && variants.length > 0) {
+          product.stock_quantity = variants.reduce((sum, v) => sum + (v.stock_quantity || 0), 0);
+        }
+      }
     }
 
     return products;
@@ -94,6 +125,20 @@ export async function getProduct(id: string): Promise<Product | null> {
       .single();
 
     if (error) throw error;
+    
+    // If product has variants, fetch them
+    if (data && data.has_variants) {
+      const { data: variants } = await supabase
+        .from("product_variants")
+        .select("*")
+        .eq("product_id", id)
+        .eq("company_id", profile.company_id)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      
+      data.variants = variants || [];
+    }
+    
     return data;
   } catch (error) {
     console.error("Error fetching product:", error);
@@ -135,17 +180,58 @@ export async function createProduct(formData: ProductFormData) {
       };
     }
 
+    // Validate: if has_variants is true, must have at least one variant
+    if (formData.has_variants && (!formData.variants || formData.variants.length === 0)) {
+      return { error: "Un producto con variantes debe tener al menos una variante configurada" };
+    }
+
+    // Extract variants from formData (not a column in products table)
+    const { variants, ...productData } = formData;
+
+    // Limpiar campos UUID vacíos (convertir "" a null)
+    const cleanedProductData = {
+      ...productData,
+      category_id: productData.category_id || null,
+      supplier_id: productData.supplier_id || null,
+    };
+
     const { data, error } = await supabase
       .from("products")
       .insert({
-        ...formData,
+        ...cleanedProductData,
         company_id: profile.company_id,
         created_by: user.id,
+        // If has variants, set stock_quantity to 0
+        stock_quantity: formData.has_variants ? 0 : (formData.stock_quantity || 0),
       })
       .select()
       .single();
 
     if (error) throw error;
+
+    // If product has variants, create them
+    if (formData.has_variants && variants && variants.length > 0) {
+      const variantsToInsert = variants.map((variant, index) => ({
+        company_id: profile.company_id,
+        product_id: data.id,
+        variant_name: variant.variant_name,
+        sku: variant.sku || null,
+        stock_quantity: variant.stock_quantity || 0,
+        min_stock_level: variant.min_stock_level || 0,
+        sort_order: variant.sort_order !== undefined ? variant.sort_order : index,
+        is_active: true,
+      }));
+
+      const { error: variantsError } = await supabase
+        .from("product_variants")
+        .insert(variantsToInsert);
+
+      if (variantsError) {
+        // Rollback: delete the product if variants creation fails
+        await supabase.from("products").delete().eq("id", data.id);
+        throw variantsError;
+      }
+    }
 
     revalidatePath("/dashboard/products");
     return { data };
@@ -184,16 +270,19 @@ export async function updateProduct(id: string, formData: ProductFormData) {
     // Get current product to check if stock changed
     const { data: currentProduct } = await supabase
       .from("products")
-      .select("stock_quantity, track_inventory")
+      .select("stock_quantity, track_inventory, has_variants")
       .eq("id", id)
       .eq("company_id", profile.company_id)
       .single();
 
+    // Extract variants from formData (not a column in products table)
+    const { variants, ...productData } = formData;
+
     // Limpiar campos UUID vacíos (convertir "" a null)
     const cleanedFormData = {
-      ...formData,
-      category_id: formData.category_id || null,
-      supplier_id: formData.supplier_id || null,
+      ...productData,
+      category_id: productData.category_id || null,
+      supplier_id: productData.supplier_id || null,
     };
 
     const { data, error } = await supabase
@@ -206,9 +295,100 @@ export async function updateProduct(id: string, formData: ProductFormData) {
 
     if (error) throw error;
 
+    // Handle variants update if product has variants
+    if (formData.has_variants && variants && variants.length > 0) {
+      // Import updateProductVariant at the top of the file if not already imported
+      const { updateProductVariant } = await import("@/lib/actions/product-variants");
+      
+      // Get existing variants
+      const { data: existingVariants } = await supabase
+        .from("product_variants")
+        .select("id")
+        .eq("product_id", id)
+        .eq("company_id", profile.company_id);
+
+      const existingIds = new Set(existingVariants?.map(v => v.id) || []);
+      const formVariantIds = new Set(variants.filter(v => v.id).map(v => v.id));
+
+      // Delete variants that are no longer in the form
+      const toDelete = Array.from(existingIds).filter(id => !formVariantIds.has(id));
+      if (toDelete.length > 0) {
+        await supabase
+          .from("product_variants")
+          .delete()
+          .in("id", toDelete);
+      }
+
+      // Update or insert variants
+      for (const [index, variant] of variants.entries()) {
+        if (variant.id && existingIds.has(variant.id)) {
+          // Update existing variant using updateProductVariant to register stock changes
+          const variantUpdateData = {
+            variant_name: variant.variant_name,
+            sku: variant.sku || undefined,
+            price: variant.price, // Include price if provided
+            stock_quantity: variant.stock_quantity || 0,
+            min_stock_level: variant.min_stock_level || 0,
+            sort_order: variant.sort_order !== undefined ? variant.sort_order : index,
+          };
+
+          const result = await updateProductVariant(variant.id, variantUpdateData);
+          
+          if (result.error) {
+            return { error: `Error actualizando variante ${variant.variant_name}: ${result.error}` };
+          }
+        } else {
+          // Insert new variant
+          const variantData = {
+            company_id: profile.company_id,
+            product_id: id,
+            variant_name: variant.variant_name,
+            sku: variant.sku || null,
+            price: variant.price, // Include price if provided
+            stock_quantity: variant.stock_quantity || 0,
+            min_stock_level: variant.min_stock_level || 0,
+            sort_order: variant.sort_order !== undefined ? variant.sort_order : index,
+            is_active: true,
+          };
+
+          const { data: newVariant, error: insertError } = await supabase
+            .from("product_variants")
+            .insert(variantData)
+            .select()
+            .single();
+
+          if (insertError) {
+            return { error: `Error insertando variante ${variant.variant_name}: ${insertError.message}` };
+          }
+
+          // Register stock movement if initial stock > 0
+          if (newVariant && variant.stock_quantity && variant.stock_quantity > 0) {
+            const userName = profile.full_name || profile.email;
+            
+            await supabase
+              .from("stock_movements")
+              .insert({
+                company_id: profile.company_id,
+                product_id: id,
+                variant_id: newVariant.id,
+                movement_type: 'adjustment_in',
+                quantity: variant.stock_quantity,
+                stock_before: 0,
+                stock_after: variant.stock_quantity,
+                created_by: user.id,
+                created_by_name: userName,
+                notes: "Stock inicial de variante agregada",
+              });
+          }
+        }
+      }
+    }
+
     // If stock changed and inventory is tracked, register stock movement
+    // Only for products WITHOUT variants (variants handle their own stock)
     if (
       currentProduct &&
+      !currentProduct.has_variants &&
       currentProduct.track_inventory &&
       formData.stock_quantity !== undefined &&
       formData.stock_quantity !== currentProduct.stock_quantity
@@ -264,6 +444,27 @@ export async function deleteProduct(id: string) {
       return { error: "No se encontró la empresa" };
     }
 
+    // Check if product has variants with stock
+    const { data: product } = await supabase
+      .from("products")
+      .select("has_variants")
+      .eq("id", id)
+      .eq("company_id", profile.company_id)
+      .single();
+
+    if (product?.has_variants) {
+      // Check if any variant has stock
+      const { data: variants } = await supabase
+        .from("product_variants")
+        .select("stock_quantity")
+        .eq("product_id", id)
+        .eq("company_id", profile.company_id);
+
+      if (variants && variants.some(v => v.stock_quantity > 0)) {
+        return { error: "No se puede eliminar un producto con stock en sus variantes" };
+      }
+    }
+
     const { error } = await supabase
       .from("products")
       .delete()
@@ -312,8 +513,8 @@ export async function searchProducts(query: string): Promise<Product[]> {
   }
 }
 
-// Get low stock products
-export async function getLowStockProducts(): Promise<Product[]> {
+// Get low stock products (including variants)
+export async function getLowStockProducts(): Promise<Array<Product & { variant_id?: string; variant_name?: string }>> {
   const supabase = await createClient();
   
   try {
@@ -333,16 +534,48 @@ export async function getLowStockProducts(): Promise<Product[]> {
       .select("*, category:categories(*), supplier:suppliers(*)")
       .eq("company_id", profile.company_id)
       .eq("track_inventory", true)
+      .eq("is_active", true)
       .order("stock_quantity", { ascending: true });
 
     if (error) throw error;
     
-    // Filter products where stock_quantity <= min_stock_level
-    const lowStockProducts = (data || []).filter(
-      product => product.stock_quantity <= product.min_stock_level
-    );
+    const lowStockItems: Array<Product & { variant_id?: string; variant_name?: string }> = [];
     
-    return lowStockProducts;
+    for (const product of data || []) {
+      if (product.has_variants) {
+        // For products with variants, check each variant
+        const { data: variants } = await supabase
+          .from("product_variants")
+          .select("*")
+          .eq("product_id", product.id)
+          .eq("company_id", profile.company_id)
+          .eq("is_active", true);
+        
+        if (variants) {
+          for (const variant of variants) {
+            // Only consider low stock if min_stock_level > 0 (product is actually tracked)
+            // This excludes variants that the supplier doesn't manufacture (both stock and min are 0)
+            if (variant.min_stock_level > 0 && variant.stock_quantity <= variant.min_stock_level) {
+              lowStockItems.push({
+                ...product,
+                variant_id: variant.id,
+                variant_name: variant.variant_name,
+                stock_quantity: variant.stock_quantity,
+                min_stock_level: variant.min_stock_level,
+              });
+            }
+          }
+        }
+      } else {
+        // For simple products, check product stock
+        // Only consider low stock if min_stock_level > 0 (product is actually tracked)
+        if (product.min_stock_level > 0 && product.stock_quantity <= product.min_stock_level) {
+          lowStockItems.push(product);
+        }
+      }
+    }
+    
+    return lowStockItems;
   } catch (error) {
     console.error("Error fetching low stock products:", error);
     return [];

@@ -12,10 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import type { Customer, Product, QuoteItemFormData } from "@/lib/types/erp"
+import { VariantSelectorForQuotes } from "@/components/dashboard/variant-selector-for-quotes"
 
-export default function QuoteForm({ customers, products }: { customers: Customer[], products: Product[] }) {
+export default function QuoteForm({ customers, products: initialProducts }: { customers: Customer[], products: Product[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [products, setProducts] = useState<Product[]>(initialProducts)
   const [customerId, setCustomerId] = useState("")
   const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split("T")[0])
   const [validUntil, setValidUntil] = useState(
@@ -41,7 +43,7 @@ export default function QuoteForm({ customers, products }: { customers: Customer
     setItems(newItems)
   }
 
-  const selectProduct = (index: number, productId: string) => {
+  const selectProduct = async (index: number, productId: string) => {
     const product = products.find((p) => p.id === productId)
     if (product) {
       const newItems = [...items]
@@ -52,9 +54,22 @@ export default function QuoteForm({ customers, products }: { customers: Customer
         product_sku: product.sku || "",
         unit_price: product.price,
         tax_rate: product.tax_rate,
+        variant_id: undefined,
+        variant_name: undefined,
       }
       setItems(newItems)
     }
+  }
+
+  const handleVariantSelect = (index: number, variantId: string | undefined, variantName: string | undefined, price?: number) => {
+    const newItems = [...items]
+    newItems[index] = {
+      ...newItems[index],
+      variant_id: variantId,
+      variant_name: variantName,
+      unit_price: price !== undefined ? price : newItems[index].unit_price,
+    }
+    setItems(newItems)
   }
 
   const calculateTotal = () => {
@@ -127,46 +142,66 @@ export default function QuoteForm({ customers, products }: { customers: Customer
           </Button>
         </div>
         {items.map((item, index) => (
-          <div key={index} className="grid grid-cols-12 gap-2 items-end">
-            <div className="col-span-4">
-              <Label>Producto</Label>
-              <Select value={item.product_id} onValueChange={(v) => selectProduct(index, v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div key={index} className="space-y-2 p-4 border rounded-lg">
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-4">
+                <Label>Producto</Label>
+                <Select value={item.product_id} onValueChange={(v) => selectProduct(index, v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Cantidad</Label>
+                <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, "quantity", Number(e.target.value))} />
+              </div>
+              <div className="col-span-2">
+                <Label>Precio</Label>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  value={item.unit_price} 
+                  onChange={(e) => updateItem(index, "unit_price", Number(e.target.value))} 
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>IVA %</Label>
+                <Input type="number" value={item.tax_rate} onChange={(e) => updateItem(index, "tax_rate", Number(e.target.value))} />
+              </div>
+              <div className="col-span-1">
+                <Label>Desc %</Label>
+                <Input type="number" value={item.discount_percent} onChange={(e) => updateItem(index, "discount_percent", Number(e.target.value))} />
+              </div>
+              <div className="col-span-1">
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="col-span-2">
-              <Label>Cantidad</Label>
-              <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, "quantity", Number(e.target.value))} />
-            </div>
-            <div className="col-span-2">
-              <Label>Precio</Label>
-              <Input 
-                type="number" 
-                step="0.01" 
-                value={item.unit_price} 
-                onChange={(e) => updateItem(index, "unit_price", Number(e.target.value))} 
-              />
-            </div>
-            <div className="col-span-2">
-              <Label>IVA %</Label>
-              <Input type="number" value={item.tax_rate} onChange={(e) => updateItem(index, "tax_rate", Number(e.target.value))} />
-            </div>
-            <div className="col-span-1">
-              <Label>Desc %</Label>
-              <Input type="number" value={item.discount_percent} onChange={(e) => updateItem(index, "discount_percent", Number(e.target.value))} />
-            </div>
-            <div className="col-span-1">
-              <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            
+            {/* Show variant selector if product has variants */}
+            {item.product_id && (() => {
+              const product = products.find((p) => p.id === item.product_id)
+              if (!product?.has_variants) return null
+              
+              return (
+                <div className="mt-2">
+                  <VariantSelectorForQuotes
+                    productId={product.id}
+                    selectedVariantId={item.variant_id}
+                    onVariantChange={(variantId, variantName, price) => {
+                      handleVariantSelect(index, variantId, variantName, price)
+                    }}
+                  />
+                </div>
+              )
+            })()}
           </div>
         ))}
       </Card>

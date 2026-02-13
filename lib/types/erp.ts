@@ -36,6 +36,70 @@ export interface Category {
   updated_at: string;
 }
 
+// =====================================================
+// Product Variant Types
+// =====================================================
+
+export type VariantType = 'none' | 'shirts' | 'pants' | 'custom';
+
+export interface VariantTemplate {
+  id: string;
+  company_id: string;
+  template_name: string;
+  sizes: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  company_id: string;
+  product_id: string;
+  variant_name: string;
+  sku: string | null;
+  price: number | null; // Precio de venta de la variante
+  stock_quantity: number;
+  min_stock_level: number;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Predefined variant types configuration
+export const VARIANT_TYPES = {
+  none: {
+    label: 'Sin variantes',
+    sizes: []
+  },
+  shirts: {
+    label: 'Camisas/Remeras',
+    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+  },
+  pants: {
+    label: 'Pantalones',
+    sizes: ['28', '30', '32', '34', '36', '38', '40', '42', '44', '46']
+  },
+  custom: {
+    label: 'Personalizado',
+    sizes: []
+  }
+} as const;
+
+// Validation error messages for variants
+export const VARIANT_ERRORS = {
+  NO_VARIANTS: 'Un producto con variantes debe tener al menos una variante configurada',
+  DUPLICATE_VARIANT: 'Ya existe una variante con ese nombre en este producto',
+  VARIANT_REQUIRED: 'Debe seleccionar una variante para este producto',
+  INSUFFICIENT_STOCK: 'Stock insuficiente para la variante seleccionada',
+  CANNOT_DELETE_WITH_STOCK: 'No se puede eliminar una variante con stock positivo',
+  CANNOT_DISABLE_WITH_STOCK: 'No se pueden desactivar las variantes mientras haya stock',
+  NEGATIVE_STOCK: 'El stock no puede ser negativo',
+  VARIANT_NOT_FOUND: 'Variante no encontrada',
+  PRODUCT_NOT_FOUND: 'Producto no encontrado',
+  INVALID_VARIANT_TYPE: 'Tipo de variante inválido'
+} as const;
+
 export interface Product {
   id: string;
   company_id: string;
@@ -54,11 +118,14 @@ export interface Product {
   track_inventory: boolean;
   is_active: boolean;
   image_url: string | null;
+  has_variants: boolean;
+  variant_type: VariantType | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   category?: Category;
   supplier?: Supplier; // Relación con proveedor para consultas JOIN
+  variants?: ProductVariant[];
 }
 
 export interface Sale {
@@ -91,6 +158,8 @@ export interface SaleItem {
   product_id: string | null;
   product_name: string;
   product_sku: string | null;
+  variant_id: string | null;
+  variant_name: string | null;
   quantity: number;
   unit_price: number;
   tax_rate: number;
@@ -146,6 +215,19 @@ export interface ProductFormData {
   track_inventory: boolean;
   is_active: boolean;
   image_url?: string;
+  has_variants: boolean;
+  variant_type?: VariantType;
+  variants?: ProductVariantFormData[];
+}
+
+export interface ProductVariantFormData {
+  id?: string; // Para edición
+  variant_name: string;
+  sku?: string;
+  price?: number; // Precio de venta de la variante
+  stock_quantity: number;
+  min_stock_level: number;
+  sort_order: number;
 }
 
 export interface CategoryFormData {
@@ -172,6 +254,8 @@ export interface SaleItemFormData {
   product_id?: string;
   product_name: string;
   product_sku?: string;
+  variant_id?: string;
+  variant_name?: string;
   quantity: number;
   unit_price: number;
   tax_rate: number;
@@ -266,6 +350,8 @@ export interface PurchaseOrderItem {
   product_id: string | null;
   product_name: string;
   product_sku: string | null;
+  variant_id: string | null;
+  variant_name: string | null;
   quantity: number;
   unit_cost: number;
   tax_rate: number;
@@ -323,6 +409,8 @@ export interface PurchaseOrderItemFormData {
   product_id?: string;
   product_name: string;
   product_sku?: string;
+  variant_id?: string;
+  variant_name?: string;
   quantity: number;
   unit_cost: number;
   tax_rate: number;
@@ -366,6 +454,8 @@ export interface QuoteItem {
   product_id: string | null;
   product_name: string;
   product_sku: string | null;
+  variant_id: string | null;
+  variant_name: string | null;
   quantity: number;
   unit_price: number;
   tax_rate: number;
@@ -392,6 +482,8 @@ export interface QuoteItemFormData {
   product_id?: string;
   product_name: string;
   product_sku?: string;
+  variant_id?: string;
+  variant_name?: string;
   quantity: number;
   unit_price: number;
   tax_rate: number;
@@ -438,6 +530,7 @@ export interface StockMovement {
   id: string;
   company_id: string;
   product_id: string;
+  variant_id: string | null;
   movement_type: 'purchase' | 'sale' | 'adjustment_in' | 'adjustment_out' | 'return_in' | 'return_out';
   quantity: number;
   stock_before: number;
@@ -449,17 +542,20 @@ export interface StockMovement {
   notes: string | null;
   created_at: string;
   product?: Product;
+  variant?: ProductVariant;
 }
 
 export interface StockMovementFormData {
   product_id: string;
-  movement_type: 'adjustment_in' | 'adjustment_out';
+  variant_id?: string;
+  movement_type: 'adjustment_in' | 'adjustment_out' | 'return_in' | 'return_out';
   quantity: number;
   notes?: string;
 }
 
 export interface StockMovementFilters {
   productId?: string;
+  variantId?: string;
   movementType?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -484,6 +580,7 @@ export interface PriceChange {
   id: string;
   company_id: string;
   product_id: string;
+  variant_id: string | null; // ID de la variante (NULL para productos sin variantes)
   price_type: 'sale_price' | 'cost_price';
   old_value: number;
   new_value: number;
@@ -493,6 +590,7 @@ export interface PriceChange {
   reason: string | null;
   created_at: string;
   product?: Product;
+  variant?: ProductVariant; // Relación con variante para consultas JOIN
 }
 
 export interface PriceChangeFilters {

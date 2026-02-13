@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { getQuote, updateQuote, deleteQuote, sendQuoteByEmail, convertQuoteToSale } from "@/lib/actions/quotes"
 import { getCustomers } from "@/lib/actions/customers"
 import { getProducts } from "@/lib/actions/products"
+import { getProductVariants } from "@/lib/actions/product-variants"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +20,7 @@ import { ArrowLeft, Calendar, User, FileText, Save, Mail, Trash2, ShoppingCart, 
 import Link from "next/link"
 import { toast } from "sonner"
 import type { Quote, Customer, Product, QuoteItemFormData } from "@/lib/types/erp"
+import { VariantSelectorForQuotes } from "@/components/dashboard/variant-selector-for-quotes"
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -46,6 +48,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   // Data for editing
   const [customers, setCustomers] = useState<Customer[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [productVariants, setProductVariants] = useState<Record<string, any[]>>({})
 
   useEffect(() => {
     params.then((resolvedParams) => {
@@ -100,6 +103,17 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       setProducts(data)
     } catch (error) {
       console.error("Error loading products:", error)
+    }
+  }
+
+  const loadProductVariants = async (productId: string) => {
+    if (productVariants[productId]) return
+    
+    try {
+      const variants = await getProductVariants(productId)
+      setProductVariants(prev => ({ ...prev, [productId]: variants }))
+    } catch (error) {
+      console.error("Error loading variants:", error)
     }
   }
 
@@ -190,9 +204,30 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     setItems(newItems)
   }
 
+  const updateItemVariant = (
+    index: number, 
+    variantId: string | undefined, 
+    variantName: string | undefined,
+    price?: number
+  ) => {
+    const newItems = [...items]
+    newItems[index] = {
+      ...newItems[index],
+      variant_id: variantId,
+      variant_name: variantName,
+      unit_price: price !== undefined ? price : newItems[index].unit_price,
+    }
+    setItems(newItems)
+  }
+
   const selectProduct = (index: number, productId: string) => {
     const product = products.find((p) => p.id === productId)
     if (product) {
+      // Cargar variantes si el producto las tiene
+      if (product.has_variants) {
+        loadProductVariants(productId)
+      }
+      
       const newItems = [...items]
       newItems[index] = {
         ...newItems[index],
@@ -201,9 +236,17 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         product_sku: product.sku || "",
         unit_price: product.price,
         tax_rate: product.tax_rate,
+        variant_id: undefined,
+        variant_name: undefined,
       }
       setItems(newItems)
     }
+  }
+
+  const productHasVariants = (productId: string | undefined) => {
+    if (!productId) return false
+    const product = products.find(p => p.id === productId)
+    return product?.has_variants || false
   }
 
   if (!quote) {
@@ -484,46 +527,61 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent className="space-y-4">
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-4">
-                    <Label>Producto</Label>
-                    <Select value={item.product_id} onValueChange={(v) => selectProduct(index, v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div key={index} className="space-y-2">
+                  <div className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-4">
+                      <Label>Producto</Label>
+                      <Select value={item.product_id} onValueChange={(v) => selectProduct(index, v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Cantidad</Label>
+                      <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, "quantity", Number(e.target.value))} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Precio</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={item.unit_price} 
+                        onChange={(e) => updateItem(index, "unit_price", Number(e.target.value))} 
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>IVA %</Label>
+                      <Input type="number" value={item.tax_rate} onChange={(e) => updateItem(index, "tax_rate", Number(e.target.value))} />
+                    </div>
+                    <div className="col-span-1">
+                      <Label>Desc %</Label>
+                      <Input type="number" value={item.discount_percent} onChange={(e) => updateItem(index, "discount_percent", Number(e.target.value))} />
+                    </div>
+                    <div className="col-span-1">
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <Label>Cantidad</Label>
-                    <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, "quantity", Number(e.target.value))} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Precio</Label>
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      value={item.unit_price} 
-                      onChange={(e) => updateItem(index, "unit_price", Number(e.target.value))} 
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label>IVA %</Label>
-                    <Input type="number" value={item.tax_rate} onChange={(e) => updateItem(index, "tax_rate", Number(e.target.value))} />
-                  </div>
-                  <div className="col-span-1">
-                    <Label>Desc %</Label>
-                    <Input type="number" value={item.discount_percent} onChange={(e) => updateItem(index, "discount_percent", Number(e.target.value))} />
-                  </div>
-                  <div className="col-span-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  
+                  {/* Selector de variantes */}
+                  {item.product_id && productHasVariants(item.product_id) && (
+                    <div className="ml-0">
+                      <VariantSelectorForQuotes
+                        productId={item.product_id}
+                        selectedVariantId={item.variant_id}
+                        onVariantChange={(variantId, variantName, price) => {
+                          updateItemVariant(index, variantId, variantName, price)
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </CardContent>
@@ -659,6 +717,11 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                       >
                         <div className="md:col-span-4">
                           <p className="font-medium">{item.product_name}</p>
+                          {item.variant_name && (
+                            <Badge variant="outline" className="mt-1">
+                              {item.variant_name}
+                            </Badge>
+                          )}
                           {item.product_sku && (
                             <p className="text-xs text-muted-foreground">
                               SKU: {item.product_sku}

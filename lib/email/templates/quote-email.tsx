@@ -11,6 +11,7 @@ interface QuoteEmailProps {
   message: string
   items: Array<{
     product_name: string
+    variant_name?: string | null
     quantity: number
     unit_price: number
     total: number
@@ -237,6 +238,15 @@ export const QuoteEmail: React.FC<QuoteEmailProps> = ({
                     }}
                   >
                     {item.product_name}
+                    {item.variant_name && (
+                      <div style={{
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        marginTop: "4px",
+                      }}>
+                        {item.variant_name}
+                      </div>
+                    )}
                   </td>
                   <td
                     style={{

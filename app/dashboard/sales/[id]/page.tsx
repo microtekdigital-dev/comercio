@@ -476,8 +476,13 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
                   >
                     <div className="md:col-span-4">
                       <p className="font-medium">{item.product_name}</p>
+                      {item.variant_name && (
+                        <Badge variant="outline" className="mt-1 text-xs">
+                          Talle: {item.variant_name}
+                        </Badge>
+                      )}
                       {item.product_sku && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground mt-1">
                           SKU: {item.product_sku}
                         </p>
                       )}

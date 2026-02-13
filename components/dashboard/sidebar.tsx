@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { createClient } from "@/lib/supabase/client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Building2,
   LayoutDashboard,
@@ -97,48 +97,44 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
 
-  // Evitar problemas de hidratación
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  // Usar useMemo para evitar problemas de hidratación
+  const navItems = useMemo(() => {
+    const baseAdminNavItems = [
+      { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
+      { href: "/dashboard/customers", label: "Clientes", icon: Users },
+      ...(canSeeSuppliers ? [{ href: "/dashboard/suppliers", label: "Proveedores", icon: Building2 }] : []),
+      ...(canSeePurchaseOrders ? [{ href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList }] : []),
+      { href: "/dashboard/products", label: "Productos", icon: Package },
+      { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+      ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
+      ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
+      { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+      { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+      ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign }] : []),
+      { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
+      { href: "/dashboard/team", label: "Equipo", icon: Users },
+      { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
+      { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
+      { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+    ]
 
-  // Filtrar items del menú según permisos del plan
-  const baseAdminNavItems = [
-    { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
-    { href: "/dashboard/customers", label: "Clientes", icon: Users },
-    ...(canSeeSuppliers ? [{ href: "/dashboard/suppliers", label: "Proveedores", icon: Building2 }] : []),
-    ...(canSeePurchaseOrders ? [{ href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList }] : []),
-    { href: "/dashboard/products", label: "Productos", icon: Package },
-    { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
-    ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
-    ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-    { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
-    { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
-    ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign }] : []),
-    { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
-    { href: "/dashboard/team", label: "Equipo", icon: Users },
-    { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
-    { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
-    { href: "/dashboard/settings", label: "Configuración", icon: Settings },
-  ]
+    const baseEmployeeNavItems = [
+      { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
+      { href: "/dashboard/customers", label: "Clientes", icon: Users },
+      { href: "/dashboard/products", label: "Productos", icon: Package },
+      { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+      ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
+      ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
+      { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+      { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+      ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign }] : []),
+      { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
+      { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+    ]
 
-  const baseEmployeeNavItems = [
-    { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
-    { href: "/dashboard/customers", label: "Clientes", icon: Users },
-    { href: "/dashboard/products", label: "Productos", icon: Package },
-    { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
-    ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
-    ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-    { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
-    { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
-    ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Cierre de Caja", icon: DollarSign }] : []),
-    { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
-    { href: "/dashboard/settings", label: "Configuración", icon: Settings },
-  ]
-
-  const navItems = user.role === "admin" ? baseAdminNavItems : employeeNavItems
+    return user.role === "admin" ? baseAdminNavItems : baseEmployeeNavItems
+  }, [user.role, canSeePurchaseOrders, canSeeSuppliers, canSeeStockHistory, canSeePriceHistory, canSeeCashRegister])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -181,8 +177,8 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = mounted && (pathname === item.href || 
-            (item.href !== "/dashboard" && pathname.startsWith(item.href)))
+          const isActive = pathname === item.href || 
+            (item.href !== "/dashboard" && pathname.startsWith(item.href))
 
           return (
             <Link

@@ -250,9 +250,19 @@ export function StockHistoryTable({ movements, employees = [] }: StockHistoryTab
                         <Badge variant={typeInfo.variant}>
                           {typeInfo.label}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {isManual ? "Manual" : "Automático"}
-                        </span>
+                        {movement.purchase_order_id ? (
+                          <span className="text-xs text-muted-foreground">
+                            Orden de Compra
+                          </span>
+                        ) : movement.sale_id ? (
+                          <span className="text-xs text-muted-foreground">
+                            Venta
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {isManual ? "Manual" : "Automático"}
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

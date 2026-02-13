@@ -9,6 +9,59 @@ async function checkExportAccess(companyId: string): Promise<{ allowed: boolean;
   return await canExportToExcel(companyId);
 }
 
+// Helper function to expand products with variants for export
+function expandProductsWithVariants(products: Product[]) {
+  const expandedProducts: any[] = [];
+  
+  products.forEach(product => {
+    if (product.has_variants && product.variants && product.variants.length > 0) {
+      // Add each active variant as a separate row
+      product.variants
+        .filter(v => v.is_active)
+        .forEach(variant => {
+          expandedProducts.push({
+            "SKU": variant.sku || product.sku || "",
+            "Nombre": `${product.name} - ${variant.variant_name}`,
+            "Descripción": product.description || "",
+            "Tipo": product.type === "product" ? "Producto" : "Servicio",
+            "Categoría": product.category?.name || "",
+            "Precio": variant.price || product.price,
+            "Costo": product.cost,
+            "Moneda": product.currency,
+            "Tasa de Impuesto": product.tax_rate,
+            "Stock": variant.stock_quantity,
+            "Stock Mínimo": variant.min_stock_level,
+            "Controla Inventario": product.track_inventory ? "Sí" : "No",
+            "Activo": "Sí",
+            "Es Variante": "Sí",
+            "Producto Padre": product.name,
+          });
+        });
+    } else {
+      // Add simple product as single row
+      expandedProducts.push({
+        "SKU": product.sku || "",
+        "Nombre": product.name,
+        "Descripción": product.description || "",
+        "Tipo": product.type === "product" ? "Producto" : "Servicio",
+        "Categoría": product.category?.name || "",
+        "Precio": product.price,
+        "Costo": product.cost,
+        "Moneda": product.currency,
+        "Tasa de Impuesto": product.tax_rate,
+        "Stock": product.stock_quantity,
+        "Stock Mínimo": product.min_stock_level,
+        "Controla Inventario": product.track_inventory ? "Sí" : "No",
+        "Activo": product.is_active ? "Sí" : "No",
+        "Es Variante": "No",
+        "Producto Padre": "",
+      });
+    }
+  });
+  
+  return expandedProducts;
+}
+
 // Export to Excel/CSV
 export function exportToExcel(data: any[], filename: string, sheetName: string = "Data") {
   const worksheet = XLSX.utils.json_to_sheet(data);
@@ -31,85 +84,115 @@ export function exportToCSV(data: any[], filename: string) {
   document.body.removeChild(link);
 }
 
-// Sales Export
+// Sales Export (with item details and variant support)
 export function exportSalesToExcel(sales: Sale[]) {
-  const data = sales.map((sale) => ({
-    "Número": sale.sale_number,
-    "Fecha": new Date(sale.sale_date).toLocaleDateString("es-AR"),
-    "Cliente": sale.customer?.name || "Sin cliente",
-    "Estado": sale.status,
-    "Estado de Pago": sale.payment_status,
-    "Subtotal": sale.subtotal,
-    "Impuestos": sale.tax_amount,
-    "Descuento": sale.discount_amount,
-    "Total": sale.total,
-    "Moneda": sale.currency,
-    "Método de Pago": sale.payment_method || "",
-    "Items": sale.items?.length || 0,
-    "Notas": sale.notes || "",
-  }));
+  const data: any[] = [];
+  
+  sales.forEach(sale => {
+    if (sale.items && sale.items.length > 0) {
+      // Una fila por cada item de la venta
+      sale.items.forEach(item => {
+        const productName = item.variant_name
+          ? `${item.product_name} - ${item.variant_name}`
+          : item.product_name;
+        
+        data.push({
+          "Número de Venta": sale.sale_number,
+          "Fecha": new Date(sale.sale_date).toLocaleDateString("es-AR"),
+          "Cliente": sale.customer?.name || "Sin cliente",
+          "Producto": productName,
+          "SKU": item.product_sku || "",
+          "Cantidad": item.quantity,
+          "Precio Unitario": item.unit_price,
+          "Subtotal Item": item.subtotal,
+          "Total Item": item.total,
+          "Estado Venta": sale.status,
+          "Estado de Pago": sale.payment_status,
+          "Total Venta": sale.total,
+          "Moneda": sale.currency,
+        });
+      });
+    } else {
+      // Venta sin items (caso edge)
+      data.push({
+        "Número de Venta": sale.sale_number,
+        "Fecha": new Date(sale.sale_date).toLocaleDateString("es-AR"),
+        "Cliente": sale.customer?.name || "Sin cliente",
+        "Producto": "",
+        "SKU": "",
+        "Cantidad": 0,
+        "Precio Unitario": 0,
+        "Subtotal Item": 0,
+        "Total Item": 0,
+        "Estado Venta": sale.status,
+        "Estado de Pago": sale.payment_status,
+        "Total Venta": sale.total,
+        "Moneda": sale.currency,
+      });
+    }
+  });
 
   exportToExcel(data, `ventas-${new Date().toISOString().split("T")[0]}`, "Ventas");
 }
 
 export function exportSalesToCSV(sales: Sale[]) {
-  const data = sales.map((sale) => ({
-    "Número": sale.sale_number,
-    "Fecha": new Date(sale.sale_date).toLocaleDateString("es-AR"),
-    "Cliente": sale.customer?.name || "Sin cliente",
-    "Estado": sale.status,
-    "Estado de Pago": sale.payment_status,
-    "Subtotal": sale.subtotal,
-    "Impuestos": sale.tax_amount,
-    "Descuento": sale.discount_amount,
-    "Total": sale.total,
-    "Moneda": sale.currency,
-    "Método de Pago": sale.payment_method || "",
-    "Items": sale.items?.length || 0,
-    "Notas": sale.notes || "",
-  }));
+  const data: any[] = [];
+  
+  sales.forEach(sale => {
+    if (sale.items && sale.items.length > 0) {
+      // Una fila por cada item de la venta
+      sale.items.forEach(item => {
+        const productName = item.variant_name
+          ? `${item.product_name} - ${item.variant_name}`
+          : item.product_name;
+        
+        data.push({
+          "Número de Venta": sale.sale_number,
+          "Fecha": new Date(sale.sale_date).toLocaleDateString("es-AR"),
+          "Cliente": sale.customer?.name || "Sin cliente",
+          "Producto": productName,
+          "SKU": item.product_sku || "",
+          "Cantidad": item.quantity,
+          "Precio Unitario": item.unit_price,
+          "Subtotal Item": item.subtotal,
+          "Total Item": item.total,
+          "Estado Venta": sale.status,
+          "Estado de Pago": sale.payment_status,
+          "Total Venta": sale.total,
+          "Moneda": sale.currency,
+        });
+      });
+    } else {
+      // Venta sin items (caso edge)
+      data.push({
+        "Número de Venta": sale.sale_number,
+        "Fecha": new Date(sale.sale_date).toLocaleDateString("es-AR"),
+        "Cliente": sale.customer?.name || "Sin cliente",
+        "Producto": "",
+        "SKU": "",
+        "Cantidad": 0,
+        "Precio Unitario": 0,
+        "Subtotal Item": 0,
+        "Total Item": 0,
+        "Estado Venta": sale.status,
+        "Estado de Pago": sale.payment_status,
+        "Total Venta": sale.total,
+        "Moneda": sale.currency,
+      });
+    }
+  });
 
   exportToCSV(data, `ventas-${new Date().toISOString().split("T")[0]}`);
 }
 
-// Products Export
+// Products Export (with variant support)
 export function exportProductsToExcel(products: Product[]) {
-  const data = products.map((product) => ({
-    "SKU": product.sku || "",
-    "Nombre": product.name,
-    "Descripción": product.description || "",
-    "Tipo": product.type === "product" ? "Producto" : "Servicio",
-    "Categoría": product.category?.name || "",
-    "Precio": product.price,
-    "Costo": product.cost,
-    "Moneda": product.currency,
-    "Tasa de Impuesto": product.tax_rate,
-    "Stock": product.stock_quantity,
-    "Stock Mínimo": product.min_stock_level,
-    "Controla Inventario": product.track_inventory ? "Sí" : "No",
-    "Activo": product.is_active ? "Sí" : "No",
-  }));
-
+  const data = expandProductsWithVariants(products);
   exportToExcel(data, `productos-${new Date().toISOString().split("T")[0]}`, "Productos");
 }
 
 export function exportProductsToCSV(products: Product[]) {
-  const data = products.map((product) => ({
-    "SKU": product.sku || "",
-    "Nombre": product.name,
-    "Descripción": product.description || "",
-    "Tipo": product.type === "product" ? "Producto" : "Servicio",
-    "Categoría": product.category?.name || "",
-    "Precio": product.price,
-    "Costo": product.cost,
-    "Moneda": product.currency,
-    "Tasa de Impuesto": product.tax_rate,
-    "Stock": product.stock_quantity,
-    "Stock Mínimo": product.min_stock_level,
-    "Controla Inventario": product.track_inventory ? "Sí" : "No",
-    "Activo": product.is_active ? "Sí" : "No",
-  }));
-
+  const data = expandProductsWithVariants(products);
   exportToCSV(data, `productos-${new Date().toISOString().split("T")[0]}`);
 }
 
@@ -236,14 +319,32 @@ export function exportProductsReportToPDF(
   doc.text(`Productos con Stock Bajo: ${stats.lowStockProducts}`, 14, 59);
   doc.text(`Valor Total de Inventario: $${stats.totalValue.toFixed(2)}`, 14, 66);
 
-  // Table
-  const tableData = products.map((product) => [
-    product.sku || "-",
-    product.name,
-    product.type === "product" ? "Producto" : "Servicio",
-    `$${product.price.toFixed(2)}`,
-    product.track_inventory ? product.stock_quantity.toString() : "N/A",
-  ]);
+  // Expand products with variants for table
+  const tableData: any[] = [];
+  
+  products.forEach(product => {
+    if (product.has_variants && product.variants && product.variants.length > 0) {
+      product.variants
+        .filter(v => v.is_active)
+        .forEach(variant => {
+          tableData.push([
+            variant.sku || product.sku || "-",
+            `${product.name}\n${variant.variant_name}`,
+            product.type === "product" ? "Producto" : "Servicio",
+            `$${(variant.price || product.price).toFixed(2)}`,
+            product.track_inventory ? variant.stock_quantity.toString() : "N/A",
+          ]);
+        });
+    } else {
+      tableData.push([
+        product.sku || "-",
+        product.name,
+        product.type === "product" ? "Producto" : "Servicio",
+        `$${product.price.toFixed(2)}`,
+        product.track_inventory ? product.stock_quantity.toString() : "N/A",
+      ]);
+    }
+  });
 
   autoTable(doc, {
     startY: 75,
@@ -251,7 +352,10 @@ export function exportProductsReportToPDF(
     body: tableData,
     theme: "grid",
     headStyles: { fillColor: [59, 130, 246] },
-    styles: { fontSize: 8 },
+    styles: { fontSize: 7, cellPadding: 2 },
+    columnStyles: {
+      1: { cellWidth: 60 }, // Nombre column wider for variants
+    },
   });
 
   doc.save(`reporte-productos-${new Date().toISOString().split("T")[0]}.pdf`);

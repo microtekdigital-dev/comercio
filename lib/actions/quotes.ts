@@ -94,6 +94,8 @@ export async function createQuote(formData: QuoteFormData) {
     return {
       quote_id: quote.id,
       ...item,
+      variant_id: item.variant_id || null,
+      variant_name: item.variant_name || null,
       subtotal,
       tax_amount: tax,
       total: subtotal + tax,
@@ -153,6 +155,8 @@ export async function updateQuote(id: string, formData: QuoteFormData) {
     return {
       quote_id: id,
       ...item,
+      variant_id: item.variant_id || null,
+      variant_name: item.variant_name || null,
       subtotal,
       tax_amount: tax,
       total: subtotal + tax,
@@ -208,7 +212,7 @@ export async function sendQuoteByEmail(id: string, email: string, subject: strin
     .eq("id", user.id)
     .single()
 
-  const companyName = profile?.company?.name || "Mi Empresa"
+  const companyName = (profile?.company as any)?.name || "Mi Empresa"
 
   // Enviar email usando Resend
   const { sendQuoteEmail } = await import("@/lib/email/resend")
@@ -226,6 +230,7 @@ export async function sendQuoteByEmail(id: string, email: string, subject: strin
     currency: quote.currency,
     items: quote.items.map((item: any) => ({
       product_name: item.product_name,
+      variant_name: item.variant_name || null,
       quantity: item.quantity,
       unit_price: item.unit_price,
       total: item.total,
@@ -266,6 +271,46 @@ export async function convertQuoteToSale(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("No autenticado")
 
+  // Validar stock de variantes antes de convertir
+  for (const item of quote.items) {
+    if (item.variant_id) {
+      const { data: variant } = await supabase
+        .from("product_variants")
+        .select("stock")
+        .eq("id", item.variant_id)
+        .single()
+
+      if (!variant) {
+        throw new Error(`Variante no encontrada para ${item.product_name}`)
+      }
+
+      if (variant.stock < item.quantity) {
+        throw new Error(
+          `Stock insuficiente para ${item.product_name} - ${item.variant_name}. ` +
+          `Disponible: ${variant.stock}, Requerido: ${item.quantity}`
+        )
+      }
+    } else {
+      // Validar stock de producto simple
+      const { data: product } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", item.product_id)
+        .single()
+
+      if (!product) {
+        throw new Error(`Producto no encontrado: ${item.product_name}`)
+      }
+
+      if (product.stock < item.quantity) {
+        throw new Error(
+          `Stock insuficiente para ${item.product_name}. ` +
+          `Disponible: ${product.stock}, Requerido: ${item.quantity}`
+        )
+      }
+    }
+  }
+
   const { data: sale, error: saleError } = await supabase
     .from("sales")
     .insert({
@@ -299,6 +344,8 @@ export async function convertQuoteToSale(id: string) {
     subtotal: item.subtotal,
     tax_amount: item.tax_amount,
     total: item.total,
+    variant_id: item.variant_id || null,
+    variant_name: item.variant_name || null,
   }))
 
   const { error: itemsError } = await supabase

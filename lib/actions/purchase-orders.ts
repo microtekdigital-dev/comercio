@@ -235,6 +235,8 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
       product_id: item.product_id || null,
       product_name: item.product_name,
       product_sku: item.product_sku || null,
+      variant_id: item.variant_id || null,
+      variant_name: item.variant_name || null,
       quantity: item.quantity,
       unit_cost: item.unit_cost,
       tax_rate: item.tax_rate,
@@ -319,7 +321,7 @@ export async function receiveItems(orderId: string, items: { itemId: string; qua
     for (const item of items) {
       const { data: orderItem } = await supabase
         .from("purchase_order_items")
-        .select("product_id, unit_cost, received_quantity")
+        .select("product_id, variant_id, unit_cost, received_quantity")
         .eq("id", item.itemId)
         .single();
 
@@ -332,43 +334,83 @@ export async function receiveItems(orderId: string, items: { itemId: string; qua
           })
           .eq("id", item.itemId);
 
-        // Update product stock and cost
+        // Update product or variant stock and cost
         if (orderItem.product_id) {
-          const { data: product } = await supabase
-            .from("products")
-            .select("stock_quantity, track_inventory")
-            .eq("id", orderItem.product_id)
-            .single();
+          // If item has variant, update variant stock
+          if (orderItem.variant_id) {
+            const { data: variant } = await supabase
+              .from("product_variants")
+              .select("stock_quantity")
+              .eq("id", orderItem.variant_id)
+              .single();
 
-          if (product?.track_inventory) {
-            const stockBefore = product.stock_quantity;
-            const stockAfter = stockBefore + item.quantity;
+            if (variant) {
+              const stockBefore = variant.stock_quantity;
+              const stockAfter = stockBefore + item.quantity;
 
-            // Update product stock
-            await supabase
+              // Update variant stock
+              await supabase
+                .from("product_variants")
+                .update({
+                  stock_quantity: stockAfter,
+                })
+                .eq("id", orderItem.variant_id);
+
+              // Register stock movement for variant
+              await supabase
+                .from("stock_movements")
+                .insert({
+                  company_id: profile.company_id,
+                  product_id: orderItem.product_id,
+                  variant_id: orderItem.variant_id,
+                  movement_type: "purchase",
+                  quantity: item.quantity,
+                  stock_before: stockBefore,
+                  stock_after: stockAfter,
+                  purchase_order_id: orderId,
+                  created_by: user.id,
+                  created_by_name: userName,
+                  notes: "Recepción de mercadería de orden de compra",
+                });
+            }
+          } else {
+            // No variant, update product stock
+            const { data: product } = await supabase
               .from("products")
-              .update({
-                stock_quantity: stockAfter,
-                last_purchase_cost: orderItem.unit_cost,
-                last_purchase_date: new Date().toISOString().split("T")[0],
-              })
-              .eq("id", orderItem.product_id);
+              .select("stock_quantity, track_inventory")
+              .eq("id", orderItem.product_id)
+              .single();
 
-            // Register stock movement
-            await supabase
-              .from("stock_movements")
-              .insert({
-                company_id: profile.company_id,
-                product_id: orderItem.product_id,
-                movement_type: "purchase",
-                quantity: item.quantity,
-                stock_before: stockBefore,
-                stock_after: stockAfter,
-                purchase_order_id: orderId,
-                created_by: user.id,
-                created_by_name: userName,
-                notes: "Recepción de mercadería de orden de compra",
-              });
+            if (product?.track_inventory) {
+              const stockBefore = product.stock_quantity;
+              const stockAfter = stockBefore + item.quantity;
+
+              // Update product stock
+              await supabase
+                .from("products")
+                .update({
+                  stock_quantity: stockAfter,
+                  last_purchase_cost: orderItem.unit_cost,
+                  last_purchase_date: new Date().toISOString().split("T")[0],
+                })
+                .eq("id", orderItem.product_id);
+
+              // Register stock movement
+              await supabase
+                .from("stock_movements")
+                .insert({
+                  company_id: profile.company_id,
+                  product_id: orderItem.product_id,
+                  movement_type: "purchase",
+                  quantity: item.quantity,
+                  stock_before: stockBefore,
+                  stock_after: stockAfter,
+                  purchase_order_id: orderId,
+                  created_by: user.id,
+                  created_by_name: userName,
+                  notes: "Recepción de mercadería de orden de compra",
+                });
+            }
           }
         }
       }

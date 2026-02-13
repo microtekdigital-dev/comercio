@@ -27,10 +27,11 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { exportProductsToExcel, exportProductsToCSV, exportProductsReportToPDF } from "@/lib/utils/export";
+import { ProductImage } from "@/components/dashboard/product-image";
 import { toast } from "sonner";
 import { BulkAssignSuppliersDialog } from "@/components/dashboard/bulk-assign-suppliers-dialog";
+import { ProductVariantBadge } from "@/components/dashboard/product-variant-badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Product, Category } from "@/lib/types/erp";
 
@@ -118,7 +119,26 @@ export default function ProductsPage() {
   };
 
   const isLowStock = (product: Product) => {
-    return product.track_inventory && product.stock_quantity <= product.min_stock_level;
+    if (!product.track_inventory) return false;
+    
+    // For products with variants, check if any variant has low stock
+    if (product.has_variants && product.variants) {
+      return product.variants.some(
+        (v) => v.is_active && v.stock_quantity <= v.min_stock_level
+      );
+    }
+    
+    // For simple products, check traditional stock
+    return product.stock_quantity <= product.min_stock_level;
+  };
+
+  const getTotalStock = (product: Product): number => {
+    if (product.has_variants && product.variants) {
+      return product.variants
+        .filter((v) => v.is_active)
+        .reduce((sum, v) => sum + v.stock_quantity, 0);
+    }
+    return product.stock_quantity;
   };
 
   const handleExportExcel = () => {
@@ -381,17 +401,15 @@ export default function ProductsPage() {
                   >
                     <Card className="hover:bg-muted/50 transition-colors h-full">
                       <CardContent className="p-3 md:p-4">
-                      {product.image_url && (
-                        <div className="relative w-full aspect-video mb-2 md:mb-3 rounded-md overflow-hidden bg-muted">
-                          <Image
-                            src={product.image_url}
-                            alt={product.name}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                          />
-                        </div>
-                      )}
+                      <div className="relative w-full aspect-video mb-2 md:mb-3 rounded-md overflow-hidden bg-muted">
+                        <ProductImage
+                          imageUrl={product.image_url}
+                          productName={product.name}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                        />
+                      </div>
                       <div className="flex items-start justify-between mb-2 md:mb-3">
                         <div className="flex-1">
                           <h3 className="font-semibold line-clamp-1 text-sm md:text-base">
@@ -403,9 +421,15 @@ export default function ProductsPage() {
                             </p>
                           )}
                         </div>
-                        {!product.is_active && (
-                          <Badge variant="secondary">Inactivo</Badge>
-                        )}
+                        <div className="flex flex-col gap-1 items-end">
+                          {!product.is_active && (
+                            <Badge variant="secondary">Inactivo</Badge>
+                          )}
+                          <ProductVariantBadge
+                            hasVariants={product.has_variants}
+                            variantCount={product.variants?.filter((v) => v.is_active).length}
+                          />
+                        </div>
                       </div>
 
                       {product.category && (
@@ -442,7 +466,10 @@ export default function ProductsPage() {
                         {product.track_inventory && (
                           <div className="text-right">
                             <p className="text-xs md:text-sm font-medium">
-                              Stock: {product.stock_quantity}
+                              Stock: {getTotalStock(product)}
+                              {product.has_variants && (
+                                <span className="text-muted-foreground ml-1">(total)</span>
+                              )}
                             </p>
                             {isLowStock(product) && (
                               <div className="flex items-center gap-1 text-xs text-destructive">

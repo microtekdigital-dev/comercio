@@ -23,6 +23,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import type { Customer, Product, SaleItemFormData, Sale } from "@/lib/types/erp";
 import { QuickPaymentModal } from "@/components/dashboard/quick-payment-modal";
+import { VariantSelectorInSale } from "@/components/dashboard/variant-selector-in-sale";
+import { getProductVariants } from "@/lib/actions/product-variants";
 
 export default function NewSalePage() {
   const router = useRouter();
@@ -79,11 +81,11 @@ export default function NewSalePage() {
     });
   };
 
-  const updateItem = (index: number, field: keyof SaleItemFormData, value: any) => {
+  const updateItem = async (index: number, field: keyof SaleItemFormData, value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
 
-    // If product is selected, auto-fill data
+    // If product is selected, auto-fill data and load variants if needed
     if (field === "product_id" && value) {
       const product = products.find((p) => p.id === value);
       if (product) {
@@ -91,9 +93,32 @@ export default function NewSalePage() {
         newItems[index].product_sku = product.sku || "";
         newItems[index].unit_price = product.price;
         newItems[index].tax_rate = product.tax_rate;
+        
+        // Reset variant selection when changing product
+        newItems[index].variant_id = undefined;
+        newItems[index].variant_name = undefined;
+        
+        // Load variants if product has them
+        if (product.has_variants) {
+          const variants = await getProductVariants(product.id);
+          // Store variants in the product object for the selector
+          const productIndex = products.findIndex((p) => p.id === value);
+          if (productIndex !== -1) {
+            const updatedProducts = [...products];
+            updatedProducts[productIndex] = { ...product, variants };
+            setProducts(updatedProducts);
+          }
+        }
       }
     }
 
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const handleVariantSelect = (index: number, variant: any) => {
+    const newItems = [...formData.items];
+    newItems[index].variant_id = variant.id;
+    newItems[index].variant_name = variant.variant_name;
     setFormData({ ...formData, items: newItems });
   };
 
@@ -134,6 +159,28 @@ export default function NewSalePage() {
     if (formData.items.length === 0) {
       toast.error("Debes agregar al menos un item");
       return;
+    }
+
+    // Validar que productos con variantes tengan variante seleccionada
+    for (let i = 0; i < formData.items.length; i++) {
+      const item = formData.items[i];
+      const product = products.find((p) => p.id === item.product_id);
+      
+      if (product?.has_variants && !item.variant_id) {
+        toast.error(`Debes seleccionar una variante para ${product.name}`);
+        return;
+      }
+
+      // Validar stock disponible de variante
+      if (product?.has_variants && item.variant_id && product.variants) {
+        const variant = product.variants.find((v) => v.id === item.variant_id);
+        if (variant && item.quantity > variant.stock_quantity) {
+          toast.error(
+            `Stock insuficiente para ${product.name} - ${variant.variant_name}. Disponible: ${variant.stock_quantity}`
+          );
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -344,6 +391,21 @@ export default function NewSalePage() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Mostrar selector de variantes si el producto tiene variantes */}
+                        {item.product_id && (() => {
+                          const product = products.find((p) => p.id === item.product_id);
+                          return product?.has_variants && product.variants ? (
+                            <div className="md:col-span-2 space-y-2">
+                              <VariantSelectorInSale
+                                productId={product.id}
+                                variants={product.variants}
+                                onSelect={(variant) => handleVariantSelect(index, variant)}
+                                selectedVariantId={item.variant_id}
+                              />
+                            </div>
+                          ) : null;
+                        })()}
 
                         <div className="space-y-2">
                           <Label>Cantidad</Label>

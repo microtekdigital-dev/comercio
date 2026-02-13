@@ -136,6 +136,9 @@ export const InvoicePrint = forwardRef<HTMLDivElement, InvoicePrintProps>(
                 <tr key={item.id} className="border-b border-gray-200">
                   <td className="p-3">
                     <p className="font-medium text-gray-900">{item.product_name}</p>
+                    {item.variant_name && (
+                      <p className="text-xs text-gray-600 font-medium">Talle: {item.variant_name}</p>
+                    )}
                     {item.product_sku && (
                       <p className="text-xs text-gray-500">SKU: {item.product_sku}</p>
                     )}

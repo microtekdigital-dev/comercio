@@ -177,13 +177,18 @@ export async function ERPStats() {
             <div className="space-y-3">
               {lowStockProducts.slice(0, 10).map((product) => (
                 <div 
-                  key={product.id} 
+                  key={product.variant_id ? `${product.id}-${product.variant_id}` : product.id} 
                   className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-red-900 dark:text-red-100">
                         {product.name}
+                        {product.variant_name && (
+                          <span className="ml-1 text-xs font-normal">
+                            - {product.variant_name}
+                          </span>
+                        )}
                       </p>
                       {product.sku && (
                         <span className="text-xs text-red-600 dark:text-red-400">

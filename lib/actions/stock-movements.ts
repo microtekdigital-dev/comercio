@@ -41,6 +41,7 @@ export async function getStockMovements(filters?: {
   dateTo?: string;
   employeeId?: string;
   purchaseOrderId?: string;
+  variantId?: string;
 }): Promise<StockMovement[]> {
   const supabase = await createClient()
   
@@ -58,7 +59,7 @@ export async function getStockMovements(filters?: {
 
     let query = supabase
       .from("stock_movements")
-      .select("*, product:products(id, name, sku)")
+      .select("*, product:products(id, name, sku, has_variants), variant:product_variants(id, variant_name, sku)")
       .eq("company_id", profile.company_id)
 
     // Apply filters
@@ -84,6 +85,10 @@ export async function getStockMovements(filters?: {
 
     if (filters?.purchaseOrderId) {
       query = query.eq("purchase_order_id", filters.purchaseOrderId)
+    }
+
+    if (filters?.variantId) {
+      query = query.eq("variant_id", filters.variantId)
     }
 
     query = query.order("created_at", { ascending: false })
@@ -113,10 +118,25 @@ export async function getProductStockHistory(productId: string): Promise<StockMo
 }
 
 /**
+ * Obtiene el historial de movimientos de stock para una variante específica
+ * 
+ * @param variantId - ID de la variante
+ * @returns Array de movimientos de stock de la variante ordenados por fecha descendente
+ * 
+ * @example
+ * const history = await getVariantStockHistory('uuid-variant-123')
+ * // Retorna todos los movimientos de la variante específica
+ */
+export async function getVariantStockHistory(variantId: string): Promise<StockMovement[]> {
+  return getStockMovements({ variantId })
+}
+
+/**
  * Crea un ajuste manual de stock para un producto
  * 
  * @param formData - Datos del ajuste de stock
  * @param formData.product_id - ID del producto (requerido)
+ * @param formData.variant_id - ID de la variante (requerido si el producto tiene variantes)
  * @param formData.movement_type - Tipo de ajuste: 'adjustment_in' (ingreso) o 'adjustment_out' (egreso)
  * @param formData.quantity - Cantidad a ajustar (debe ser mayor a 0)
  * @param formData.notes - Notas opcionales sobre el ajuste
@@ -126,12 +146,13 @@ export async function getProductStockHistory(productId: string): Promise<StockMo
  * @throws Retorna error si:
  * - El usuario no está autenticado
  * - El producto no existe o no pertenece a la empresa
+ * - El producto tiene variantes pero no se proporciona variant_id
  * - El producto no tiene track_inventory activado
  * - El ajuste resultaría en stock negativo
  * - Faltan campos requeridos
  * 
  * @example
- * // Aumentar stock manualmente
+ * // Aumentar stock manualmente (producto simple)
  * const result = await createStockAdjustment({
  *   product_id: 'uuid-123',
  *   movement_type: 'adjustment_in',
@@ -140,9 +161,10 @@ export async function getProductStockHistory(productId: string): Promise<StockMo
  * })
  * 
  * @example
- * // Disminuir stock por daño
+ * // Disminuir stock por daño (producto con variantes)
  * const result = await createStockAdjustment({
  *   product_id: 'uuid-123',
+ *   variant_id: 'uuid-variant-456',
  *   movement_type: 'adjustment_out',
  *   quantity: 5,
  *   notes: 'Productos dañados - baja de inventario'
@@ -193,10 +215,10 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
       return { error: "El empleado no existe en el sistema" }
     }
 
-    // Get current product stock
+    // Get current product
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("stock_quantity, track_inventory, name")
+      .select("stock_quantity, track_inventory, name, has_variants")
       .eq("id", formData.product_id)
       .eq("company_id", profile.company_id)
       .single()
@@ -209,14 +231,44 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
       return { error: `El producto "${product.name}" no tiene seguimiento de inventario activado. Active el seguimiento en la configuración del producto para registrar movimientos.` }
     }
 
-    const stockBefore = product.stock_quantity
-    const quantity = formData.movement_type === 'adjustment_in'
-      ? formData.quantity 
-      : -formData.quantity
-    const stockAfter = stockBefore + quantity
+    // Check if product has variants and variant_id is required
+    if (product.has_variants && !formData.variant_id) {
+      return { error: `El producto "${product.name}" tiene variantes. Debe especificar la variante (variant_id) para el movimiento de stock.` }
+    }
+
+    let stockBefore: number
+    let stockAfter: number
+    let variantName: string | null = null
+
+    // Handle variant stock
+    if (formData.variant_id) {
+      const { data: variant, error: variantError } = await supabase
+        .from("product_variants")
+        .select("stock_quantity, variant_name")
+        .eq("id", formData.variant_id)
+        .eq("product_id", formData.product_id)
+        .eq("company_id", profile.company_id)
+        .single()
+
+      if (variantError || !variant) {
+        return { error: "Variante no encontrada o no pertenece al producto" }
+      }
+
+      stockBefore = variant.stock_quantity
+      variantName = variant.variant_name
+    } else {
+      // Handle simple product stock
+      stockBefore = product.stock_quantity
+    }
+
+    const movementType = formData.movement_type
+    const isIncrease = movementType === 'adjustment_in' || movementType === 'return_in'
+    const quantity = isIncrease ? formData.quantity : -formData.quantity
+    stockAfter = stockBefore + quantity
 
     if (stockAfter < 0) {
-      return { error: `El ajuste resultaría en stock negativo (${stockAfter}). Stock actual: ${stockBefore}, cambio solicitado: ${quantity}` }
+      const variantInfo = variantName ? ` (variante: ${variantName})` : ''
+      return { error: `El ajuste resultaría en stock negativo (${stockAfter})${variantInfo}. Stock actual: ${stockBefore}, cambio solicitado: ${quantity}` }
     }
 
     // Create stock movement record
@@ -225,13 +277,14 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
       .insert({
         company_id: profile.company_id,
         product_id: formData.product_id,
+        variant_id: formData.variant_id || null,
         movement_type: formData.movement_type,
         quantity,
         stock_before: stockBefore,
         stock_after: stockAfter,
         created_by: user.id,
         created_by_name: profile.full_name || profile.email,
-        notes: formData.notes || `Ajuste manual de inventario`,
+        notes: formData.notes || `Ajuste manual de inventario${variantName ? ` - ${variantName}` : ''}`,
       })
       .select()
       .single()
@@ -241,15 +294,27 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
       return { error: `Error al crear el registro de movimiento: ${movementError.message}` }
     }
 
-    // Update product stock
-    const { error: updateError } = await supabase
-      .from("products")
-      .update({ stock_quantity: stockAfter })
-      .eq("id", formData.product_id)
+    // Update stock (variant or product)
+    if (formData.variant_id) {
+      const { error: updateError } = await supabase
+        .from("product_variants")
+        .update({ stock_quantity: stockAfter })
+        .eq("id", formData.variant_id)
 
-    if (updateError) {
-      console.error("Error updating product stock:", updateError)
-      return { error: `Error al actualizar el stock del producto: ${updateError.message}` }
+      if (updateError) {
+        console.error("Error updating variant stock:", updateError)
+        return { error: `Error al actualizar el stock de la variante: ${updateError.message}` }
+      }
+    } else {
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({ stock_quantity: stockAfter })
+        .eq("id", formData.product_id)
+
+      if (updateError) {
+        console.error("Error updating product stock:", updateError)
+        return { error: `Error al actualizar el stock del producto: ${updateError.message}` }
+      }
     }
 
     revalidatePath("/dashboard/products")
@@ -272,6 +337,7 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
  * @param quantity - Cantidad vendida (positiva)
  * @param stockBefore - Stock antes de la venta
  * @param stockAfter - Stock después de la venta
+ * @param variantId - ID de la variante (opcional, requerido si el producto tiene variantes)
  * 
  * @internal
  */
@@ -280,7 +346,8 @@ export async function logSaleStockMovement(
   productId: string,
   quantity: number,
   stockBefore: number,
-  stockAfter: number
+  stockAfter: number,
+  variantId?: string
 ) {
   const supabase = await createClient()
   
@@ -301,6 +368,7 @@ export async function logSaleStockMovement(
       .insert({
         company_id: profile.company_id,
         product_id: productId,
+        variant_id: variantId || null,
         movement_type: 'sale',
         quantity: -quantity,
         stock_before: stockBefore,
@@ -326,6 +394,7 @@ export async function logSaleStockMovement(
  * @param quantity - Cantidad recibida (positiva)
  * @param stockBefore - Stock antes de la recepción
  * @param stockAfter - Stock después de la recepción
+ * @param variantId - ID de la variante (opcional, requerido si el producto tiene variantes)
  * 
  * @internal
  */
@@ -334,7 +403,8 @@ export async function logPurchaseStockMovement(
   productId: string,
   quantity: number,
   stockBefore: number,
-  stockAfter: number
+  stockAfter: number,
+  variantId?: string
 ) {
   const supabase = await createClient()
   
@@ -355,6 +425,7 @@ export async function logPurchaseStockMovement(
       .insert({
         company_id: profile.company_id,
         product_id: productId,
+        variant_id: variantId || null,
         movement_type: 'purchase',
         quantity: quantity,
         stock_before: stockBefore,
@@ -373,6 +444,7 @@ export async function logPurchaseStockMovement(
  * Obtiene estadísticas de movimientos de stock
  * 
  * @param productId - ID del producto (opcional). Si no se proporciona, retorna estadísticas globales
+ * @param variantId - ID de la variante (opcional). Si se proporciona, retorna estadísticas de esa variante específica
  * @returns Objeto con estadísticas de movimientos o null si hay error
  * 
  * @example
@@ -388,10 +460,14 @@ export async function logPurchaseStockMovement(
  * // }
  * 
  * @example
+ * // Estadísticas de una variante específica
+ * const stats = await getStockMovementStats('uuid-123', 'uuid-variant-456')
+ * 
+ * @example
  * // Estadísticas globales de toda la empresa
  * const stats = await getStockMovementStats()
  */
-export async function getStockMovementStats(productId?: string) {
+export async function getStockMovementStats(productId?: string, variantId?: string) {
   const supabase = await createClient()
   
   try {
@@ -413,6 +489,10 @@ export async function getStockMovementStats(productId?: string) {
 
     if (productId) {
       query = query.eq("product_id", productId)
+    }
+
+    if (variantId) {
+      query = query.eq("variant_id", variantId)
     }
 
     const { data, error } = await query
@@ -445,9 +525,11 @@ export async function getStockMovementStats(productId?: string) {
           stats.sales += qty
           break
         case 'adjustment_in':
+        case 'return_in':
           stats.adjustmentsIn += qty
           break
         case 'adjustment_out':
+        case 'return_out':
           stats.adjustmentsOut += qty
           break
       }
@@ -507,7 +589,7 @@ export async function createStockCorrection(
     // Get original movement
     const { data: originalMovement, error: movementError } = await supabase
       .from("stock_movements")
-      .select("*, product:products(id, name, stock_quantity, track_inventory)")
+      .select("*, product:products(id, name, stock_quantity, track_inventory, has_variants), variant:product_variants(id, variant_name, stock_quantity)")
       .eq("id", originalMovementId)
       .eq("company_id", profile.company_id)
       .single()
@@ -522,11 +604,21 @@ export async function createStockCorrection(
 
     // Calculate correction movement (reverse of original)
     const correctionQuantity = -originalMovement.quantity
-    const stockBefore = originalMovement.product.stock_quantity
-    const stockAfter = stockBefore + correctionQuantity
+    let stockBefore: number
+    let stockAfter: number
+
+    // Handle variant or simple product
+    if (originalMovement.variant_id && originalMovement.variant) {
+      stockBefore = originalMovement.variant.stock_quantity
+      stockAfter = stockBefore + correctionQuantity
+    } else {
+      stockBefore = originalMovement.product.stock_quantity
+      stockAfter = stockBefore + correctionQuantity
+    }
 
     if (stockAfter < 0) {
-      return { error: `La corrección resultaría en stock negativo (${stockAfter}). Stock actual: ${stockBefore}` }
+      const variantInfo = originalMovement.variant ? ` (variante: ${originalMovement.variant.variant_name})` : ''
+      return { error: `La corrección resultaría en stock negativo (${stockAfter})${variantInfo}. Stock actual: ${stockBefore}` }
     }
 
     // Determine correction movement type
@@ -543,6 +635,7 @@ export async function createStockCorrection(
       .insert({
         company_id: profile.company_id,
         product_id: originalMovement.product_id,
+        variant_id: originalMovement.variant_id || null,
         movement_type: correctionType,
         quantity: correctionQuantity,
         stock_before: stockBefore,
@@ -559,15 +652,27 @@ export async function createStockCorrection(
       return { error: `Error al crear la corrección: ${correctionError.message}` }
     }
 
-    // Update product stock
-    const { error: updateError } = await supabase
-      .from("products")
-      .update({ stock_quantity: stockAfter })
-      .eq("id", originalMovement.product_id)
+    // Update stock (variant or product)
+    if (originalMovement.variant_id) {
+      const { error: updateError } = await supabase
+        .from("product_variants")
+        .update({ stock_quantity: stockAfter })
+        .eq("id", originalMovement.variant_id)
 
-    if (updateError) {
-      console.error("Error updating product stock:", updateError)
-      return { error: `Error al actualizar el stock del producto: ${updateError.message}` }
+      if (updateError) {
+        console.error("Error updating variant stock:", updateError)
+        return { error: `Error al actualizar el stock de la variante: ${updateError.message}` }
+      }
+    } else {
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({ stock_quantity: stockAfter })
+        .eq("id", originalMovement.product_id)
+
+      if (updateError) {
+        console.error("Error updating product stock:", updateError)
+        return { error: `Error al actualizar el stock del producto: ${updateError.message}` }
+      }
     }
 
     revalidatePath("/dashboard/products")

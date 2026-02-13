@@ -200,7 +200,23 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
         </div>
         <div className="flex gap-2">
           {order.status !== "received" && order.status !== "cancelled" && (
-            <Dialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen}>
+            <Dialog 
+              open={receiveDialogOpen} 
+              onOpenChange={(open) => {
+                setReceiveDialogOpen(open);
+                // Cuando se abre el modal, pre-cargar las cantidades pendientes
+                if (open && order.items) {
+                  const initialQuantities: Record<string, number> = {};
+                  order.items.forEach((item) => {
+                    const pendingQuantity = item.quantity - item.received_quantity;
+                    if (pendingQuantity > 0) {
+                      initialQuantities[item.id] = pendingQuantity;
+                    }
+                  });
+                  setReceiveQuantities(initialQuantities);
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline">
                   <Package className="mr-2 h-4 w-4" />
@@ -219,6 +235,11 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
                       <div key={item.id} className="flex items-center gap-4">
                         <div className="flex-1">
                           <p className="font-medium">{item.product_name}</p>
+                          {item.variant_name && (
+                            <p className="text-sm text-muted-foreground">
+                              Talle: {item.variant_name}
+                            </p>
+                          )}
                           <p className="text-sm text-muted-foreground">
                             Ordenado: {item.quantity} | Recibido: {item.received_quantity}
                           </p>
@@ -443,6 +464,9 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
                   <TableCell>
                     <div>
                       <p className="font-medium">{item.product_name}</p>
+                      {item.variant_name && (
+                        <p className="text-sm text-muted-foreground">Talle: {item.variant_name}</p>
+                      )}
                       {item.product_sku && (
                         <p className="text-sm text-muted-foreground">SKU: {item.product_sku}</p>
                       )}

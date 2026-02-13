@@ -40,6 +40,9 @@ import type { Product, Category, Supplier, StockMovement, PriceChange } from "@/
 import { ImageUpload } from "@/components/dashboard/image-upload";
 import { StockHistoryTable } from "@/components/dashboard/stock-history-table";
 import { ProductPriceHistory } from "@/components/dashboard/product-price-history";
+import { ProductVariantSelector } from "@/components/dashboard/product-variant-selector";
+import { VariantStockTable } from "@/components/dashboard/variant-stock-table";
+import type { VariantType, ProductVariantFormData } from "@/lib/types/erp";
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -52,6 +55,8 @@ export default function ProductDetailPage() {
   const [priceHistory, setPriceHistory] = useState<PriceChange[]>([]);
   const [canEdit, setCanEdit] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
+  const [variantType, setVariantType] = useState<VariantType>('none');
+  const [variants, setVariants] = useState<ProductVariantFormData[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
@@ -68,6 +73,9 @@ export default function ProductDetailPage() {
     track_inventory: true,
     is_active: true,
     image_url: "",
+    has_variants: false,
+    variant_type: undefined as VariantType | undefined,
+    variants: [] as ProductVariantFormData[],
   });
 
   useEffect(() => {
@@ -96,6 +104,23 @@ export default function ProductDetailPage() {
       setSuppliers(suppliersData.filter(s => s.status === 'active'));
       setStockHistory(historyData);
       setPriceHistory(priceHistoryData);
+      
+      // Set variant type and variants
+      const hasVariants = productData.has_variants || false;
+      const productVariantType = productData.variant_type || 'none';
+      setVariantType(productVariantType);
+      
+      if (hasVariants && productData.variants) {
+        setVariants(productData.variants.map(v => ({
+          id: v.id,
+          variant_name: v.variant_name,
+          sku: v.sku || '',
+          stock_quantity: v.stock_quantity,
+          min_stock_level: v.min_stock_level,
+          sort_order: v.sort_order,
+        })));
+      }
+      
       setFormData({
         name: productData.name,
         sku: productData.sku || "",
@@ -112,11 +137,44 @@ export default function ProductDetailPage() {
         track_inventory: productData.track_inventory,
         is_active: productData.is_active,
         image_url: productData.image_url || "",
+        has_variants: hasVariants,
+        variant_type: hasVariants ? productVariantType : undefined,
+        variants: hasVariants && productData.variants ? productData.variants.map(v => ({
+          id: v.id,
+          variant_name: v.variant_name,
+          sku: v.sku || '',
+          stock_quantity: v.stock_quantity,
+          min_stock_level: v.min_stock_level,
+          sort_order: v.sort_order,
+        })) : [],
       });
     } else {
       toast.error("Producto no encontrado");
       router.push("/dashboard/products");
     }
+  };
+
+  const handleVariantTypeChange = (type: VariantType) => {
+    // Si el producto ya tiene variantes con stock, mostrar confirmación
+    if (product?.has_variants && type === 'none' && product.variants && product.variants.some(v => v.stock_quantity > 0)) {
+      toast.error("No se pueden desactivar las variantes mientras haya stock. Primero debe mover el stock a 0.");
+      return;
+    }
+
+    setVariantType(type);
+    setFormData({
+      ...formData,
+      has_variants: type !== 'none',
+      variant_type: type !== 'none' ? type : undefined,
+    });
+  };
+
+  const handleVariantsChange = (newVariants: ProductVariantFormData[]) => {
+    setVariants(newVariants);
+    setFormData({
+      ...formData,
+      variants: newVariants,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -457,7 +515,7 @@ export default function ProductDetailPage() {
                 />
               </div>
 
-              {formData.track_inventory && (
+              {formData.track_inventory && !formData.has_variants && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="stock_quantity">Cantidad en Stock</Label>
@@ -508,6 +566,100 @@ export default function ProductDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {formData.track_inventory && canEdit && (
+            <Card className="md:col-span-2">
+              <CardContent className="pt-6">
+                <ProductVariantSelector
+                  value={variantType}
+                  onChange={handleVariantTypeChange}
+                  disabled={!canEdit}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {formData.track_inventory && formData.has_variants && (
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Variantes del Producto</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {canEdit 
+                    ? "Gestiona el stock de cada variante del producto" 
+                    : "Stock disponible por variante"}
+                </p>
+              </CardHeader>
+              <CardContent>
+                {canEdit ? (
+                  <VariantStockTable
+                    variants={variants}
+                    onChange={handleVariantsChange}
+                    variantType={variantType}
+                    readOnly={false}
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-md border">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="p-3 text-left font-medium">Variante</th>
+                            <th className="p-3 text-left font-medium">SKU</th>
+                            <th className="p-3 text-right font-medium">Stock</th>
+                            <th className="p-3 text-right font-medium">Stock Mínimo</th>
+                            <th className="p-3 text-right font-medium">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {variants.map((variant, index) => {
+                            const isLowStock = variant.stock_quantity <= variant.min_stock_level;
+                            return (
+                              <tr key={variant.id || index} className="border-b last:border-0">
+                                <td className="p-3 font-medium">{variant.variant_name}</td>
+                                <td className="p-3 text-muted-foreground">{variant.sku || '-'}</td>
+                                <td className="p-3 text-right">
+                                  <span className={isLowStock ? 'text-destructive font-semibold' : ''}>
+                                    {variant.stock_quantity}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right text-muted-foreground">
+                                  {variant.min_stock_level}
+                                </td>
+                                <td className="p-3 text-right">
+                                  {variant.stock_quantity === 0 ? (
+                                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive">
+                                      Sin stock
+                                    </span>
+                                  ) : isLowStock ? (
+                                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500">
+                                      Stock bajo
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
+                                      Disponible
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t bg-muted/30">
+                            <td className="p-3 font-semibold" colSpan={2}>Stock Total</td>
+                            <td className="p-3 text-right font-semibold">
+                              {variants.reduce((sum, v) => sum + v.stock_quantity, 0)}
+                            </td>
+                            <td colSpan={2}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           </div>
 
           <div className="flex justify-end gap-4 mt-6">

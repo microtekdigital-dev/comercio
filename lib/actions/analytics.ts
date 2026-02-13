@@ -93,7 +93,7 @@ export async function getDashboardStats() {
   }
 }
 
-// Top products by revenue
+// Top products by revenue (with variant support)
 export async function getTopProducts(limit: number = 5) {
   const supabase = await createClient();
   
@@ -114,6 +114,8 @@ export async function getTopProducts(limit: number = 5) {
       .select(`
         product_id,
         product_name,
+        variant_id,
+        variant_name,
         quantity,
         total,
         sale:sales!inner(company_id, status)
@@ -123,25 +125,34 @@ export async function getTopProducts(limit: number = 5) {
 
     if (!data) return [];
 
-    // Aggregate by product
-    const productMap = new Map();
+    // Aggregate by product + variant combination
+    const itemMap = new Map();
     data.forEach(item => {
-      const key = item.product_id || item.product_name;
-      if (productMap.has(key)) {
-        const existing = productMap.get(key);
+      // Use variant_id if exists, otherwise use product_id
+      const key = item.variant_id 
+        ? `variant-${item.variant_id}` 
+        : `product-${item.product_id}`;
+      
+      const displayName = item.variant_name
+        ? `${item.product_name} - ${item.variant_name}`
+        : item.product_name;
+      
+      if (itemMap.has(key)) {
+        const existing = itemMap.get(key);
         existing.total_quantity += item.quantity;
         existing.total_revenue += item.total;
       } else {
-        productMap.set(key, {
+        itemMap.set(key, {
           product_id: item.product_id,
-          product_name: item.product_name,
+          variant_id: item.variant_id,
+          product_name: displayName,
           total_quantity: item.quantity,
           total_revenue: item.total,
         });
       }
     });
 
-    return Array.from(productMap.values())
+    return Array.from(itemMap.values())
       .sort((a, b) => b.total_revenue - a.total_revenue)
       .slice(0, limit);
   } catch (error) {
@@ -341,7 +352,7 @@ export async function getInventoryReport() {
 
     const { data: products } = await supabase
       .from("products")
-      .select("id, name, sku, stock_quantity, min_stock_level, price, cost, track_inventory, category:categories(name)")
+      .select("id, name, sku, stock_quantity, min_stock_level, price, cost, track_inventory, has_variants, category:categories(name)")
       .eq("company_id", profile.company_id)
       .eq("is_active", true)
       .eq("track_inventory", true)
@@ -349,16 +360,54 @@ export async function getInventoryReport() {
 
     if (!products) return [];
 
-    return products.map(product => ({
-      product_id: product.id,
-      product_name: product.name,
-      sku: product.sku,
-      category: (product.category as any)?.name || "Sin categoría",
-      stock_quantity: product.stock_quantity,
-      min_stock_level: product.min_stock_level,
-      stock_value: product.stock_quantity * product.cost,
-      status: product.stock_quantity <= product.min_stock_level ? "low" : "ok",
-    }));
+    const inventoryItems: any[] = [];
+
+    for (const product of products) {
+      if (product.has_variants) {
+        // For products with variants, get each variant's inventory
+        const { data: variants } = await supabase
+          .from("product_variants")
+          .select("*")
+          .eq("product_id", product.id)
+          .eq("company_id", profile.company_id)
+          .eq("is_active", true);
+
+        if (variants) {
+          for (const variant of variants) {
+            // Only include variants with min_stock_level > 0 (actually tracked)
+            // This excludes variants the supplier doesn't manufacture
+            if (variant.min_stock_level > 0) {
+              inventoryItems.push({
+                product_id: product.id,
+                product_name: `${product.name} - ${variant.variant_name}`,
+                sku: variant.sku || product.sku,
+                category: (product.category as any)?.name || "Sin categoría",
+                stock_quantity: variant.stock_quantity,
+                min_stock_level: variant.min_stock_level,
+                stock_value: variant.stock_quantity * product.cost,
+                status: variant.stock_quantity <= variant.min_stock_level ? "low" : "ok",
+              });
+            }
+          }
+        }
+      } else {
+        // For simple products, only include if min_stock_level > 0
+        if (product.min_stock_level > 0) {
+          inventoryItems.push({
+            product_id: product.id,
+            product_name: product.name,
+            sku: product.sku,
+            category: (product.category as any)?.name || "Sin categoría",
+            stock_quantity: product.stock_quantity,
+            min_stock_level: product.min_stock_level,
+            stock_value: product.stock_quantity * product.cost,
+            status: product.stock_quantity <= product.min_stock_level ? "low" : "ok",
+          });
+        }
+      }
+    }
+
+    return inventoryItems.sort((a, b) => a.stock_quantity - b.stock_quantity);
   } catch (error) {
     console.error("Error fetching inventory report:", error);
     return [];

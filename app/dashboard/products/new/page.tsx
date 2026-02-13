@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createProduct } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
@@ -23,12 +23,17 @@ import Link from "next/link";
 import { toast } from "sonner";
 import type { Category, Supplier } from "@/lib/types/erp";
 import { ImageUpload } from "@/components/dashboard/image-upload";
+import { ProductVariantSelector } from "@/components/dashboard/product-variant-selector";
+import { VariantStockTable } from "@/components/dashboard/variant-stock-table";
+import type { VariantType, ProductVariantFormData } from "@/lib/types/erp";
 
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [variantType, setVariantType] = useState<VariantType>('none');
+  const [variants, setVariants] = useState<ProductVariantFormData[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
@@ -45,6 +50,9 @@ export default function NewProductPage() {
     track_inventory: true,
     is_active: true,
     image_url: "",
+    has_variants: false,
+    variant_type: undefined as VariantType | undefined,
+    variants: [] as ProductVariantFormData[],
   });
 
   useEffect(() => {
@@ -63,6 +71,23 @@ export default function NewProductPage() {
     setSuppliers(data.filter(s => s.status === 'active'));
   };
 
+  const handleVariantTypeChange = useCallback((type: VariantType) => {
+    setVariantType(type);
+    setFormData(prev => ({
+      ...prev,
+      has_variants: type !== 'none',
+      variant_type: type !== 'none' ? type : undefined,
+    }));
+  }, []);
+
+  const handleVariantsChange = useCallback((newVariants: ProductVariantFormData[]) => {
+    setVariants(newVariants);
+    setFormData(prev => ({
+      ...prev,
+      variants: newVariants,
+    }));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -75,6 +100,13 @@ export default function NewProductPage() {
     
     if (formData.price <= 0) {
       missingFields.push("Precio de venta (debe ser mayor a 0)");
+    }
+
+    // Validar variantes si has_variants es true
+    if (formData.has_variants) {
+      if (!formData.variants || formData.variants.length === 0) {
+        missingFields.push("Al menos una variante (cuando se activan variantes)");
+      }
     }
     
     // Si hay campos faltantes, mostrar mensaje específico
@@ -338,7 +370,7 @@ export default function NewProductPage() {
                 />
               </div>
 
-              {formData.track_inventory && (
+              {formData.track_inventory && !formData.has_variants && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="stock_quantity">Cantidad en Stock</Label>
@@ -386,6 +418,29 @@ export default function NewProductPage() {
               </div>
             </CardContent>
           </Card>
+
+          {formData.track_inventory && (
+            <Card className="md:col-span-2">
+              <CardContent className="pt-6">
+                <ProductVariantSelector
+                  value={variantType}
+                  onChange={handleVariantTypeChange}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {formData.track_inventory && formData.has_variants && (
+            <Card className="md:col-span-2">
+              <CardContent className="pt-6">
+                <VariantStockTable
+                  variants={variants}
+                  onChange={handleVariantsChange}
+                  variantType={variantType}
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="flex justify-end gap-4 mt-6">
