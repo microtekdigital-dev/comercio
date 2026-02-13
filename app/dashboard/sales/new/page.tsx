@@ -332,12 +332,12 @@ export default function NewSalePage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />
                 Items de Venta
               </CardTitle>
-              <Button type="button" onClick={addItem} size="sm">
+              <Button type="button" onClick={addItem} size="sm" className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Item
               </Button>

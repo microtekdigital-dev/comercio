@@ -134,9 +134,9 @@ export default function QuoteForm({ customers, products: initialProducts }: { cu
       </Card>
 
       <Card className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <h3 className="font-semibold">Productos</h3>
-          <Button type="button" variant="outline" size="sm" onClick={addItem}>
+          <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Agregar
           </Button>

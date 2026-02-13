@@ -357,12 +357,12 @@ export default function NewPurchaseOrderPage() {
 
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <CardTitle>Productos</CardTitle>
                   <CardDescription>Agrega los productos a comprar</CardDescription>
                 </div>
-                <Button type="button" onClick={addItem} size="sm">
+                <Button type="button" onClick={addItem} size="sm" className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Agregar Producto
                 </Button>
