@@ -10,6 +10,7 @@ import autoTable from "jspdf-autotable";
  * Calculate initial stock for all products before the start date
  * Sums all stock movements with movement_date < start_date
  * For products without movements, uses products.stock_quantity as fallback
+ * Calculates value based on average cost from purchase orders
  */
 export async function calculateInitialStock(
   companyId: string,
@@ -84,6 +85,56 @@ export async function calculateInitialStock(
     throw new Error(`Error al obtener productos: ${productsError.message || 'Error desconocido'}`);
   }
 
+  // Get average costs from purchase orders before start date
+  let purchaseQuery = supabase
+    .from("purchase_order_items")
+    .select(`
+      product_id,
+      variant_id,
+      quantity,
+      unit_cost,
+      purchase_orders!inner(
+        status,
+        received_date,
+        company_id
+      )
+    `)
+    .eq("purchase_orders.company_id", companyId)
+    .eq("purchase_orders.status", "received")
+    .lt("purchase_orders.received_date", startDate.toISOString());
+
+  if (categoryId) {
+    purchaseQuery = purchaseQuery.eq("products.category_id", categoryId);
+  }
+  if (productId) {
+    purchaseQuery = purchaseQuery.eq("product_id", productId);
+  }
+
+  const { data: purchaseItems, error: purchaseError } = await purchaseQuery;
+
+  if (purchaseError) {
+    console.error("Error fetching purchase costs:", purchaseError);
+  }
+
+  // Calculate average cost per product/variant
+  const costMap = new Map<string, { totalCost: number; totalQuantity: number }>();
+  
+  for (const item of purchaseItems || []) {
+    const key = `${item.product_id}-${item.variant_id || 'null'}`;
+    const existing = costMap.get(key);
+    const itemCost = item.quantity * item.unit_cost;
+
+    if (existing) {
+      existing.totalCost += itemCost;
+      existing.totalQuantity += item.quantity;
+    } else {
+      costMap.set(key, {
+        totalCost: itemCost,
+        totalQuantity: item.quantity,
+      });
+    }
+  }
+
   // Group by product_id and variant_id
   const stockMap = new Map<string, {
     productId: string;
@@ -146,7 +197,7 @@ export async function calculateInitialStock(
               variantName: variant.variant_name,
               categoryName,
               units: initialStock,
-              value: 0,
+              value: 0, // Will be calculated below
             });
           }
         }
@@ -168,10 +219,19 @@ export async function calculateInitialStock(
             variantName: null,
             categoryName,
             units: initialStock,
-            value: 0,
+            value: 0, // Will be calculated below
           });
         }
       }
+    }
+  }
+
+  // Calculate values based on average cost from purchases
+  for (const [key, stock] of stockMap.entries()) {
+    const costData = costMap.get(key);
+    if (costData && costData.totalQuantity > 0) {
+      const averageCost = costData.totalCost / costData.totalQuantity;
+      stock.value = stock.units * averageCost;
     }
   }
 
