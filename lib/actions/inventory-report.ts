@@ -61,6 +61,7 @@ export async function calculateInitialStock(
       id,
       name,
       stock_quantity,
+      cost,
       category_id,
       categories(name),
       product_variants(
@@ -230,8 +231,15 @@ export async function calculateInitialStock(
   for (const [key, stock] of stockMap.entries()) {
     const costData = costMap.get(key);
     if (costData && costData.totalQuantity > 0) {
+      // Use average cost from purchases
       const averageCost = costData.totalCost / costData.totalQuantity;
       stock.value = stock.units * averageCost;
+    } else {
+      // Fallback: use product cost field
+      const product = products?.find(p => p.id === stock.productId);
+      if (product && product.cost) {
+        stock.value = stock.units * product.cost;
+      }
     }
   }
 
