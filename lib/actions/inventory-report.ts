@@ -9,6 +9,7 @@ import autoTable from "jspdf-autotable";
 /**
  * Calculate initial stock for all products before the start date
  * Sums all stock movements with movement_date < start_date
+ * For products without movements, uses products.stock_quantity as fallback
  */
 export async function calculateInitialStock(
   companyId: string,
@@ -18,7 +19,8 @@ export async function calculateInitialStock(
 ) {
   const supabase = await createClient();
 
-  let query = supabase
+  // First, get stock movements before start date
+  let movementsQuery = supabase
     .from("stock_movements")
     .select(`
       product_id,
@@ -37,39 +39,49 @@ export async function calculateInitialStock(
 
   // Apply filters
   if (categoryId) {
-    query = query.eq("products.category_id", categoryId);
+    movementsQuery = movementsQuery.eq("products.category_id", categoryId);
   }
   if (productId) {
-    query = query.eq("product_id", productId);
+    movementsQuery = movementsQuery.eq("product_id", productId);
   }
 
-  const { data: movements, error } = await query;
+  const { data: movements, error: movementsError } = await movementsQuery;
 
-  if (error) {
-    console.error("Error calculating initial stock:", error);
-    console.error("Error details:", JSON.stringify(error, null, 2));
-    throw new Error(`Error al calcular existencia inicial: ${error.message || 'Error desconocido'}`);
+  if (movementsError) {
+    console.error("Error calculating initial stock:", movementsError);
+    console.error("Error details:", JSON.stringify(movementsError, null, 2));
+    throw new Error(`Error al calcular existencia inicial: ${movementsError.message || 'Error desconocido'}`);
   }
 
-  if (!movements) {
-    return [];
+  // Get all products to use as fallback for products without movements
+  let productsQuery = supabase
+    .from("products")
+    .select(`
+      id,
+      name,
+      stock_quantity,
+      category_id,
+      categories(name),
+      product_variants(
+        id,
+        variant_name,
+        stock_quantity
+      )
+    `)
+    .eq("company_id", companyId);
+
+  if (categoryId) {
+    productsQuery = productsQuery.eq("category_id", categoryId);
+  }
+  if (productId) {
+    productsQuery = productsQuery.eq("id", productId);
   }
 
-  // Get category names separately
-  const categoryIds = [...new Set(movements?.map(m => {
-    const products = Array.isArray(m.products) ? m.products[0] : m.products;
-    return products?.category_id;
-  }).filter(Boolean))];
-  
-  let categoryMap = new Map<string, string>();
-  
-  if (categoryIds.length > 0) {
-    const { data: categories } = await supabase
-      .from("categories")
-      .select("id, name")
-      .in("id", categoryIds);
+  const { data: products, error: productsError } = await productsQuery;
 
-    categoryMap = new Map(categories?.map(c => [c.id, c.name]) || []);
+  if (productsError) {
+    console.error("Error fetching products:", productsError);
+    throw new Error(`Error al obtener productos: ${productsError.message || 'Error desconocido'}`);
   }
 
   // Group by product_id and variant_id
@@ -83,12 +95,13 @@ export async function calculateInitialStock(
     value: number;
   }>();
 
+  // Process stock movements
   for (const movement of movements || []) {
     const key = `${movement.product_id}-${movement.variant_id || 'null'}`;
     const existing = stockMap.get(key);
 
     // Handle products and product_variants as arrays (Supabase joins return arrays)
-    const products = Array.isArray(movement.products) ? movement.products[0] : movement.products;
+    const productData = Array.isArray(movement.products) ? movement.products[0] : movement.products;
     const variant = Array.isArray(movement.product_variants) ? movement.product_variants[0] : movement.product_variants;
 
     if (existing) {
@@ -96,13 +109,69 @@ export async function calculateInitialStock(
     } else {
       stockMap.set(key, {
         productId: movement.product_id,
-        productName: products?.name || "Producto desconocido",
+        productName: productData?.name || "Producto desconocido",
         variantId: movement.variant_id,
         variantName: variant?.variant_name || null,
-        categoryName: categoryMap.get(products?.category_id) || "Sin categoría",
+        categoryName: productData?.category_id ? "Sin categoría" : "Sin categoría",
         units: movement.quantity,
         value: 0, // Will be calculated based on average cost
       });
+    }
+  }
+
+  // Add products without movements (fallback to products.stock_quantity)
+  // This handles products created with initial stock but no stock_movements records
+  for (const product of products || []) {
+    const categoryData = Array.isArray(product.categories) ? product.categories[0] : product.categories;
+    const categoryName = categoryData?.name || "Sin categoría";
+
+    // Check if product has variants
+    const variants = Array.isArray(product.product_variants) ? product.product_variants : [];
+
+    if (variants.length > 0) {
+      // Product with variants - add each variant
+      for (const variant of variants) {
+        const key = `${product.id}-${variant.id}`;
+        
+        // Only add if not already in stockMap (no movements exist) AND has stock
+        if (!stockMap.has(key)) {
+          // Use current stock_quantity as initial stock for products without movements
+          const initialStock = variant.stock_quantity || 0;
+          
+          if (initialStock > 0) {
+            stockMap.set(key, {
+              productId: product.id,
+              productName: product.name,
+              variantId: variant.id,
+              variantName: variant.variant_name,
+              categoryName,
+              units: initialStock,
+              value: 0,
+            });
+          }
+        }
+      }
+    } else {
+      // Product without variants
+      const key = `${product.id}-null`;
+      
+      // Only add if not already in stockMap (no movements exist) AND has stock
+      if (!stockMap.has(key)) {
+        // Use current stock_quantity as initial stock for products without movements
+        const initialStock = product.stock_quantity || 0;
+        
+        if (initialStock > 0) {
+          stockMap.set(key, {
+            productId: product.id,
+            productName: product.name,
+            variantId: null,
+            variantName: null,
+            categoryName,
+            units: initialStock,
+            value: 0,
+          });
+        }
+      }
     }
   }
 
