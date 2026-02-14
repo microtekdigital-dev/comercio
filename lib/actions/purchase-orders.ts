@@ -9,7 +9,10 @@ import { canAccessPurchaseOrders } from "@/lib/utils/plan-limits";
 export async function getPurchaseOrders(filters?: {
   search?: string;
   status?: string;
+  paymentStatus?: string;
   supplierId?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }): Promise<PurchaseOrder[]> {
   const supabase = await createClient();
   
@@ -49,8 +52,20 @@ export async function getPurchaseOrders(filters?: {
       query = query.eq("status", filters.status);
     }
 
+    if (filters?.paymentStatus) {
+      query = query.eq("payment_status", filters.paymentStatus);
+    }
+
     if (filters?.supplierId) {
       query = query.eq("supplier_id", filters.supplierId);
+    }
+
+    if (filters?.dateFrom) {
+      query = query.gte("order_date", filters.dateFrom);
+    }
+
+    if (filters?.dateTo) {
+      query = query.lte("order_date", filters.dateTo);
     }
 
     query = query.order("created_at", { ascending: false });

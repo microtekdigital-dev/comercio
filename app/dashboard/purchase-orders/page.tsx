@@ -7,6 +7,7 @@ import type { PurchaseOrder, Supplier } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,58 +24,59 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, ShoppingCart } from "lucide-react";
+import { Plus, Search, ShoppingCart, Filter, X } from "lucide-react";
 import Link from "next/link";
 
 export default function PurchaseOrdersPage() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [supplierFilter, setSupplierFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    loadData();
+    loadSuppliers();
+    loadOrders();
   }, []);
 
   useEffect(() => {
-    filterOrders();
-  }, [orders, search, statusFilter, supplierFilter]);
+    loadOrders();
+  }, [search, statusFilter, paymentStatusFilter, supplierFilter, dateFrom, dateTo]);
 
-  const loadData = async () => {
+  const loadSuppliers = async () => {
+    const data = await getSuppliers();
+    setSuppliers(data);
+  };
+
+  const loadOrders = async () => {
     setLoading(true);
-    const [ordersData, suppliersData] = await Promise.all([
-      getPurchaseOrders(),
-      getSuppliers(),
-    ]);
-    setOrders(ordersData);
-    setSuppliers(suppliersData);
+    const data = await getPurchaseOrders({
+      search: search || undefined,
+      status: statusFilter || undefined,
+      paymentStatus: paymentStatusFilter || undefined,
+      supplierId: supplierFilter || undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+    });
+    setOrders(data);
     setLoading(false);
   };
 
-  const filterOrders = () => {
-    let filtered = [...orders];
-
-    if (search) {
-      filtered = filtered.filter(
-        (o) =>
-          o.order_number.toLowerCase().includes(search.toLowerCase()) ||
-          o.supplier?.name.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((o) => o.status === statusFilter);
-    }
-
-    if (supplierFilter !== "all") {
-      filtered = filtered.filter((o) => o.supplier_id === supplierFilter);
-    }
-
-    setFilteredOrders(filtered);
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setPaymentStatusFilter("");
+    setSupplierFilter("");
+    setDateFrom("");
+    setDateTo("");
   };
+
+  const hasActiveFilters = search || statusFilter || paymentStatusFilter || supplierFilter || dateFrom || dateTo;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -157,62 +159,132 @@ export default function PurchaseOrdersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Busca y filtra órdenes de compra</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Filtros</CardTitle>
+              <CardDescription>Busca y filtra órdenes de compra</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="w-full sm:w-auto"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              {showFilters ? "Ocultar" : "Mostrar"} Filtros
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <CardContent className="space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por número o proveedor..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Filters */}
+          {showFilters && (
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4 border rounded-lg bg-muted/50">
+              <div className="space-y-2">
+                <Label>Estado</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Todos</SelectItem>
+                    <SelectItem value="pending">Pendiente</SelectItem>
+                    <SelectItem value="confirmed">Confirmada</SelectItem>
+                    <SelectItem value="received">Recibida</SelectItem>
+                    <SelectItem value="cancelled">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Estado de Pago</Label>
+                <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Todos</SelectItem>
+                    <SelectItem value="pending">Pendiente</SelectItem>
+                    <SelectItem value="partial">Parcial</SelectItem>
+                    <SelectItem value="paid">Pagado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Proveedor</Label>
+                <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Todos</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Fecha Desde</Label>
                 <Input
-                  placeholder="Buscar por número o proveedor..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Fecha Hasta</Label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-end sm:col-span-3 lg:col-span-2">
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="w-full"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Limpiar Filtros
+                  </Button>
+                )}
+              </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pending">Pendiente</SelectItem>
-                <SelectItem value="confirmed">Confirmada</SelectItem>
-                <SelectItem value="received">Recibida</SelectItem>
-                <SelectItem value="cancelled">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Proveedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {filteredOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No hay órdenes de compra</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {search || statusFilter !== "all" || supplierFilter !== "all"
+              {hasActiveFilters
                 ? "No se encontraron órdenes con los filtros aplicados"
                 : "Comienza creando tu primera orden de compra"}
             </p>
-            {!search && statusFilter === "all" && supplierFilter === "all" && (
+            {!hasActiveFilters && (
               <Link href="/dashboard/purchase-orders/new">
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -239,7 +311,7 @@ export default function PurchaseOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order) => (
+                {orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">
                       {order.order_number}
@@ -266,7 +338,7 @@ export default function PurchaseOrdersPage() {
 
           {/* Vista de tarjetas para móvil */}
           <div className="block md:hidden space-y-3">
-            {filteredOrders.map((order) => (
+            {orders.map((order) => (
               <Card key={order.id} className="p-4">
                 <div className="space-y-3">
                   {/* Header con número y badges */}
@@ -307,7 +379,7 @@ export default function PurchaseOrdersPage() {
       )}
 
       <div className="text-sm text-muted-foreground">
-        Mostrando {filteredOrders.length} de {orders.length} órdenes
+        Mostrando {orders.length} {orders.length === 1 ? "orden" : "órdenes"}
       </div>
     </div>
   );

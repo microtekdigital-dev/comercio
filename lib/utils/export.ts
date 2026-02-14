@@ -360,3 +360,192 @@ export function exportProductsReportToPDF(
 
   doc.save(`reporte-productos-${new Date().toISOString().split("T")[0]}.pdf`);
 }
+
+// PDF Export for Sales List
+export function exportSalesToPDF(sales: Sale[], companyName: string = "Mi Empresa") {
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  // Title
+  doc.setFontSize(18);
+  doc.text("Listado de Ventas", 14, 15);
+
+  // Company name
+  doc.setFontSize(11);
+  doc.text(companyName, 14, 22);
+
+  // Date
+  doc.setFontSize(9);
+  doc.text(`Generado: ${new Date().toLocaleDateString("es-AR")} ${new Date().toLocaleTimeString("es-AR")}`, 14, 28);
+
+  // Prepare table data with items
+  const tableData: any[] = [];
+  
+  sales.forEach(sale => {
+    if (sale.items && sale.items.length > 0) {
+      sale.items.forEach(item => {
+        const productName = item.variant_name
+          ? `${item.product_name} - ${item.variant_name}`
+          : item.product_name;
+        
+        tableData.push([
+          sale.sale_number,
+          new Date(sale.sale_date).toLocaleDateString("es-AR"),
+          sale.customer?.name || "Sin cliente",
+          productName,
+          item.quantity.toString(),
+          item.unit_price.toFixed(2),
+          item.total.toFixed(2),
+          sale.status,
+        ]);
+      });
+    } else {
+      tableData.push([
+        sale.sale_number,
+        new Date(sale.sale_date).toLocaleDateString("es-AR"),
+        sale.customer?.name || "Sin cliente",
+        "-",
+        "0",
+        "0.00",
+        sale.total.toFixed(2),
+        sale.status,
+      ]);
+    }
+  });
+
+  autoTable(doc, {
+    startY: 35,
+    head: [["Número", "Fecha", "Cliente", "Producto", "Cant.", "Precio Unit.", "Total", "Estado"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+    styles: { fontSize: 7, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 70 },
+      4: { cellWidth: 18, halign: "right" },
+      5: { cellWidth: 25, halign: "right" },
+      6: { cellWidth: 25, halign: "right" },
+      7: { cellWidth: 25 },
+    },
+  });
+
+  doc.save(`ventas-${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+// PDF Export for Products List
+export function exportProductsToPDF(products: Product[], companyName: string = "Mi Empresa") {
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  // Title
+  doc.setFontSize(18);
+  doc.text("Listado de Productos", 14, 15);
+
+  // Company name
+  doc.setFontSize(11);
+  doc.text(companyName, 14, 22);
+
+  // Date
+  doc.setFontSize(9);
+  doc.text(`Generado: ${new Date().toLocaleDateString("es-AR")} ${new Date().toLocaleTimeString("es-AR")}`, 14, 28);
+
+  // Prepare table data with variants
+  const tableData: any[] = [];
+  
+  products.forEach(product => {
+    if (product.has_variants && product.variants && product.variants.length > 0) {
+      product.variants
+        .filter(v => v.is_active)
+        .forEach(variant => {
+          tableData.push([
+            variant.sku || product.sku || "-",
+            `${product.name}\n${variant.variant_name}`,
+            product.category?.name || "-",
+            (variant.price || product.price).toFixed(2),
+            product.cost?.toFixed(2) || "-",
+            product.track_inventory ? variant.stock_quantity.toString() : "N/A",
+            product.is_active ? "Sí" : "No",
+          ]);
+        });
+    } else {
+      tableData.push([
+        product.sku || "-",
+        product.name,
+        product.category?.name || "-",
+        product.price.toFixed(2),
+        product.cost?.toFixed(2) || "-",
+        product.track_inventory ? product.stock_quantity.toString() : "N/A",
+        product.is_active ? "Sí" : "No",
+      ]);
+    }
+  });
+
+  autoTable(doc, {
+    startY: 35,
+    head: [["SKU", "Nombre", "Categoría", "Precio", "Costo", "Stock", "Activo"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+    styles: { fontSize: 7, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 25, halign: "right" },
+      4: { cellWidth: 25, halign: "right" },
+      5: { cellWidth: 20, halign: "right" },
+      6: { cellWidth: 20, halign: "center" },
+    },
+  });
+
+  doc.save(`productos-${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+// PDF Export for Customers List
+export function exportCustomersToPDF(customers: Customer[], companyName: string = "Mi Empresa") {
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  // Title
+  doc.setFontSize(18);
+  doc.text("Listado de Clientes", 14, 15);
+
+  // Company name
+  doc.setFontSize(11);
+  doc.text(companyName, 14, 22);
+
+  // Date
+  doc.setFontSize(9);
+  doc.text(`Generado: ${new Date().toLocaleDateString("es-AR")} ${new Date().toLocaleTimeString("es-AR")}`, 14, 28);
+
+  // Prepare table data
+  const tableData = customers.map((customer) => [
+    customer.name,
+    customer.email || "-",
+    customer.phone || "-",
+    customer.document_type ? `${customer.document_type}: ${customer.document_number || ""}` : "-",
+    customer.city || "-",
+    customer.state || "-",
+    customer.status,
+  ]);
+
+  autoTable(doc, {
+    startY: 35,
+    head: [["Nombre", "Email", "Teléfono", "Documento", "Ciudad", "Provincia", "Estado"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+    styles: { fontSize: 7, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 50 },
+      1: { cellWidth: 55 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 45 },
+      4: { cellWidth: 35 },
+      5: { cellWidth: 30 },
+      6: { cellWidth: 25, halign: "center" },
+    },
+  });
+
+  doc.save(`clientes-${new Date().toISOString().split("T")[0]}.pdf`);
+}
