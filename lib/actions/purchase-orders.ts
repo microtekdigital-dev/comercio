@@ -175,23 +175,23 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
 
     const total = subtotal + taxAmount;
 
-    // Generate order number with improved retry logic
+    // Generate order number with improved retry logic and timestamp-based uniqueness
     let order;
     let orderError;
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 15;
 
     while (attempts < maxAttempts) {
       attempts++;
       
-      // Get the maximum order number for this company (check more records to be safe)
+      // Get the maximum order number for this company
       const { data: orders } = await supabase
         .from("purchase_orders")
         .select("order_number")
         .eq("company_id", profile.company_id)
         .not("order_number", "is", null)
-        .order("order_number", { ascending: false })
-        .limit(50);
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       let nextNumber = 1;
       if (orders && orders.length > 0) {
@@ -201,16 +201,17 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
             const match = o.order_number?.match(/PO-(\d+)/);
             return match ? parseInt(match[1]) : 0;
           })
-          .filter(n => !isNaN(n));
+          .filter(n => !isNaN(n) && n > 0);
         
         if (numbers.length > 0) {
           nextNumber = Math.max(...numbers) + 1;
         }
       }
 
-      // On retry, add random offset to avoid collision with concurrent requests
-      const randomOffset = attempts > 1 ? Math.floor(Math.random() * 100) : 0;
-      const orderNumber = `PO-${String(nextNumber + randomOffset).padStart(6, "0")}`;
+      // On retry, add increasing offset to avoid collision
+      // Use timestamp milliseconds for additional uniqueness
+      const retryOffset = attempts > 1 ? attempts * 10 + (Date.now() % 100) : 0;
+      const orderNumber = `PO-${String(nextNumber + retryOffset).padStart(6, "0")}`;
 
       // Try to create purchase order with generated number
       const result = await supabase
@@ -237,20 +238,42 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
       order = result.data;
       orderError = result.error;
 
-      // If successful or error is not duplicate, break
-      if (!orderError || orderError.code !== "23505") {
+      // If successful, break immediately
+      if (!orderError && order) {
         break;
       }
 
-      // If duplicate, add exponential backoff delay and retry
-      await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempts - 1)));
+      // If error is duplicate key (23505), retry with backoff
+      if (orderError?.code === "23505") {
+        console.log(`Duplicate order number detected (attempt ${attempts}/${maxAttempts}), retrying...`);
+        // Exponential backoff with jitter
+        const backoffMs = Math.min(1000, 50 * Math.pow(2, attempts - 1)) + Math.random() * 50;
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        continue;
+      }
+
+      // For other errors, break immediately
+      break;
     }
 
     if (orderError) {
       console.error("Error creating purchase order:", orderError);
+      
+      // Provide user-friendly error message
+      if (orderError.code === "23505") {
+        return { 
+          error: "No se pudo generar un número de orden único. Por favor, intenta nuevamente en unos segundos." 
+        };
+      }
+      
       throw orderError;
     }
-    if (!order) throw new Error("Failed to create order after multiple attempts");
+    
+    if (!order) {
+      return { 
+        error: "No se pudo crear la orden después de múltiples intentos. Por favor, intenta nuevamente." 
+      };
+    }
 
     // Create purchase order items
     const itemsToInsert = items.map(item => ({

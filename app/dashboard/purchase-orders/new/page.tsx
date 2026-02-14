@@ -207,14 +207,50 @@ export default function NewPurchaseOrderPage() {
 
     setLoading(true);
 
-    const result = await createPurchaseOrder(formData);
+    // Retry logic for handling transient errors
+    let retries = 0;
+    const maxRetries = 3;
 
-    if (result.error) {
-      toast.error(result.error);
-      setLoading(false);
-    } else {
-      toast.success("Orden de compra creada exitosamente");
-      router.push("/dashboard/purchase-orders");
+    while (retries < maxRetries) {
+      try {
+        const result = await createPurchaseOrder(formData);
+
+        if (result.error) {
+          // Check if it's a retryable error
+          const isRetryable = result.error.includes("número de orden único") || 
+                              result.error.includes("múltiples intentos");
+          
+          if (isRetryable && retries < maxRetries - 1) {
+            retries++;
+            console.log(`Retrying order creation (attempt ${retries + 1}/${maxRetries})...`);
+            // Wait before retry with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retries)));
+            continue;
+          }
+          
+          console.error("Error creating purchase order:", result.error);
+          toast.error(result.error);
+          setLoading(false);
+          return;
+        } else {
+          toast.success("Orden de compra creada exitosamente");
+          router.push("/dashboard/purchase-orders");
+          return;
+        }
+      } catch (error) {
+        console.error("Unexpected error:", error);
+        
+        if (retries < maxRetries - 1) {
+          retries++;
+          console.log(`Retrying after unexpected error (attempt ${retries + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retries)));
+          continue;
+        }
+        
+        toast.error("Error inesperado al crear la orden de compra. Por favor, intenta nuevamente.");
+        setLoading(false);
+        return;
+      }
     }
   };
 

@@ -193,8 +193,12 @@ export async function canAccessPurchaseOrders(companyId: string): Promise<{
   const limits = await getCurrentPlanLimits(companyId);
   
   // Solo Pro/Profesional y Empresarial tienen acceso a órdenes de compra
-  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
-  const hasAccess = allowedPlans.includes(limits.planName);
+  // Usar includes para ser más flexible con variaciones del nombre (ej: "Profesional Anual")
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
   
   return {
     allowed: hasAccess,
@@ -212,8 +216,12 @@ export async function canAccessSuppliers(companyId: string): Promise<{
   const limits = await getCurrentPlanLimits(companyId);
   
   // Solo Pro/Profesional y Empresarial tienen acceso a proveedores
-  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
-  const hasAccess = allowedPlans.includes(limits.planName);
+  // Usar includes para ser más flexible con variaciones del nombre
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
   
   return {
     allowed: hasAccess,
@@ -231,8 +239,12 @@ export async function canExportToExcel(companyId: string): Promise<{
   const limits = await getCurrentPlanLimits(companyId);
   
   // Solo Pro/Profesional y Empresarial tienen acceso a exportar
-  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
-  const hasAccess = allowedPlans.includes(limits.planName);
+  // Usar includes para ser más flexible con variaciones del nombre
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
   
   return {
     allowed: hasAccess,
@@ -250,8 +262,12 @@ export async function canAccessAdvancedReports(companyId: string): Promise<{
   const limits = await getCurrentPlanLimits(companyId);
   
   // Pro/Profesional y Empresarial tienen acceso
-  const allowedPlans = ["Pro", "Profesional", "Empresarial"];
-  const hasAccess = allowedPlans.includes(limits.planName);
+  // Usar includes para ser más flexible con variaciones del nombre
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
   
   return {
     allowed: hasAccess,

@@ -26,8 +26,11 @@ export default async function DashboardLayout({
   }
 
   // Get user's company and subscription status
-  const supabase = await createClient()
-  const { data: profile } = await supabase
+  // CRITICAL: Use admin client to bypass RLS for this system query
+  // RLS policies on profiles were blocking this critical query
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const adminClient = createAdminClient()
+  const { data: profile } = await adminClient
     .from("profiles")
     .select("company_id, role")
     .eq("id", user.id)
