@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { PurchaseOrder, PurchaseOrderFormData } from "@/lib/types/erp";
 import { canAccessPurchaseOrders } from "@/lib/utils/plan-limits";
+import { handleServerError } from "@/lib/utils/error-handler";
 
 // Get all purchase orders
 export async function getPurchaseOrders(filters?: {
@@ -119,16 +120,22 @@ export async function getPurchaseOrder(id: string): Promise<PurchaseOrder | null
 // Create purchase order
 export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
   const supabase = await createClient();
+  let user: any = null;
+  let profile: any = null;
   
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+    
     if (!user) return { error: "No autenticado" };
 
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from("profiles")
       .select("company_id, role")
       .eq("id", user.id)
       .single();
+    
+    profile = profileData;
 
     if (!profile?.company_id) {
       return { error: "No se encontró la empresa" };
@@ -168,7 +175,7 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
 
     const total = subtotal + taxAmount;
 
-    // Generate order number with retry logic
+    // Generate order number with improved retry logic
     let order;
     let orderError;
     let attempts = 0;
@@ -177,14 +184,14 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
     while (attempts < maxAttempts) {
       attempts++;
       
-      // Get the maximum order number for this company
+      // Get the maximum order number for this company (check more records to be safe)
       const { data: orders } = await supabase
         .from("purchase_orders")
         .select("order_number")
         .eq("company_id", profile.company_id)
         .not("order_number", "is", null)
         .order("order_number", { ascending: false })
-        .limit(10);
+        .limit(50);
 
       let nextNumber = 1;
       if (orders && orders.length > 0) {
@@ -201,8 +208,9 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
         }
       }
 
-      // Add attempt number to avoid collisions on retry
-      const orderNumber = `PO-${String(nextNumber + attempts - 1).padStart(6, "0")}`;
+      // On retry, add random offset to avoid collision with concurrent requests
+      const randomOffset = attempts > 1 ? Math.floor(Math.random() * 100) : 0;
+      const orderNumber = `PO-${String(nextNumber + randomOffset).padStart(6, "0")}`;
 
       // Try to create purchase order with generated number
       const result = await supabase
@@ -234,8 +242,8 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
         break;
       }
 
-      // If duplicate, add small delay and retry
-      await new Promise(resolve => setTimeout(resolve, 50 * attempts));
+      // If duplicate, add exponential backoff delay and retry
+      await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempts - 1)));
     }
 
     if (orderError) {
@@ -272,8 +280,15 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
     revalidatePath("/dashboard/suppliers");
     return { data: order };
   } catch (error) {
-    console.error("Error creating purchase order:", error);
-    return { error: "Error al crear la orden de compra" };
+    return handleServerError(error, {
+      operation: 'createPurchaseOrder',
+      userId: user?.id,
+      companyId: profile?.company_id,
+      additionalInfo: {
+        supplierId: formData.supplier_id,
+        itemCount: formData.items.length,
+      },
+    });
   }
 }
 
@@ -283,9 +298,12 @@ export async function updatePurchaseOrderStatus(
   status: "pending" | "confirmed" | "received" | "cancelled"
 ) {
   const supabase = await createClient();
+  let user: any = null;
   
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+    
     if (!user) return { error: "No autenticado" };
 
     const updateData: any = { status };
@@ -307,24 +325,34 @@ export async function updatePurchaseOrderStatus(
     revalidatePath(`/dashboard/purchase-orders/${id}`);
     return { data };
   } catch (error) {
-    console.error("Error updating purchase order status:", error);
-    return { error: "Error al actualizar el estado" };
+    return handleServerError(error, {
+      operation: 'updatePurchaseOrderStatus',
+      userId: user?.id,
+      entityId: id,
+      additionalInfo: { newStatus: status },
+    });
   }
 }
 
 // Receive items (update stock)
 export async function receiveItems(orderId: string, items: { itemId: string; quantity: number }[]) {
   const supabase = await createClient();
+  let user: any = null;
+  let profile: any = null;
   
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+    
     if (!user) return { error: "No autenticado" };
 
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from("profiles")
       .select("company_id, full_name, email")
       .eq("id", user.id)
       .single();
+    
+    profile = profileData;
 
     if (!profile?.company_id) {
       return { error: "No se encontró la empresa" };
@@ -450,8 +478,13 @@ export async function receiveItems(orderId: string, items: { itemId: string; qua
     revalidatePath("/dashboard/products");
     return { success: true };
   } catch (error) {
-    console.error("Error receiving items:", error);
-    return { error: "Error al recibir los items" };
+    return handleServerError(error, {
+      operation: 'receiveItems',
+      userId: user?.id,
+      companyId: profile?.company_id,
+      entityId: orderId,
+      additionalInfo: { itemCount: items.length },
+    });
   }
 }
 
@@ -464,16 +497,22 @@ export async function addSupplierPayment(
   notes?: string
 ) {
   const supabase = await createClient();
+  let user: any = null;
+  let profile: any = null;
   
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+    
     if (!user) return { error: "No autenticado" };
 
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from("profiles")
       .select("company_id")
       .eq("id", user.id)
       .single();
+    
+    profile = profileData;
 
     if (!profile?.company_id) {
       return { error: "No se encontró la empresa" };
@@ -528,24 +567,35 @@ export async function addSupplierPayment(
     revalidatePath(`/dashboard/purchase-orders/${purchaseOrderId}`);
     return { data: payment };
   } catch (error) {
-    console.error("Error adding payment:", error);
-    return { error: "Error al registrar el pago" };
+    return handleServerError(error, {
+      operation: 'addSupplierPayment',
+      userId: user?.id,
+      companyId: profile?.company_id,
+      entityId: purchaseOrderId,
+      additionalInfo: { amount, paymentMethod },
+    });
   }
 }
 
 // Delete purchase order
 export async function deletePurchaseOrder(id: string) {
   const supabase = await createClient();
+  let user: any = null;
+  let profile: any = null;
   
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+    
     if (!user) return { error: "No autenticado" };
 
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from("profiles")
       .select("company_id, role")
       .eq("id", user.id)
       .single();
+    
+    profile = profileData;
 
     if (!profile?.company_id) {
       return { error: "No se encontró la empresa" };
@@ -566,7 +616,11 @@ export async function deletePurchaseOrder(id: string) {
     revalidatePath("/dashboard/purchase-orders");
     return { success: true };
   } catch (error) {
-    console.error("Error deleting purchase order:", error);
-    return { error: "Error al eliminar la orden" };
+    return handleServerError(error, {
+      operation: 'deletePurchaseOrder',
+      userId: user?.id,
+      companyId: profile?.company_id,
+      entityId: id,
+    });
   }
 }
