@@ -230,7 +230,7 @@ export default function HomePage() {
             <div className="mb-6">
               <h3 className="text-2xl font-bold mb-2">Básico</h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-bold">$8.000</span>
+                <span className="text-4xl font-bold">$15.000</span>
                 <span className="text-muted-foreground">/mes</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -282,7 +282,7 @@ export default function HomePage() {
             <div className="mb-6">
               <h3 className="text-2xl font-bold mb-2">Profesional</h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-bold">$15.000</span>
+                <span className="text-4xl font-bold">$30.000</span>
                 <span className="text-muted-foreground">/mes</span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -338,7 +338,7 @@ export default function HomePage() {
             <div className="mb-6">
               <h3 className="text-2xl font-bold mb-2">Empresarial</h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-bold">$30.000</span>
+                <span className="text-4xl font-bold">$55.000</span>
                 <span className="text-muted-foreground">/mes</span>
               </div>
               <p className="text-sm text-muted-foreground">
