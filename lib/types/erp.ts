@@ -494,6 +494,26 @@ export interface QuoteItemFormData {
 // Cash Register Types (Cierre de Caja)
 // =====================================================
 
+export interface CashRegisterOpening {
+  id: string;
+  company_id: string;
+  opening_date: string;
+  shift: string;
+  opened_by: string;
+  opened_by_name: string;
+  initial_cash_amount: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashRegisterOpeningFormData {
+  opening_date: string;
+  shift: string;
+  initial_cash_amount: number;
+  notes?: string;
+}
+
 export interface CashRegisterClosure {
   id: string;
   company_id: string;
@@ -511,6 +531,7 @@ export interface CashRegisterClosure {
   cash_difference: number | null;
   notes: string | null;
   currency: string;
+  opening_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -520,6 +541,7 @@ export interface CashRegisterClosureFormData {
   shift?: string;
   cash_counted?: number;
   notes?: string;
+  opening_id?: string;
 }
 
 // =====================================================

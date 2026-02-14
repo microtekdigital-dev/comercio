@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, DollarSign, TrendingUp, CreditCard, Smartphone, Wallet } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ArrowLeft, DollarSign, TrendingUp, CreditCard, Smartphone, Wallet, AlertTriangle, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 
@@ -33,14 +34,21 @@ export default function NewCashRegisterClosurePage() {
     cardSales: number
     transferSales: number
     otherSales: number
+    opening?: {
+      id: string
+      initial_cash_amount: number
+      opened_by_name: string
+      shift: string
+    } | null
+    hasOpening: boolean
   } | null>(null)
 
-  // Calculate preview when date changes
+  // Calculate preview when date or shift changes
   useEffect(() => {
     if (closureDate) {
       calculatePreview()
     }
-  }, [closureDate])
+  }, [closureDate, shift])
 
   const calculatePreview = async () => {
     setCalculating(true)
@@ -103,6 +111,8 @@ export default function NewCashRegisterClosurePage() {
         }
       }
 
+      // Check for opening (simulated - in real app would call findOpeningForClosure)
+      // For now, we'll set hasOpening to false and let the backend handle it
       setPreview({
         totalSalesCount,
         totalSalesAmount,
@@ -110,6 +120,7 @@ export default function NewCashRegisterClosurePage() {
         cardSales,
         transferSales,
         otherSales,
+        hasOpening: false, // Will be determined by backend
       })
     } catch (error) {
       console.error("Error calculating preview:", error)
@@ -134,6 +145,9 @@ export default function NewCashRegisterClosurePage() {
       if (result.error) {
         toast.error(result.error)
       } else {
+        if (result.warning) {
+          toast.warning(result.warning)
+        }
         toast.success("Cierre de caja creado exitosamente")
         router.push("/dashboard/cash-register")
       }
@@ -153,7 +167,7 @@ export default function NewCashRegisterClosurePage() {
   }
 
   const cashDifference = cashCounted && preview 
-    ? Number(cashCounted) - preview.cashSales 
+    ? Number(cashCounted) - preview.cashSales - (preview.opening?.initial_cash_amount || 0)
     : null
 
   return (
@@ -252,6 +266,31 @@ export default function NewCashRegisterClosurePage() {
 
         {/* Preview */}
         <div className="space-y-6">
+          {/* Warning if no opening found */}
+          {preview && !preview.hasOpening && shift && shift !== "sin-turno" && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                No se encontró apertura para esta fecha y turno. El cálculo de diferencia no incluirá el monto inicial de apertura.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Opening info if found */}
+          {preview?.opening && (
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  <p className="font-semibold">Apertura encontrada</p>
+                  <p className="text-sm">Turno: {preview.opening.shift}</p>
+                  <p className="text-sm">Abierto por: {preview.opening.opened_by_name}</p>
+                  <p className="text-sm">Monto inicial: {formatCurrency(preview.opening.initial_cash_amount)}</p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Resumen de Ventas</CardTitle>
@@ -320,6 +359,12 @@ export default function NewCashRegisterClosurePage() {
                           <span className="text-muted-foreground">Efectivo Esperado:</span>
                           <span className="font-medium">{formatCurrency(preview.cashSales)}</span>
                         </div>
+                        {preview.opening && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Monto Inicial Apertura:</span>
+                            <span className="font-medium">{formatCurrency(preview.opening.initial_cash_amount)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Efectivo Contado:</span>
                           <span className="font-medium">{formatCurrency(Number(cashCounted))}</span>
