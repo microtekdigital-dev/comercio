@@ -406,6 +406,102 @@ export async function canAccessAccountsSettlement(companyId: string): Promise<{
 }
 
 /**
+ * Verifica si el plan tiene acceso a reportes avanzados de inventario
+ */
+export async function canAccessAdvancedInventoryReports(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro/Profesional y Empresarial tienen acceso a reportes avanzados de inventario
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "Los reportes avanzados de inventario están disponibles en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a reportes avanzados de cuentas
+ */
+export async function canAccessAdvancedAccountsReports(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro/Profesional y Empresarial tienen acceso a reportes avanzados de cuentas
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "Los reportes avanzados de cuentas están disponibles en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a reportes avanzados de caja
+ */
+export async function canAccessAdvancedCashReports(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro/Profesional y Empresarial tienen acceso a reportes avanzados de caja
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "Los reportes avanzados de caja están disponibles en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a exportación avanzada de reportes
+ */
+export async function canExportAdvancedReports(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro/Profesional y Empresarial tienen acceso a exportación avanzada
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "La exportación avanzada de reportes está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
  * Obtiene información de uso actual vs límites del plan
  */
 export async function getPlanUsage(companyId: string) {

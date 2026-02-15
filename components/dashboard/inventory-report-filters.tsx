@@ -26,6 +26,7 @@ import {
 import { CalendarIcon, FileSpreadsheet, FileText, Download, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Category, Product } from "@/lib/types/erp"
+import { DateRangePresets } from "./date-range-presets"
 
 interface InventoryReportFiltersProps {
   startDate: Date | null
@@ -178,6 +179,16 @@ export function InventoryReportFilters({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      {/* Date Presets */}
+      <div className="flex justify-end">
+        <DateRangePresets
+          onSelectPreset={(start, end) => {
+            onStartDateChange(start)
+            onEndDateChange(end)
+          }}
+        />
       </div>
 
       {/* Validation Error */}
