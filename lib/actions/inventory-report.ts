@@ -306,6 +306,14 @@ export async function calculatePurchases(
 
   const { data: items, error } = await query;
 
+  // DEBUG: Log the query results
+  console.log("=== calculatePurchases DEBUG ===");
+  console.log("Date range:", startDateStr, "to", endDateStr);
+  console.log("Items returned:", items?.length || 0);
+  console.log("Raw items:", JSON.stringify(items, null, 2));
+  console.log("Error:", error);
+  console.log("================================");
+
   if (error) {
     console.error("Error calculating purchases:", error);
     console.error("Error details:", JSON.stringify(error, null, 2));
@@ -313,6 +321,7 @@ export async function calculatePurchases(
   }
 
   if (!items || items.length === 0) {
+    console.log("No purchase items found - returning empty array");
     return [];
   }
 
