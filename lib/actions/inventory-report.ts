@@ -87,6 +87,8 @@ export async function calculateInitialStock(
   }
 
   // Get average costs from purchase orders before start date
+  const startDateStr = startDate.toISOString().split('T')[0];
+  
   let purchaseQuery = supabase
     .from("purchase_order_items")
     .select(`
@@ -102,7 +104,8 @@ export async function calculateInitialStock(
     `)
     .eq("purchase_orders.company_id", companyId)
     .eq("purchase_orders.status", "received")
-    .lt("purchase_orders.received_date", startDate.toISOString());
+    .not("purchase_orders.received_date", "is", null)
+    .lt("purchase_orders.received_date", startDateStr);
 
   if (categoryId) {
     purchaseQuery = purchaseQuery.eq("products.category_id", categoryId);
@@ -259,6 +262,10 @@ export async function calculatePurchases(
 ) {
   const supabase = await createClient();
 
+  // Format dates as YYYY-MM-DD for DATE field comparison
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+
   let query = supabase
     .from("purchase_order_items")
     .select(`
@@ -280,8 +287,9 @@ export async function calculatePurchases(
     `)
     .eq("purchase_orders.company_id", companyId)
     .eq("purchase_orders.status", "received")
-    .gte("purchase_orders.received_date", startDate.toISOString())
-    .lte("purchase_orders.received_date", endDate.toISOString());
+    .not("purchase_orders.received_date", "is", null)
+    .gte("purchase_orders.received_date", startDateStr)
+    .lte("purchase_orders.received_date", endDateStr);
 
   // Apply filters
   if (categoryId) {
@@ -372,6 +380,10 @@ export async function calculateSales(
 ) {
   const supabase = await createClient();
 
+  // Format dates as YYYY-MM-DD for DATE field comparison
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+
   let query = supabase
     .from("sale_items")
     .select(`
@@ -393,8 +405,8 @@ export async function calculateSales(
     `)
     .eq("sales.company_id", companyId)
     .in("sales.status", ["completed", "paid"])
-    .gte("sales.sale_date", startDate.toISOString())
-    .lte("sales.sale_date", endDate.toISOString());
+    .gte("sales.sale_date", startDateStr)
+    .lte("sales.sale_date", endDateStr);
 
   // Apply filters
   if (categoryId) {
