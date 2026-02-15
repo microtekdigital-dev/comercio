@@ -118,9 +118,6 @@ export async function calculateInitialStock(
       `)
       .in("purchase_order_id", purchaseOrderIds);
 
-    if (categoryId) {
-      purchaseQuery = purchaseQuery.eq("products.category_id", categoryId);
-    }
     if (productId) {
       purchaseQuery = purchaseQuery.eq("product_id", productId);
     }
@@ -132,10 +129,6 @@ export async function calculateInitialStock(
     } else {
       purchaseItems = items;
     }
-  }
-
-  if (purchaseError) {
-    console.error("Error fetching purchase costs:", purchaseError);
   }
 
   // Calculate average cost per product/variant
@@ -284,15 +277,25 @@ export async function calculatePurchases(
   const startDateStr = startDate.toISOString().split('T')[0];
   const endDateStr = endDate.toISOString().split('T')[0];
 
+  console.log("=== calculatePurchases START ===");
+  console.log("Company ID:", companyId);
+  console.log("Date range:", startDateStr, "to", endDateStr);
+  console.log("Category filter:", categoryId || "none");
+  console.log("Product filter:", productId || "none");
+
   // First get purchase_orders for this company in the date range
   const { data: purchaseOrders, error: poError } = await supabase
     .from("purchase_orders")
-    .select("id")
+    .select("id, order_number, received_date, status")
     .eq("company_id", companyId)
     .eq("status", "received")
     .not("received_date", "is", null)
     .gte("received_date", startDateStr)
     .lte("received_date", endDateStr);
+
+  console.log("Purchase orders found:", purchaseOrders?.length || 0);
+  console.log("Purchase orders:", JSON.stringify(purchaseOrders, null, 2));
+  console.log("PO Error:", poError);
 
   if (poError) {
     console.error("Error fetching purchase orders:", poError);
@@ -300,11 +303,13 @@ export async function calculatePurchases(
   }
 
   if (!purchaseOrders || purchaseOrders.length === 0) {
-    console.log("No purchase orders found for company in date range");
+    console.log("No purchase orders found for company in date range - returning empty array");
+    console.log("=== calculatePurchases END ===");
     return [];
   }
 
   const purchaseOrderIds = purchaseOrders.map(po => po.id);
+  console.log("Purchase order IDs:", purchaseOrderIds);
 
   // Now get items for those purchase orders
   let query = supabase
@@ -335,13 +340,9 @@ export async function calculatePurchases(
 
   const { data: items, error } = await query;
 
-  // DEBUG: Log the query results
-  console.log("=== calculatePurchases DEBUG ===");
-  console.log("Date range:", startDateStr, "to", endDateStr);
   console.log("Items returned:", items?.length || 0);
   console.log("Raw items:", JSON.stringify(items, null, 2));
-  console.log("Error:", error);
-  console.log("================================");
+  console.log("Items Error:", error);
 
   if (error) {
     console.error("Error calculating purchases:", error);
@@ -351,6 +352,7 @@ export async function calculatePurchases(
 
   if (!items || items.length === 0) {
     console.log("No purchase items found - returning empty array");
+    console.log("=== calculatePurchases END ===");
     return [];
   }
 
@@ -648,6 +650,7 @@ export async function generateInventoryReport(
     return variantA.localeCompare(variantB);
   });
 
+  console.log("=== calculatePurchases END ===");
   return report;
 }
 

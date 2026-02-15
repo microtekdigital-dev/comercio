@@ -1,149 +1,216 @@
-# Fix: Órdenes de Compra No Aparecen en Reporte de Liquidación
+# Fix: Órdenes de Compra No Aparecen en Reporte de Liquidación (Problema RLS)
 
 ## Problema
-Las órdenes de compra no aparecían en el reporte de liquidación de inventario, mostrando siempre 0 compras aunque existieran datos en la base de datos.
 
-## Causa Raíz
-El código TypeScript en `lib/actions/inventory-report.ts` tenía un filtro incorrecto:
+Las órdenes de compra que antes aparecían en el reporte de liquidación ahora no se muestran. Esto indica un problema de RLS (Row Level Security).
 
-```typescript
-.eq("purchase_orders.company_id", companyId)
+## Causa Probable
+
+Las políticas RLS de `purchase_orders` y `purchase_order_items` están bloqueando el acceso cuando se ejecuta el reporte desde el servidor (Server Actions).
+
+## Solución Rápida
+
+### Paso 1: Diagnosticar el Problema
+
+Ejecuta este script en Supabase SQL Editor:
+
+```sql
+-- Ver en docs-auth/DEBUG_PURCHASE_ORDERS_INVENTORY_REPORT_RLS.sql
 ```
 
-Este filtro causaba que la query fallara silenciosamente porque:
-1. Cuando haces un JOIN con `purchase_orders!inner()`, Supabase NO permite filtrar directamente por campos de la tabla relacionada usando `.eq()`
-2. Las políticas RLS de `purchase_orders` ya filtran automáticamente por `company_id`
-3. El filtro redundante causaba que la query no devolviera resultados
+Busca la sección **"🎯 DIAGNÓSTICO"** al final. Si dice:
 
-## Solución Aplicada
+```
+❌ PROBLEMA RLS: Tienes órdenes pero RLS las bloquea
+```
 
-### Archivo: `lib/actions/inventory-report.ts`
+Entonces el problema es RLS y necesitas ejecutar el fix.
 
-**Función `calculatePurchases` (línea ~283):**
-- ✅ ELIMINADO: `.eq("purchase_orders.company_id", companyId)`
-- ✅ AGREGADO: `company_id` al SELECT de `purchase_orders!inner()`
-- ✅ AGREGADO: Comentario explicativo sobre RLS
+### Paso 2: Aplicar el Fix
 
-**Función `calculateInitialStock` (línea ~100):**
-- ✅ ELIMINADO: `.eq("purchase_orders.company_id", companyId)`
-- ✅ AGREGADO: `company_id` al SELECT de `purchase_orders!inner()`
-- ✅ AGREGADO: Comentario explicativo sobre RLS
+Ejecuta este script en Supabase SQL Editor:
 
-## Verificación
+```sql
+-- Ver en docs-auth/FIX_PURCHASE_ORDERS_INVENTORY_REPORT_RLS.sql
+```
 
-### Query SQL que funciona en Supabase:
+Este script:
+1. ✅ Crea función `get_user_company_id()` con SECURITY DEFINER
+2. ✅ Recrea políticas RLS para `purchase_orders`
+3. ✅ Recrea políticas RLS para `purchase_order_items`
+4. ✅ Asegura que RLS está habilitado
+
+### Paso 3: Verificar
+
+1. Refresca la página de la aplicación
+2. Ve a Reporte de Liquidación
+3. Selecciona el rango de fechas
+4. Genera el reporte
+5. Las compras deberían aparecer ahora
+
+## ¿Por Qué Pasó Esto?
+
+### Antes (Funcionaba)
+- RLS estaba deshabilitado en `profiles` o `company_users`
+- Las políticas RLS podían leer directamente de esas tablas
+- Todo funcionaba
+
+### Ahora (No Funciona)
+- RLS se habilitó en `profiles` o `company_users`
+- Las políticas RLS no pueden leer de esas tablas (bloqueadas por su propio RLS)
+- Las políticas fallan y bloquean todo acceso
+
+### Solución
+- Crear función `get_user_company_id()` con `SECURITY DEFINER`
+- Esta función puede leer `company_users` sin importar RLS
+- Las políticas usan esta función en lugar de leer directamente
+
+## Diagnóstico Detallado
+
+### 1. Verificar Estado RLS
+
 ```sql
 SELECT 
-  poi.product_id,
-  poi.variant_id,
-  poi.quantity,
-  poi.unit_cost,
-  po.status,
-  po.received_date,
-  p.name as product_name
-FROM purchase_order_items poi
-INNER JOIN purchase_orders po ON poi.purchase_order_id = po.id
-INNER JOIN products p ON poi.product_id = p.id
-WHERE po.company_id = '1420bea3-a484-4a32-a429-bfd5a38063a3'
-  AND po.status = 'received'
-  AND po.received_date IS NOT NULL
-  AND po.received_date >= '2026-02-01'
-  AND po.received_date <= '2026-02-28';
+  tablename,
+  CASE 
+    WHEN rowsecurity = true THEN 'RLS Habilitado'
+    ELSE 'RLS Deshabilitado'
+  END as estado
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename IN ('purchase_orders', 'purchase_order_items', 'profiles', 'company_users')
+ORDER BY tablename;
 ```
 
-**Resultado esperado:**
-- 2 registros de compras
-- Producto: "Canastos Seagrass Rectangular"
-- Cantidades: 1 y 5 unidades
-- Costo unitario: $80,000
-- Fecha: 2026-02-15
+### 2. Ver Políticas Actuales
 
-## Código Corregido
-
-### Antes:
-```typescript
-let query = supabase
-  .from("purchase_order_items")
-  .select(`
-    product_id,
-    variant_id,
-    quantity,
-    unit_cost,
-    purchase_orders!inner(
-      status,
-      received_date
-    ),
-    products!inner(
-      name,
-      category_id
-    ),
-    product_variants(
-      variant_name
-    )
-  `)
-  .eq("purchase_orders.company_id", companyId)  // ❌ ESTO CAUSABA EL PROBLEMA
-  .eq("purchase_orders.status", "received")
-  .not("purchase_orders.received_date", "is", null)
-  .gte("purchase_orders.received_date", startDateStr)
-  .lte("purchase_orders.received_date", endDateStr);
+```sql
+SELECT 
+  tablename,
+  policyname,
+  cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename IN ('purchase_orders', 'purchase_order_items')
+ORDER BY tablename, cmd;
 ```
 
-### Después:
-```typescript
-let query = supabase
-  .from("purchase_order_items")
-  .select(`
-    product_id,
-    variant_id,
-    quantity,
-    unit_cost,
-    purchase_orders!inner(
-      status,
-      received_date,
-      company_id              // ✅ Agregado al SELECT
-    ),
-    products!inner(
-      name,
-      category_id
-    ),
-    product_variants(
-      variant_name
-    )
-  `)
-  // ✅ ELIMINADO: .eq("purchase_orders.company_id", companyId)
-  .eq("purchase_orders.status", "received")
-  .not("purchase_orders.received_date", "is", null)
-  .gte("purchase_orders.received_date", startDateStr)
-  .lte("purchase_orders.received_date", endDateStr);
+### 3. Verificar Función Helper
 
-// Filter by company_id after the query (RLS handles this automatically, but we add explicit filter for clarity)
-// Note: We removed .eq("purchase_orders.company_id", companyId) because it causes the query to fail
-// The RLS policies on purchase_orders table already filter by company_id
+```sql
+SELECT 
+  proname,
+  CASE 
+    WHEN prosecdef = true THEN 'SECURITY DEFINER ✅'
+    ELSE 'Normal ❌'
+  END as tipo
+FROM pg_proc
+WHERE proname = 'get_user_company_id';
 ```
 
-## Impacto
-- ✅ Las órdenes de compra ahora aparecen correctamente en el reporte
-- ✅ Los valores de compras se calculan correctamente
-- ✅ El reporte de liquidación muestra datos completos
-- ✅ No se requieren cambios en la base de datos ni en RLS
+Si no existe o no es SECURITY DEFINER, ese es el problema.
 
-## Pruebas Realizadas
-1. ✅ Verificado que la query SQL funciona en Supabase
-2. ✅ Confirmado que existen 2 órdenes de compra con status='received'
-3. ✅ Verificado que las políticas RLS funcionan correctamente
-4. ✅ Identificado el problema en el código TypeScript
+### 4. Probar Acceso
 
-## Próximos Pasos
-1. Probar el reporte en la aplicación con el usuario de prueba
-2. Verificar que las compras aparecen correctamente
-3. Confirmar que los totales son correctos
+```sql
+-- Esto debería devolver tus órdenes
+SELECT COUNT(*) FROM purchase_orders;
+
+-- Esto debería devolver los items
+SELECT COUNT(*) FROM purchase_order_items;
+```
+
+Si devuelve 0 pero sabes que tienes órdenes, RLS las está bloqueando.
+
+## Verificación Post-Fix
+
+Después de aplicar el fix, ejecuta:
+
+```sql
+-- 1. Verificar función
+SELECT proname, prosecdef 
+FROM pg_proc 
+WHERE proname = 'get_user_company_id';
+-- Debe mostrar: prosecdef = true
+
+-- 2. Verificar políticas
+SELECT tablename, policyname, cmd
+FROM pg_policies
+WHERE tablename IN ('purchase_orders', 'purchase_order_items')
+ORDER BY tablename, cmd;
+-- Debe mostrar 4 políticas por tabla (SELECT, INSERT, UPDATE, DELETE)
+
+-- 3. Probar acceso
+SELECT COUNT(*) FROM purchase_orders WHERE status = 'received';
+-- Debe mostrar tus órdenes recibidas
+
+-- 4. Probar items
+SELECT COUNT(*) FROM purchase_order_items;
+-- Debe mostrar los items de tus órdenes
+```
+
+## Troubleshooting
+
+### Si Aún No Aparecen las Compras
+
+1. **Verifica company_id**
+   ```sql
+   -- Tu company_id
+   SELECT company_id FROM company_users WHERE user_id = auth.uid();
+   
+   -- Company_id de las órdenes
+   SELECT DISTINCT company_id, COUNT(*) 
+   FROM purchase_orders 
+   WHERE status = 'received'
+   GROUP BY company_id;
+   ```
+   
+   Si no coinciden, estás viendo otra empresa.
+
+2. **Verifica fechas**
+   ```sql
+   SELECT order_number, received_date 
+   FROM purchase_orders 
+   WHERE status = 'received'
+   ORDER BY received_date DESC;
+   ```
+   
+   Asegúrate que el rango del reporte incluye estas fechas.
+
+3. **Verifica received_date**
+   ```sql
+   SELECT order_number, status, received_date
+   FROM purchase_orders
+   WHERE status = 'received' AND received_date IS NULL;
+   ```
+   
+   Si hay resultados, ejecuta:
+   ```sql
+   UPDATE purchase_orders
+   SET received_date = created_at::date
+   WHERE status = 'received' AND received_date IS NULL;
+   ```
+
+4. **Revisa logs del servidor**
+   - Abre el terminal donde corre `npm run dev`
+   - Genera el reporte
+   - Busca logs que empiecen con `=== calculatePurchases START ===`
+   - Verifica company_id, fechas, y cantidad de órdenes encontradas
+
+## Archivos Relacionados
+
+- ✅ `docs-auth/DEBUG_PURCHASE_ORDERS_INVENTORY_REPORT_RLS.sql` - Diagnóstico
+- ✅ `docs-auth/FIX_PURCHASE_ORDERS_INVENTORY_REPORT_RLS.sql` - Fix
+- ✅ `lib/actions/inventory-report.ts` - Código con logging
+- ✅ `DONDE_VER_LOGS_SERVIDOR.md` - Guía para ver logs
+- ✅ `DIAGNOSTICO_SIMPLE_COMPRAS.sql` - Diagnóstico básico
+
+## Resumen
+
+1. **Diagnosticar**: Ejecuta `DEBUG_PURCHASE_ORDERS_INVENTORY_REPORT_RLS.sql`
+2. **Fix**: Ejecuta `FIX_PURCHASE_ORDERS_INVENTORY_REPORT_RLS.sql`
+3. **Verificar**: Genera el reporte de liquidación
+4. **Si falla**: Revisa company_id, fechas, y logs del servidor
 
 ## Fecha
-2026-02-15
-
-## Archivos Modificados
-- `lib/actions/inventory-report.ts`
-
-## Referencias
-- Diagnostic script: `docs-auth/DEBUG_INVENTORY_REPORT_DEEP.sql`
-- Step-by-step diagnostic: `docs-auth/DEBUG_INVENTORY_STEP_BY_STEP.sql`
+2026-02-14
