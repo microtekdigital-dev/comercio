@@ -116,9 +116,9 @@ export function InternalNotesSidebar({
       />
 
       {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-950 border-l shadow-xl z-50 flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-96 bg-background border-l shadow-xl z-50 flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between">
+        <div className="p-4 border-b flex items-center justify-between bg-background">
           <h2 className="text-lg font-semibold">Notas Internas</h2>
           <Button
             variant="ghost"
@@ -131,17 +131,17 @@ export function InternalNotesSidebar({
         </div>
 
         {/* Form */}
-        <div className="p-4 border-b">
+        <div className="p-4 border-b bg-background">
           <InternalNoteForm onNoteCreated={addOptimisticNote} />
         </div>
 
         {/* Filters */}
-        <div className="p-4 border-b">
+        <div className="p-4 border-b bg-background">
           <InternalNotesFilters filters={filters} onFiltersChange={setFilters} />
         </div>
 
         {/* Notes List */}
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-4 bg-background">
           {isLoading ? (
             <div className="text-center text-muted-foreground py-8">
               Cargando notas...
