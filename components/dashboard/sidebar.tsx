@@ -37,6 +37,8 @@ import {
   History,
   TrendingUp,
   PackageSearch,
+  Scale,
+  Wallet,
 } from "lucide-react"
 
 interface Profile {
@@ -60,6 +62,17 @@ interface SidebarProps {
   canSeeCashRegister?: boolean
 }
 
+interface NavSection {
+  title: string
+  items: NavItem[]
+}
+
+interface NavItem {
+  href: string
+  label: string
+  icon: any
+}
+
 const adminNavItems = [
   { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
   { href: "/dashboard/customers", label: "Clientes", icon: Users },
@@ -74,6 +87,7 @@ const adminNavItems = [
   { href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
+  { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale },
   { href: "/dashboard/team", label: "Equipo", icon: Users },
   { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
   { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
@@ -92,6 +106,7 @@ const employeeNavItems = [
   { href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
+  { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ]
 
@@ -102,43 +117,94 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
   const [open, setOpen] = useState(false)
 
   // Usar useMemo para evitar problemas de hidratación
-  const navItems = useMemo(() => {
-    const baseAdminNavItems = [
-      { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
-      { href: "/dashboard/customers", label: "Clientes", icon: Users },
-      ...(canSeeSuppliers ? [{ href: "/dashboard/suppliers", label: "Proveedores", icon: Building2 }] : []),
-      ...(canSeePurchaseOrders ? [{ href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList }] : []),
-      { href: "/dashboard/products", label: "Productos", icon: Package },
-      { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
-      ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
-      ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-      { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
-      { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
-      ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign }] : []),
-      { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
-      { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
-      { href: "/dashboard/team", label: "Equipo", icon: Users },
-      { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
-      { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
-      { href: "/dashboard/settings", label: "Configuración", icon: Settings },
-    ]
-
-    const baseEmployeeNavItems = [
-      { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
-      { href: "/dashboard/customers", label: "Clientes", icon: Users },
-      { href: "/dashboard/products", label: "Productos", icon: Package },
-      { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
-      ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
-      ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-      { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
-      { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
-      ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign }] : []),
-      { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
-      { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
-      { href: "/dashboard/settings", label: "Configuración", icon: Settings },
-    ]
-
-    return user.role === "admin" ? baseAdminNavItems : baseEmployeeNavItems
+  const navSections = useMemo((): NavSection[] => {
+    if (user.role === "admin") {
+      return [
+        {
+          title: "VENTAS",
+          items: [
+            { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+            { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+            { href: "/dashboard/customers", label: "Clientes", icon: Users },
+          ],
+        },
+        {
+          title: "COMPRAS",
+          items: [
+            ...(canSeePurchaseOrders ? [{ href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList }] : []),
+            ...(canSeeSuppliers ? [{ href: "/dashboard/suppliers", label: "Proveedores", icon: Building2 }] : []),
+          ],
+        },
+        {
+          title: "INVENTARIO",
+          items: [
+            { href: "/dashboard/products", label: "Productos", icon: Package },
+            { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+            ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
+            ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
+            { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
+          ],
+        },
+        {
+          title: "CAJA Y FINANZAS",
+          items: [
+            ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign }] : []),
+            { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale },
+            { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
+          ],
+        },
+        {
+          title: "EQUIPO",
+          items: [
+            { href: "/dashboard/team", label: "Equipo", icon: Users },
+            { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
+          ],
+        },
+        {
+          title: "SISTEMA",
+          items: [
+            { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
+            { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+          ],
+        },
+      ]
+    } else {
+      // Employee sections
+      return [
+        {
+          title: "VENTAS",
+          items: [
+            { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+            { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+            { href: "/dashboard/customers", label: "Clientes", icon: Users },
+          ],
+        },
+        {
+          title: "INVENTARIO",
+          items: [
+            { href: "/dashboard/products", label: "Productos", icon: Package },
+            { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
+            ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
+            ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
+            { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
+          ],
+        },
+        {
+          title: "CAJA Y FINANZAS",
+          items: [
+            ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign }] : []),
+            { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale },
+            { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
+          ],
+        },
+        {
+          title: "SISTEMA",
+          items: [
+            { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+          ],
+        },
+      ]
+    }
   }, [user.role, canSeePurchaseOrders, canSeeSuppliers, canSeeStockHistory, canSeePriceHistory, canSeeCashRegister])
 
   const handleSignOut = async () => {
@@ -179,29 +245,52 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href || 
-            (item.href !== "/dashboard" && pathname.startsWith(item.href))
+      <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {/* Panel link (always first) */}
+        <Link
+          href="/dashboard"
+          onClick={() => setOpen(false)}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+            pathname === "/dashboard"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          Panel
+        </Link>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          )
-        })}
+        {/* Sections */}
+        {navSections.map((section) => (
+          <div key={section.title} className="space-y-1">
+            <h3 className="px-3 text-xs font-semibold text-muted-foreground tracking-wider">
+              {section.title}
+            </h3>
+            {section.items.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || 
+                (item.href !== "/dashboard" && pathname.startsWith(item.href))
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* User menu */}
