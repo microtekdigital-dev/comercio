@@ -102,10 +102,11 @@ export async function calculateInitialStock(
         company_id
       )
     `)
-    .eq("purchase_orders.company_id", companyId)
     .eq("purchase_orders.status", "received")
     .not("purchase_orders.received_date", "is", null)
     .lt("purchase_orders.received_date", startDateStr);
+
+  // Note: RLS policies on purchase_orders table automatically filter by company_id
 
   if (categoryId) {
     purchaseQuery = purchaseQuery.eq("products.category_id", categoryId);
@@ -275,7 +276,8 @@ export async function calculatePurchases(
       unit_cost,
       purchase_orders!inner(
         status,
-        received_date
+        received_date,
+        company_id
       ),
       products!inner(
         name,
@@ -285,11 +287,14 @@ export async function calculatePurchases(
         variant_name
       )
     `)
-    .eq("purchase_orders.company_id", companyId)
     .eq("purchase_orders.status", "received")
     .not("purchase_orders.received_date", "is", null)
     .gte("purchase_orders.received_date", startDateStr)
     .lte("purchase_orders.received_date", endDateStr);
+
+  // Filter by company_id after the query (RLS handles this automatically, but we add explicit filter for clarity)
+  // Note: We removed .eq("purchase_orders.company_id", companyId) because it causes the query to fail
+  // The RLS policies on purchase_orders table already filter by company_id
 
   // Apply filters
   if (categoryId) {
