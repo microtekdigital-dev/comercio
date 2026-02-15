@@ -48,8 +48,10 @@ BEGIN
   
   RAISE NOTICE 'Added unique constraint on (company_id, order_number)';
 EXCEPTION
-  WHEN duplicate_key THEN
-    RAISE NOTICE 'Constraint already exists or duplicate data found';
+  WHEN duplicate_object THEN
+    RAISE NOTICE 'Constraint already exists';
+  WHEN unique_violation THEN
+    RAISE NOTICE 'Duplicate data found, cannot add constraint';
   WHEN others THEN
     RAISE NOTICE 'Error adding constraint: %', SQLERRM;
 END $$;
