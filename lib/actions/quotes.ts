@@ -237,11 +237,16 @@ export async function sendQuoteByEmail(id: string, email: string, subject: strin
     })),
   })
 
-  if (!emailResult.success) {
+  // Check if error is due to Resend domain verification
+  const isResendDomainError = emailResult.error?.includes("verify a domain") || 
+                              emailResult.error?.includes("testing emails")
+
+  if (!emailResult.success && !isResendDomainError) {
     throw new Error(emailResult.error || "Error al enviar email")
   }
 
   // Actualizar estado y datos de envío
+  // Si hay error de dominio de Resend, aún marcamos como enviado pero con nota
   const { error } = await supabase
     .from("quotes")
     .update({
@@ -255,6 +260,11 @@ export async function sendQuoteByEmail(id: string, email: string, subject: strin
   
   revalidatePath("/dashboard/quotes")
   revalidatePath(`/dashboard/quotes/${id}`)
+  
+  // Si hubo error de dominio, lanzar advertencia después de actualizar
+  if (isResendDomainError) {
+    throw new Error("ADVERTENCIA: El presupuesto se marcó como enviado, pero el email no se pudo enviar. Para enviar emails a clientes, debes verificar un dominio en resend.com/domains")
+  }
 }
 
 export async function convertQuoteToSale(id: string) {

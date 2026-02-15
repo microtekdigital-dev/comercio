@@ -629,3 +629,38 @@ export interface PriceChangeFormData {
   new_value: number;
   reason?: string;
 }
+
+// =====================================================
+// Internal Notes Types (Notas Internas)
+// =====================================================
+
+export type NoteType = 'general' | 'cliente' | 'stock' | 'proveedor' | 'urgente';
+
+export interface InternalNote {
+  id: string;
+  company_id: string;
+  user_id: string;
+  content: string;
+  note_type: NoteType;
+  is_resolved: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  user_name?: string;
+  user_email?: string;
+}
+
+export interface CreateInternalNoteInput {
+  content: string;
+  note_type: NoteType;
+}
+
+export interface UpdateInternalNoteInput {
+  id: string;
+  is_resolved?: boolean;
+}
+
+export interface InternalNotesFilters {
+  note_type?: NoteType | 'all';
+  show_resolved: boolean;
+}
