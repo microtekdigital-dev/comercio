@@ -116,6 +116,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
       { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
       ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign }] : []),
       { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
+      { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
       { href: "/dashboard/team", label: "Equipo", icon: Users },
       { href: "/dashboard/invitations", label: "Invitaciones", icon: Mail },
       { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
@@ -133,6 +134,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
       { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
       ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign }] : []),
       { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
+      { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
       { href: "/dashboard/settings", label: "Configuración", icon: Settings },
     ]
 
