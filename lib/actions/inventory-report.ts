@@ -89,33 +89,50 @@ export async function calculateInitialStock(
   // Get average costs from purchase orders before start date
   const startDateStr = startDate.toISOString().split('T')[0];
   
-  let purchaseQuery = supabase
-    .from("purchase_order_items")
-    .select(`
-      product_id,
-      variant_id,
-      quantity,
-      unit_cost,
-      purchase_orders!inner(
-        status,
-        received_date,
-        company_id
-      )
-    `)
-    .eq("purchase_orders.status", "received")
-    .not("purchase_orders.received_date", "is", null)
-    .lt("purchase_orders.received_date", startDateStr);
+  // First get purchase_orders for this company before start date
+  const { data: purchaseOrders, error: poError } = await supabase
+    .from("purchase_orders")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("status", "received")
+    .not("received_date", "is", null)
+    .lt("received_date", startDateStr);
 
-  // Note: RLS policies on purchase_orders table automatically filter by company_id
-
-  if (categoryId) {
-    purchaseQuery = purchaseQuery.eq("products.category_id", categoryId);
-  }
-  if (productId) {
-    purchaseQuery = purchaseQuery.eq("product_id", productId);
+  if (poError) {
+    console.error("Error fetching purchase orders for initial stock:", poError);
   }
 
-  const { data: purchaseItems, error: purchaseError } = await purchaseQuery;
+  let purchaseItems = null;
+  
+  if (purchaseOrders && purchaseOrders.length > 0) {
+    const purchaseOrderIds = purchaseOrders.map(po => po.id);
+
+    // Now get items for those purchase orders
+    let purchaseQuery = supabase
+      .from("purchase_order_items")
+      .select(`
+        product_id,
+        variant_id,
+        quantity,
+        unit_cost
+      `)
+      .in("purchase_order_id", purchaseOrderIds);
+
+    if (categoryId) {
+      purchaseQuery = purchaseQuery.eq("products.category_id", categoryId);
+    }
+    if (productId) {
+      purchaseQuery = purchaseQuery.eq("product_id", productId);
+    }
+
+    const { data: items, error: purchaseError } = await purchaseQuery;
+
+    if (purchaseError) {
+      console.error("Error fetching purchase costs:", purchaseError);
+    } else {
+      purchaseItems = items;
+    }
+  }
 
   if (purchaseError) {
     console.error("Error fetching purchase costs:", purchaseError);
@@ -267,6 +284,29 @@ export async function calculatePurchases(
   const startDateStr = startDate.toISOString().split('T')[0];
   const endDateStr = endDate.toISOString().split('T')[0];
 
+  // First get purchase_orders for this company in the date range
+  const { data: purchaseOrders, error: poError } = await supabase
+    .from("purchase_orders")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("status", "received")
+    .not("received_date", "is", null)
+    .gte("received_date", startDateStr)
+    .lte("received_date", endDateStr);
+
+  if (poError) {
+    console.error("Error fetching purchase orders:", poError);
+    throw new Error(`Error al obtener órdenes de compra: ${poError.message || 'Error desconocido'}`);
+  }
+
+  if (!purchaseOrders || purchaseOrders.length === 0) {
+    console.log("No purchase orders found for company in date range");
+    return [];
+  }
+
+  const purchaseOrderIds = purchaseOrders.map(po => po.id);
+
+  // Now get items for those purchase orders
   let query = supabase
     .from("purchase_order_items")
     .select(`
@@ -274,11 +314,7 @@ export async function calculatePurchases(
       variant_id,
       quantity,
       unit_cost,
-      purchase_orders!inner(
-        status,
-        received_date,
-        company_id
-      ),
+      purchase_order_id,
       products!inner(
         name,
         category_id
@@ -287,14 +323,7 @@ export async function calculatePurchases(
         variant_name
       )
     `)
-    .eq("purchase_orders.status", "received")
-    .not("purchase_orders.received_date", "is", null)
-    .gte("purchase_orders.received_date", startDateStr)
-    .lte("purchase_orders.received_date", endDateStr);
-
-  // Filter by company_id after the query (RLS handles this automatically, but we add explicit filter for clarity)
-  // Note: We removed .eq("purchase_orders.company_id", companyId) because it causes the query to fail
-  // The RLS policies on purchase_orders table already filter by company_id
+    .in("purchase_order_id", purchaseOrderIds);
 
   // Apply filters
   if (categoryId) {
