@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getCustomers } from "@/lib/actions/customers";
+import { getCustomers, getCustomerBalance } from "@/lib/actions/customers";
 import { canExportToExcel } from "@/lib/utils/plan-limits";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Users, Search, Filter, X, Mail, Phone, Download, FileSpreadsheet } from "lucide-react";
+import { Plus, Users, Search, Filter, X, Mail, Phone, Download, FileSpreadsheet, FileText, CreditCard, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { exportCustomersToExcel, exportCustomersToCSV } from "@/lib/utils/export";
 import { toast } from "sonner";
 import type { Customer } from "@/lib/types/erp";
+import { CustomerAccountModal } from "@/components/dashboard/customer-account-modal";
+import { QuickPaymentModal } from "@/components/dashboard/quick-payment-modal";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -35,6 +37,11 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [customerBalances, setCustomerBalances] = useState<Record<string, number>>({});
+  const [selectedCustomerForAccount, setSelectedCustomerForAccount] = useState<Customer | null>(null);
+  const [selectedCustomerForPayment, setSelectedCustomerForPayment] = useState<Customer | null>(null);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     loadCustomers();
@@ -62,6 +69,23 @@ export default function CustomersPage() {
     loadCustomers();
   }, [search, statusFilter]);
 
+  useEffect(() => {
+    if (customers.length > 0) {
+      loadCustomerBalances();
+    }
+  }, [customers]);
+
+  const loadCustomerBalances = async () => {
+    const balances: Record<string, number> = {};
+    await Promise.all(
+      customers.map(async (customer) => {
+        const balance = await getCustomerBalance(customer.id);
+        balances[customer.id] = balance;
+      })
+    );
+    setCustomerBalances(balances);
+  };
+
   const loadCustomers = async () => {
     setLoading(true);
     const data = await getCustomers({
@@ -78,6 +102,26 @@ export default function CustomersPage() {
   };
 
   const hasActiveFilters = search || statusFilter;
+
+  const handleOpenAccountModal = (customer: Customer, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedCustomerForAccount(customer);
+    setAccountModalOpen(true);
+  };
+
+  const handleOpenPaymentModal = (customer: Customer, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedCustomerForPayment(customer);
+    setPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentModalOpen(false);
+    loadCustomers();
+    loadCustomerBalances();
+  };
 
   const handleExportExcel = () => {
     try {
@@ -283,6 +327,36 @@ export default function CustomersPage() {
                             {customer.city}, {customer.state}
                           </div>
                         )}
+                        
+                        {/* Saldo */}
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                          <DollarSign className="h-4 w-4" />
+                          <span className={`font-semibold ${customerBalances[customer.id] > 0 ? 'text-green-600' : ''}`}>
+                            Saldo: ${(customerBalances[customer.id] || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Botones de acción */}
+                      <div className="flex gap-2 mt-3 pt-3 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => handleOpenAccountModal(customer, e)}
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Cuenta corriente
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => handleOpenPaymentModal(customer, e)}
+                        >
+                          <CreditCard className="h-4 w-4 mr-1" />
+                          Registrar pago
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -292,6 +366,27 @@ export default function CustomersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modales */}
+      {selectedCustomerForAccount && (
+        <CustomerAccountModal
+          customerId={selectedCustomerForAccount.id}
+          customerName={selectedCustomerForAccount.name}
+          open={accountModalOpen}
+          onOpenChange={setAccountModalOpen}
+        />
+      )}
+
+      {selectedCustomerForPayment && (
+        <QuickPaymentModal
+          entityId={selectedCustomerForPayment.id}
+          entityName={selectedCustomerForPayment.name}
+          entityType="customer"
+          open={paymentModalOpen}
+          onOpenChange={setPaymentModalOpen}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }

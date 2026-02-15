@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSuppliers } from "@/lib/actions/suppliers";
+import { getSuppliers, getSupplierBalance } from "@/lib/actions/suppliers";
 import { getUserPermissions } from "@/lib/utils/permissions";
 import type { Supplier } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Building2, Mail, Phone, MapPin } from "lucide-react";
+import { Plus, Search, Building2, Mail, Phone, MapPin, FileText, CreditCard, DollarSign, MoreVertical } from "lucide-react";
 import Link from "next/link";
+import { SupplierAccountModal } from "@/components/dashboard/supplier-account-modal";
+import { QuickPaymentModal } from "@/components/dashboard/quick-payment-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -33,6 +41,11 @@ export default function SuppliersPage() {
   const [canCreate, setCanCreate] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [supplierBalances, setSupplierBalances] = useState<Record<string, number>>({});
+  const [selectedSupplierForAccount, setSelectedSupplierForAccount] = useState<Supplier | null>(null);
+  const [selectedSupplierForPayment, setSelectedSupplierForPayment] = useState<Supplier | null>(null);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     loadSuppliers();
@@ -47,6 +60,39 @@ export default function SuppliersPage() {
   useEffect(() => {
     filterSuppliers();
   }, [suppliers, search, statusFilter]);
+
+  useEffect(() => {
+    if (suppliers.length > 0) {
+      loadSupplierBalances();
+    }
+  }, [suppliers]);
+
+  const loadSupplierBalances = async () => {
+    const balances: Record<string, number> = {};
+    await Promise.all(
+      suppliers.map(async (supplier) => {
+        const balance = await getSupplierBalance(supplier.id);
+        balances[supplier.id] = balance;
+      })
+    );
+    setSupplierBalances(balances);
+  };
+
+  const handleOpenAccountModal = (supplier: Supplier) => {
+    setSelectedSupplierForAccount(supplier);
+    setAccountModalOpen(true);
+  };
+
+  const handleOpenPaymentModal = (supplier: Supplier) => {
+    setSelectedSupplierForPayment(supplier);
+    setPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentModalOpen(false);
+    loadSuppliers();
+    loadSupplierBalances();
+  };
 
   const loadSuppliers = async () => {
     setLoading(true);
@@ -164,6 +210,7 @@ export default function SuppliersPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Ubicación</TableHead>
+                <TableHead className="text-right">Saldo</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -220,6 +267,14 @@ export default function SuppliersPage() {
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className={`font-semibold ${supplierBalances[supplier.id] > 0 ? 'text-red-600' : ''}`}>
+                        ${(supplierBalances[supplier.id] || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={
@@ -230,11 +285,28 @@ export default function SuppliersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/dashboard/suppliers/${supplier.id}`}>
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/suppliers/${supplier.id}`}>
+                            Ver detalles
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenAccountModal(supplier)}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Cuenta corriente
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenPaymentModal(supplier)}>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Registrar pago
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -247,6 +319,27 @@ export default function SuppliersPage() {
       <div className="text-sm text-muted-foreground px-4 md:px-0">
         Mostrando {filteredSuppliers.length} de {suppliers.length} proveedores
       </div>
+
+      {/* Modales */}
+      {selectedSupplierForAccount && (
+        <SupplierAccountModal
+          supplierId={selectedSupplierForAccount.id}
+          supplierName={selectedSupplierForAccount.name}
+          open={accountModalOpen}
+          onOpenChange={setAccountModalOpen}
+        />
+      )}
+
+      {selectedSupplierForPayment && (
+        <QuickPaymentModal
+          entityId={selectedSupplierForPayment.id}
+          entityName={selectedSupplierForPayment.name}
+          entityType="supplier"
+          open={paymentModalOpen}
+          onOpenChange={setPaymentModalOpen}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }

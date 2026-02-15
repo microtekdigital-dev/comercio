@@ -664,3 +664,36 @@ export interface InternalNotesFilters {
   note_type?: NoteType | 'all';
   show_resolved: boolean;
 }
+
+// =====================================================
+// Financial Stats Types (Estadísticas Financieras)
+// =====================================================
+
+export interface FinancialStats {
+  dailySales: number;
+  currentCashBalance: number;
+  accountsReceivable: number;
+  accountsPayable: number;
+  monthlyProfit: number;
+}
+
+// =====================================================
+// Company Settings Types
+// =====================================================
+
+export interface CompanySettings {
+  id: string;
+  company_id: string;
+  currency: string;
+  tax_rate: number;
+  invoice_prefix: string;
+  invoice_next_number: number;
+  quote_prefix: string;
+  quote_next_number: number;
+  purchase_order_prefix: string;
+  purchase_order_next_number: number;
+  initial_cash_amount?: number | null;
+  initial_cash_configured_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}

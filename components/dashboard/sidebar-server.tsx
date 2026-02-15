@@ -4,7 +4,9 @@ import {
   canAccessSuppliers,
   canAccessStockHistory,
   canAccessPriceHistory,
-  canAccessCashRegister
+  canAccessCashRegister,
+  canAccessInventoryLiquidation,
+  canAccessAccountsSettlement
 } from "@/lib/utils/plan-limits";
 import { DashboardSidebar } from "./sidebar";
 
@@ -40,6 +42,14 @@ export async function DashboardSidebarServer() {
     ? (await canAccessCashRegister(user.company_id)).allowed
     : false;
 
+  const canSeeInventoryLiquidation = user.company_id
+    ? (await canAccessInventoryLiquidation(user.company_id)).allowed
+    : false;
+
+  const canSeeAccountsSettlement = user.company_id
+    ? (await canAccessAccountsSettlement(user.company_id)).allowed
+    : false;
+
   // Serializar los datos para evitar problemas de hidratación
   const serializedUser = {
     id: user.id,
@@ -61,6 +71,8 @@ export async function DashboardSidebarServer() {
       canSeeStockHistory={canSeeStockHistory}
       canSeePriceHistory={canSeePriceHistory}
       canSeeCashRegister={canSeeCashRegister}
+      canSeeInventoryLiquidation={canSeeInventoryLiquidation}
+      canSeeAccountsSettlement={canSeeAccountsSettlement}
     />
   );
 }

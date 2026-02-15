@@ -358,6 +358,54 @@ export async function canAccessCashRegister(companyId: string): Promise<{
 }
 
 /**
+ * Verifica si el plan tiene acceso a liquidación de inventario
+ */
+export async function canAccessInventoryLiquidation(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro/Profesional y Empresarial tienen acceso a liquidación de inventario
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "La liquidación de inventario está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
+ * Verifica si el plan tiene acceso a liquidación de cuentas
+ */
+export async function canAccessAccountsSettlement(companyId: string): Promise<{
+  allowed: boolean;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo Pro/Profesional y Empresarial tienen acceso a liquidación de cuentas
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = 
+    planName.includes("pro") || 
+    planName.includes("profesional") || 
+    planName.includes("empresarial");
+  
+  return {
+    allowed: hasAccess,
+    message: hasAccess 
+      ? undefined 
+      : "La liquidación de cuentas está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
  * Obtiene información de uso actual vs límites del plan
  */
 export async function getPlanUsage(companyId: string) {

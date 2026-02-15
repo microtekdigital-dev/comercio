@@ -60,6 +60,8 @@ interface SidebarProps {
   canSeeStockHistory?: boolean
   canSeePriceHistory?: boolean
   canSeeCashRegister?: boolean
+  canSeeInventoryLiquidation?: boolean
+  canSeeAccountsSettlement?: boolean
 }
 
 interface NavSection {
@@ -110,7 +112,7 @@ const employeeNavItems = [
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ]
 
-export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSuppliers = true, canSeeStockHistory = true, canSeePriceHistory = true, canSeeCashRegister = true }: SidebarProps) {
+export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSuppliers = true, canSeeStockHistory = true, canSeePriceHistory = true, canSeeCashRegister = true, canSeeInventoryLiquidation = true, canSeeAccountsSettlement = true }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -142,14 +144,14 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
             { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
             ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
             ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-            { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
+            ...(canSeeInventoryLiquidation ? [{ href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch }] : []),
           ],
         },
         {
           title: "CAJA Y FINANZAS",
           items: [
             ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign }] : []),
-            { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale },
+            ...(canSeeAccountsSettlement ? [{ href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale }] : []),
             { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
           ],
         },
@@ -186,14 +188,14 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
             { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
             ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
             ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-            { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
+            ...(canSeeInventoryLiquidation ? [{ href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch }] : []),
           ],
         },
         {
           title: "CAJA Y FINANZAS",
           items: [
             ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign }] : []),
-            { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale },
+            ...(canSeeAccountsSettlement ? [{ href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale }] : []),
             { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
           ],
         },
@@ -205,7 +207,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
         },
       ]
     }
-  }, [user.role, canSeePurchaseOrders, canSeeSuppliers, canSeeStockHistory, canSeePriceHistory, canSeeCashRegister])
+  }, [user.role, canSeePurchaseOrders, canSeeSuppliers, canSeeStockHistory, canSeePriceHistory, canSeeCashRegister, canSeeInventoryLiquidation, canSeeAccountsSettlement])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

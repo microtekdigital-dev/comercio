@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createCashRegisterOpening } from "@/lib/actions/cash-register"
+import { getInitialCashAmount } from "@/lib/actions/company-settings"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,12 +17,32 @@ import { toast } from "sonner"
 export default function NewCashRegisterOpeningPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [loadingInitialAmount, setLoadingInitialAmount] = useState(true)
+  const [suggestedAmount, setSuggestedAmount] = useState<number | null>(null)
   
   // Form state
   const [openingDate, setOpeningDate] = useState(new Date().toISOString().split("T")[0])
   const [shift, setShift] = useState("")
   const [initialCashAmount, setInitialCashAmount] = useState("")
   const [notes, setNotes] = useState("")
+
+  // Load initial cash amount on mount
+  useEffect(() => {
+    async function loadInitialAmount() {
+      try {
+        const amount = await getInitialCashAmount()
+        if (amount !== null) {
+          setSuggestedAmount(amount)
+          setInitialCashAmount(amount.toString())
+        }
+      } catch (error) {
+        console.error("Error loading initial cash amount:", error)
+      } finally {
+        setLoadingInitialAmount(false)
+      }
+    }
+    loadInitialAmount()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -125,11 +146,22 @@ export default function NewCashRegisterOpeningPage() {
                   placeholder="0.00"
                   value={initialCashAmount}
                   onChange={(e) => setInitialCashAmount(e.target.value)}
+                  disabled={loadingInitialAmount}
                   required
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Ingresa el monto inicial de efectivo en la caja
-                </p>
+                {loadingInitialAmount ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Cargando importe sugerido...
+                  </p>
+                ) : suggestedAmount !== null ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Valor sugerido: ${suggestedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (puedes modificarlo)
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ingresa el monto inicial de efectivo en la caja
+                  </p>
+                )}
               </div>
 
               <div>
