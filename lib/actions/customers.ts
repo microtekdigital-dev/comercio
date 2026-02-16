@@ -371,3 +371,54 @@ export async function getCustomerAccountMovements(customerId: string): Promise<A
     return [];
   }
 }
+
+// Add general customer payment (not tied to specific sale)
+export async function addGeneralCustomerPayment(
+  customerId: string,
+  amount: number,
+  paymentMethod: string,
+  referenceNumber?: string,
+  notes?: string
+) {
+  const supabase = await createClient();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return { error: "No se encontró la empresa" };
+    }
+
+    // Create payment without sale_id
+    const { data: payment, error: paymentError } = await supabase
+      .from("sale_payments")
+      .insert({
+        company_id: profile.company_id,
+        customer_id: customerId,
+        sale_id: null, // General payment, not tied to specific sale
+        amount,
+        payment_method: paymentMethod,
+        reference_number: referenceNumber || null,
+        notes: notes || null,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (paymentError) throw paymentError;
+
+    revalidatePath("/dashboard/customers");
+    revalidatePath(`/dashboard/customers/${customerId}`);
+    return { data: payment };
+  } catch (error: any) {
+    console.error("Error adding customer payment:", error);
+    return { error: error.message || "Error al registrar el pago" };
+  }
+}

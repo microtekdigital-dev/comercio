@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { createCashRegisterClosure } from "@/lib/actions/cash-register"
+import { createCashRegisterClosure, getCashRegisterOpenings, getCashRegisterClosures, getSupplierPayments } from "@/lib/actions/cash-register"
 import { getSales } from "@/lib/actions/sales"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,15 +10,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, DollarSign, TrendingUp, CreditCard, Smartphone, Wallet, AlertTriangle, CheckCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ArrowLeft, DollarSign, TrendingUp, CreditCard, Smartphone, Wallet, AlertTriangle, CheckCircle, Clock, Info, TrendingDown } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { toast } from "sonner"
+import type { CashRegisterOpening } from "@/lib/types/erp"
 
 export default function NewCashRegisterClosurePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [calculating, setCalculating] = useState(false)
+  const [activeOpenings, setActiveOpenings] = useState<CashRegisterOpening[]>([])
   
   // Form state
   const [closureDate, setClosureDate] = useState(new Date().toISOString().split("T")[0])
@@ -34,6 +37,7 @@ export default function NewCashRegisterClosurePage() {
     cardSales: number
     transferSales: number
     otherSales: number
+    supplierPaymentsCash: number
     opening?: {
       id: string
       initial_cash_amount: number
@@ -43,12 +47,61 @@ export default function NewCashRegisterClosurePage() {
     hasOpening: boolean
   } | null>(null)
 
-  // Calculate preview when date or shift changes
+  // Calculate preview when date, shift, or activeOpenings changes
   useEffect(() => {
     if (closureDate) {
       calculatePreview()
     }
-  }, [closureDate, shift])
+  }, [closureDate, shift, activeOpenings])
+
+  // Load active openings on mount
+  useEffect(() => {
+    loadActiveOpenings()
+  }, [])
+
+  const loadActiveOpenings = async () => {
+    try {
+      const [openings, closures] = await Promise.all([
+        getCashRegisterOpenings(),
+        getCashRegisterClosures()
+      ])
+      
+      // Filter openings that don't have a corresponding closure
+      const active = openings.filter(opening => {
+        const hasMatchingClosure = closures.some(closure => 
+          closure.opening_id === opening.id
+        )
+        return !hasMatchingClosure
+      })
+      
+      setActiveOpenings(active)
+      
+      // If there's only one active opening, pre-select its shift
+      if (active.length === 1) {
+        setShift(active[0].shift)
+      }
+    } catch (error) {
+      console.error("Error loading active openings:", error)
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 2,
+    }).format(amount)
+  }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const year = date.getFullYear()
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${day}/${month}/${year} ${hours}:${minutes}`
+  }
 
   const calculatePreview = async () => {
     setCalculating(true)
@@ -58,11 +111,37 @@ export default function NewCashRegisterClosurePage() {
       const endOfDay = new Date(closureDate)
       endOfDay.setHours(23, 59, 59, 999)
 
-      const sales = await getSales({
-        status: "completed",
+      const dateStr = closureDate // Already in YYYY-MM-DD format
+
+      // Get existing closures for this date to find the last closure timestamp
+      const allClosures = await getCashRegisterClosures({
         dateFrom: startOfDay.toISOString(),
         dateTo: endOfDay.toISOString(),
       })
+
+      // Sort by created_at to get the most recent closure
+      const sortedClosures = allClosures.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      const lastClosure = sortedClosures.length > 0 ? sortedClosures[0] : null
+
+      const [allSales, allSupplierPayments] = await Promise.all([
+        getSales({
+          status: "completed",
+          dateFrom: startOfDay.toISOString(),
+          dateTo: endOfDay.toISOString(),
+        }),
+        getSupplierPayments(dateStr, dateStr)
+      ])
+
+      // Filter sales and payments to only include those created after the last closure
+      const sales = lastClosure 
+        ? allSales.filter(sale => new Date(sale.created_at) > new Date(lastClosure.created_at))
+        : allSales
+
+      const supplierPayments = lastClosure
+        ? allSupplierPayments.filter(payment => new Date(payment.created_at) > new Date(lastClosure.created_at))
+        : allSupplierPayments
 
       let totalSalesCount = 0
       let totalSalesAmount = 0
@@ -111,8 +190,30 @@ export default function NewCashRegisterClosurePage() {
         }
       }
 
-      // Check for opening (simulated - in real app would call findOpeningForClosure)
-      // For now, we'll set hasOpening to false and let the backend handle it
+      // Calculate supplier payments in cash from filtered payments
+      let supplierPaymentsCash = 0
+      if (supplierPayments) {
+        for (const payment of supplierPayments) {
+          const method = payment.payment_method?.toLowerCase() || ""
+          if (method.includes("efectivo") || method.includes("cash")) {
+            supplierPaymentsCash += Number(payment.amount)
+          }
+        }
+      }
+
+      // Find the corresponding opening from activeOpenings
+      let matchingOpening = null
+      let hasOpening = false
+      
+      if (shift && shift !== "sin-turno" && activeOpenings.length > 0) {
+        // Look for an opening that matches the selected shift
+        matchingOpening = activeOpenings.find(opening => opening.shift === shift)
+        
+        if (matchingOpening) {
+          hasOpening = true
+        }
+      }
+
       setPreview({
         totalSalesCount,
         totalSalesAmount,
@@ -120,7 +221,14 @@ export default function NewCashRegisterClosurePage() {
         cardSales,
         transferSales,
         otherSales,
-        hasOpening: false, // Will be determined by backend
+        supplierPaymentsCash,
+        opening: matchingOpening ? {
+          id: matchingOpening.id,
+          initial_cash_amount: matchingOpening.initial_cash_amount,
+          opened_by_name: matchingOpening.opened_by_name,
+          shift: matchingOpening.shift,
+        } : null,
+        hasOpening,
       })
     } catch (error) {
       console.error("Error calculating preview:", error)
@@ -158,16 +266,8 @@ export default function NewCashRegisterClosurePage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(amount)
-  }
-
   const cashDifference = cashCounted && preview 
-    ? Number(cashCounted) - preview.cashSales - (preview.opening?.initial_cash_amount || 0)
+    ? Number(cashCounted) - (preview.cashSales + (preview.opening?.initial_cash_amount || 0) - preview.supplierPaymentsCash)
     : null
 
   return (
@@ -189,6 +289,54 @@ export default function NewCashRegisterClosurePage() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Active Openings Alert */}
+          {activeOpenings.length > 0 && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertTitle className="text-blue-900 font-semibold">
+                Aperturas Activas ({activeOpenings.length})
+              </AlertTitle>
+              <AlertDescription>
+                <div className="mt-2 space-y-2">
+                  {activeOpenings.map((opening) => (
+                    <div key={opening.id} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">{opening.shift}</Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {formatDateTime(opening.opening_date)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Abierto por: {opening.opened_by_name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-green-600">
+                          {formatCurrency(opening.initial_cash_amount)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Monto inicial</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {activeOpenings.length === 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>No hay aperturas activas</AlertTitle>
+              <AlertDescription>
+                No se encontraron aperturas de caja pendientes de cierre. Debes crear una apertura antes de hacer un cierre.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Información del Cierre</CardTitle>
@@ -258,7 +406,10 @@ export default function NewCashRegisterClosurePage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || calculating}>
+            <Button 
+              type="submit" 
+              disabled={loading || calculating || activeOpenings.length === 0}
+            >
               {loading ? "Guardando..." : "Cerrar Caja"}
             </Button>
           </div>
@@ -350,21 +501,41 @@ export default function NewCashRegisterClosurePage() {
                         <span className="font-semibold">{formatCurrency(preview.otherSales)}</span>
                       </div>
                     )}
+
+                    {preview.supplierPaymentsCash > 0 && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-red-50">
+                        <div className="flex items-center gap-2">
+                          <TrendingDown className="h-5 w-5 text-red-500" />
+                          <span className="font-medium">Pagos a Proveedores</span>
+                        </div>
+                        <span className="font-semibold text-red-600">-{formatCurrency(preview.supplierPaymentsCash)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {cashCounted && cashDifference !== null && (
                     <div className="mt-4 pt-4 border-t">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Efectivo Esperado:</span>
+                          <span className="text-muted-foreground">Ventas en Efectivo:</span>
                           <span className="font-medium">{formatCurrency(preview.cashSales)}</span>
                         </div>
                         {preview.opening && (
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Monto Inicial Apertura:</span>
+                            <span className="text-muted-foreground">+ Monto Inicial Apertura:</span>
                             <span className="font-medium">{formatCurrency(preview.opening.initial_cash_amount)}</span>
                           </div>
                         )}
+                        {preview.supplierPaymentsCash > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">- Pagos a Proveedores:</span>
+                            <span className="font-medium text-red-600">{formatCurrency(preview.supplierPaymentsCash)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                          <span className="text-muted-foreground">Efectivo Esperado:</span>
+                          <span>{formatCurrency(preview.cashSales + (preview.opening?.initial_cash_amount || 0) - preview.supplierPaymentsCash)}</span>
+                        </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Efectivo Contado:</span>
                           <span className="font-medium">{formatCurrency(Number(cashCounted))}</span>

@@ -401,3 +401,54 @@ export async function getSupplierAccountMovements(supplierId: string): Promise<A
     return [];
   }
 }
+
+// Add general supplier payment (not tied to specific purchase order)
+export async function addGeneralSupplierPayment(
+  supplierId: string,
+  amount: number,
+  paymentMethod: string,
+  referenceNumber?: string,
+  notes?: string
+) {
+  const supabase = await createClient();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return { error: "No se encontró la empresa" };
+    }
+
+    // Create payment without purchase_order_id
+    const { data: payment, error: paymentError } = await supabase
+      .from("supplier_payments")
+      .insert({
+        company_id: profile.company_id,
+        supplier_id: supplierId,
+        purchase_order_id: null, // General payment, not tied to specific order
+        amount,
+        payment_method: paymentMethod,
+        reference_number: referenceNumber || null,
+        notes: notes || null,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (paymentError) throw paymentError;
+
+    revalidatePath("/dashboard/suppliers");
+    revalidatePath(`/dashboard/suppliers/${supplierId}`);
+    return { data: payment };
+  } catch (error: any) {
+    console.error("Error adding supplier payment:", error);
+    return { error: error.message || "Error al registrar el pago" };
+  }
+}

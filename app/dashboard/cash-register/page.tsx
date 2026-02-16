@@ -1,15 +1,54 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { getCashRegisterClosures, getCashRegisterOpenings } from "@/lib/actions/cash-register"
+import { getCashMovements } from "@/lib/actions/cash-movements"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Calendar, User, DollarSign, TrendingUp, Clock } from "lucide-react"
+import { Plus, Calendar, User, DollarSign, TrendingUp, TrendingDown, Clock, Lock } from "lucide-react"
 import Link from "next/link"
+import type { CashRegisterClosure, CashRegisterOpening, CashMovement } from "@/lib/types/erp"
+import { CashMovementModal } from "@/components/dashboard/cash-movement-modal"
+import { CashMovementsList } from "@/components/dashboard/cash-movements-list"
 
-export default async function CashRegisterPage() {
-  const [closures, openings] = await Promise.all([
-    getCashRegisterClosures(),
-    getCashRegisterOpenings()
-  ])
+export default function CashRegisterPage() {
+  const [closures, setClosures] = useState<CashRegisterClosure[]>([])
+  const [openings, setOpenings] = useState<CashRegisterOpening[]>([])
+  const [cashMovements, setCashMovements] = useState<CashMovement[]>([])
+  const [loading, setLoading] = useState(true)
+  const [incomeModalOpen, setIncomeModalOpen] = useState(false)
+  const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false)
+  const [activeOpeningId, setActiveOpeningId] = useState<string | null>(null)
+
+  const loadData = async () => {
+    const [closuresData, openingsData] = await Promise.all([
+      getCashRegisterClosures(),
+      getCashRegisterOpenings()
+    ])
+    setClosures(closuresData)
+    setOpenings(openingsData)
+
+    // Find active opening
+    const closedOpeningIds = new Set(closuresData.map(c => c.opening_id).filter(Boolean))
+    const activeOpening = openingsData.find(op => !closedOpeningIds.has(op.id))
+    
+    if (activeOpening) {
+      setActiveOpeningId(activeOpening.id)
+      // Load cash movements for active opening
+      const movements = await getCashMovements({ openingId: activeOpening.id })
+      setCashMovements(movements)
+    } else {
+      setActiveOpeningId(null)
+      setCashMovements([])
+    }
+
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -32,6 +71,25 @@ export default async function CashRegisterPage() {
   // Get last 5 openings
   const recentOpenings = openings.slice(0, 5)
 
+  // Check if there's an opening without a corresponding closure
+  // We check if there's any opening that doesn't have a closure with matching opening_id
+  const hasOpenOpeningToday = openings.some(opening => {
+    const hasMatchingClosure = closures.some(closure => 
+      closure.opening_id === opening.id
+    )
+    return !hasMatchingClosure
+  })
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-6 p-8 pt-6">
+        <div className="flex items-center justify-center py-12">
+          <p className="text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -42,20 +100,79 @@ export default async function CashRegisterPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIncomeModalOpen(true)}
+            disabled={!hasOpenOpeningToday}
+          >
+            {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
+            {hasOpenOpeningToday && <TrendingUp className="mr-2 h-4 w-4" />}
+            Registrar Ingreso
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setWithdrawalModalOpen(true)}
+            disabled={!hasOpenOpeningToday}
+          >
+            {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
+            {hasOpenOpeningToday && <TrendingDown className="mr-2 h-4 w-4" />}
+            Registrar Retiro
+          </Button>
           <Link href="/dashboard/cash-register/opening/new">
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
+            <Button 
+              variant="outline"
+              disabled={hasOpenOpeningToday}
+              className="relative"
+            >
+              {hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
+              {!hasOpenOpeningToday && <Plus className="mr-2 h-4 w-4" />}
               Nueva Apertura
             </Button>
           </Link>
           <Link href="/dashboard/cash-register/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button
+              disabled={!hasOpenOpeningToday}
+              className="relative"
+            >
+              {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
+              {hasOpenOpeningToday && <Plus className="mr-2 h-4 w-4" />}
               Nuevo Cierre
             </Button>
           </Link>
         </div>
       </div>
+
+      {/* Alert messages */}
+      {hasOpenOpeningToday && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-blue-800">
+              Hay una apertura de caja pendiente de cierre. Debes cerrar la caja antes de crear una nueva apertura.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!hasOpenOpeningToday && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-amber-800">
+              No hay aperturas de caja pendientes. Debes crear una apertura antes de hacer un cierre o registrar movimientos.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cash Movements Section */}
+      {hasOpenOpeningToday && cashMovements.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Movimientos de Caja del Turno Actual
+          </h3>
+          <CashMovementsList movements={cashMovements} onDelete={loadData} />
+        </div>
+      )}
 
       {/* Aperturas Recientes */}
       {recentOpenings.length > 0 && (
@@ -212,6 +329,20 @@ export default async function CashRegisterPage() {
           </div>
         )}
       </div>
+
+      {/* Cash Movement Modals */}
+      <CashMovementModal
+        type="income"
+        open={incomeModalOpen}
+        onOpenChange={setIncomeModalOpen}
+        onSuccess={loadData}
+      />
+      <CashMovementModal
+        type="withdrawal"
+        open={withdrawalModalOpen}
+        onOpenChange={setWithdrawalModalOpen}
+        onSuccess={loadData}
+      />
     </div>
   )
 }

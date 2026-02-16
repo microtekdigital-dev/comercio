@@ -102,41 +102,119 @@ async function calculateDailySales(companyId: string): Promise<number> {
 
 /**
  * Calcula el saldo de caja actual
+ * Fórmula: Monto Inicial + Ventas en Efectivo - Pagos Proveedores en Efectivo + Ingresos - Retiros
  */
 async function calculateCurrentCashBalance(companyId: string): Promise<number> {
   const supabase = await createClient();
   
   try {
-    // Get the latest cash register opening
-    const { data: opening, error: openingError } = await supabase
+    // Get the latest cash register opening that doesn't have a closure
+    const { data: allOpenings } = await supabase
       .from("cash_register_openings")
-      .select("id, initial_cash_amount, opened_at:opening_date")
+      .select("id, initial_cash_amount, opening_date, created_at")
       .eq("company_id", companyId)
-      .order("opening_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("opening_date", { ascending: false });
 
-    if (openingError) {
-      console.error("[FinancialStats] Error fetching cash register opening:", openingError);
+    const { data: allClosures } = await supabase
+      .from("cash_register_closures")
+      .select("opening_id")
+      .eq("company_id", companyId);
+
+    // Find openings without closures (active openings)
+    const closedOpeningIds = new Set((allClosures || []).map(c => c.opening_id).filter(Boolean));
+    const activeOpening = (allOpenings || []).find(op => !closedOpeningIds.has(op.id));
+
+    // If no active opening exists, return 0 (no cash register is open)
+    if (!activeOpening) {
+      console.log("[FinancialStats] No active cash register opening found, returning 0");
+      return 0;
     }
 
-    // If no opening exists, try to get initial_cash_amount from company
-    if (!opening) {
-      console.log("[FinancialStats] No cash register opening found, using company initial_cash_amount");
-      const { data: company } = await supabase
-        .from("companies")
-        .select("initial_cash_amount")
-        .eq("id", companyId)
-        .single();
-      
-      return company?.initial_cash_amount || 0;
+    console.log("[FinancialStats] Found active opening with initial amount:", activeOpening.initial_cash_amount);
+
+    // Get the opening created_at timestamp to calculate from that point forward
+    const openingCreatedAt = activeOpening.created_at;
+
+    // Get all sales in cash created AFTER the opening was created
+    const { data: sales } = await supabase
+      .from("sales")
+      .select("total, payment_method, created_at, payments:sale_payments(amount, payment_method)")
+      .eq("company_id", companyId)
+      .eq("status", "completed")
+      .gt("created_at", openingCreatedAt);
+
+    // Calculate cash sales
+    let cashSales = 0;
+    if (sales) {
+      for (const sale of sales) {
+        // If sale has payments, use those
+        if (sale.payments && sale.payments.length > 0) {
+          for (const payment of sale.payments) {
+            const method = payment.payment_method?.toLowerCase() || "";
+            if (method.includes("efectivo") || method.includes("cash")) {
+              cashSales += Number(payment.amount);
+            }
+          }
+        } else {
+          // Otherwise use sale payment_method
+          const method = sale.payment_method?.toLowerCase() || "";
+          if (method.includes("efectivo") || method.includes("cash")) {
+            cashSales += Number(sale.total);
+          }
+        }
+      }
     }
 
-    console.log("[FinancialStats] Found opening with initial amount:", opening.initial_cash_amount);
+    // Get all supplier payments in cash created AFTER the opening was created
+    const { data: supplierPayments } = await supabase
+      .from("supplier_payments")
+      .select("amount, payment_method, created_at")
+      .eq("company_id", companyId)
+      .gt("created_at", openingCreatedAt);
 
-    // For now, just return the initial cash amount from the opening
-    // TODO: When cash_register table is created, calculate actual balance with movements
-    return opening.initial_cash_amount;
+    let cashPayments = 0;
+    if (supplierPayments) {
+      for (const payment of supplierPayments) {
+        const method = payment.payment_method?.toLowerCase() || "";
+        if (method.includes("efectivo") || method.includes("cash")) {
+          cashPayments += Number(payment.amount);
+        }
+      }
+    }
+
+    // Get all cash movements for the active opening
+    const { data: cashMovements } = await supabase
+      .from("cash_movements")
+      .select("movement_type, amount")
+      .eq("company_id", companyId)
+      .eq("opening_id", activeOpening.id);
+
+    let cashIncome = 0;
+    let cashWithdrawals = 0;
+    if (cashMovements) {
+      for (const movement of cashMovements) {
+        if (movement.movement_type === "income") {
+          cashIncome += Number(movement.amount);
+        } else if (movement.movement_type === "withdrawal") {
+          cashWithdrawals += Number(movement.amount);
+        }
+      }
+    }
+
+    // Calculate current cash balance
+    // Formula: Initial Amount + Cash Sales - Supplier Payments + Income - Withdrawals
+    const currentBalance = activeOpening.initial_cash_amount + cashSales - cashPayments + cashIncome - cashWithdrawals;
+
+    console.log("[FinancialStats] Cash calculation:", {
+      initialAmount: activeOpening.initial_cash_amount,
+      cashSales,
+      cashPayments,
+      cashIncome,
+      cashWithdrawals,
+      currentBalance
+    });
+
+    return currentBalance;
   } catch (error) {
     console.error("[FinancialStats] Error calculating current cash balance:", error);
     return 0;

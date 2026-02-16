@@ -6,7 +6,8 @@ import type {
   CashRegisterClosure, 
   CashRegisterClosureFormData,
   CashRegisterOpening,
-  CashRegisterOpeningFormData
+  CashRegisterOpeningFormData,
+  SupplierPayment
 } from "@/lib/types/erp"
 
 // =====================================================
@@ -141,6 +142,7 @@ export async function createCashRegisterOpening(formData: CashRegisterOpeningFor
     if (openingError) throw openingError
 
     revalidatePath("/dashboard/cash-register")
+    revalidatePath("/dashboard") // Refresh financial stats on main dashboard
     return { data: opening }
   } catch (error: any) {
     console.error("Error creating cash register opening:", error)
@@ -175,6 +177,7 @@ export async function deleteCashRegisterOpening(id: string) {
     if (error) throw error
 
     revalidatePath("/dashboard/cash-register")
+    revalidatePath("/dashboard") // Refresh financial stats on main dashboard
     return { success: true }
   } catch (error) {
     console.error("Error deleting cash register opening:", error)
@@ -325,12 +328,27 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
       return { error: "No se encontró la empresa" }
     }
 
-    // Find corresponding opening
-    const opening = await findOpeningForClosure(
-      profile.company_id,
-      formData.closure_date,
-      formData.shift
-    )
+    // Find corresponding opening - buscar en aperturas activas por turno
+    let opening: CashRegisterOpening | null = null
+    
+    if (formData.shift) {
+      // Get all openings and closures to find active openings
+      const [allOpenings, allClosures] = await Promise.all([
+        getCashRegisterOpenings(),
+        getCashRegisterClosures()
+      ])
+      
+      // Filter openings that don't have a corresponding closure
+      const activeOpenings = allOpenings.filter(op => {
+        const hasMatchingClosure = allClosures.some(closure => 
+          closure.opening_id === op.id
+        )
+        return !hasMatchingClosure
+      })
+      
+      // Find opening that matches the selected shift
+      opening = activeOpenings.find(op => op.shift === formData.shift) || null
+    }
 
     // Get sales for the specified date
     const closureDate = new Date(formData.closure_date)
@@ -339,15 +357,54 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
     const endOfDay = new Date(closureDate)
     endOfDay.setHours(23, 59, 59, 999)
 
-    const { data: sales, error: salesError } = await supabase
+    // Get existing closures for this date and shift to find the last closure timestamp
+    const { data: existingClosures } = await supabase
+      .from("cash_register_closures")
+      .select("created_at")
+      .eq("company_id", profile.company_id)
+      .gte("closure_date", startOfDay.toISOString())
+      .lte("closure_date", endOfDay.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    // If there's a previous closure for this date, only get sales after that closure
+    const lastClosureTime = existingClosures && existingClosures.length > 0 
+      ? existingClosures[0].created_at 
+      : null
+
+    let salesQuery = supabase
       .from("sales")
-      .select("total, payment_method, payments:sale_payments(amount, payment_method)")
+      .select("total, payment_method, created_at, payments:sale_payments(amount, payment_method)")
       .eq("company_id", profile.company_id)
       .eq("status", "completed")
       .gte("sale_date", startOfDay.toISOString())
       .lte("sale_date", endOfDay.toISOString())
 
+    // Only get sales created after the last closure
+    if (lastClosureTime) {
+      salesQuery = salesQuery.gt("created_at", lastClosureTime)
+    }
+
+    const { data: sales, error: salesError } = await salesQuery
+
     if (salesError) throw salesError
+
+    // Get supplier payments for the specified date
+    let paymentsQuery = supabase
+      .from("supplier_payments")
+      .select("amount, payment_method, created_at")
+      .eq("company_id", profile.company_id)
+      .gte("payment_date", startOfDay.toISOString().split('T')[0])
+      .lte("payment_date", endOfDay.toISOString().split('T')[0])
+
+    // Only get payments created after the last closure
+    if (lastClosureTime) {
+      paymentsQuery = paymentsQuery.gt("created_at", lastClosureTime)
+    }
+
+    const { data: supplierPayments, error: paymentsError } = await paymentsQuery
+
+    if (paymentsError) throw paymentsError
 
     // Calculate totals
     let totalSalesCount = 0
@@ -397,17 +454,27 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
       }
     }
 
+    // Calculate supplier payments in cash
+    let supplierPaymentsCash = 0
+    if (supplierPayments) {
+      for (const payment of supplierPayments) {
+        const method = payment.payment_method?.toLowerCase() || ""
+        if (method.includes("efectivo") || method.includes("cash")) {
+          supplierPaymentsCash += Number(payment.amount)
+        }
+      }
+    }
+
     // Calculate cash difference if cash_counted is provided
     let cashDifference = null
     let warningMessage = null
     
     if (formData.cash_counted !== undefined && formData.cash_counted !== null) {
-      if (opening) {
-        // Con apertura: Diferencia = Contado - (Esperado + Monto Inicial)
-        cashDifference = formData.cash_counted - (cashSales + opening.initial_cash_amount)
-      } else {
-        // Sin apertura: Diferencia = Contado - Esperado (comportamiento actual)
-        cashDifference = formData.cash_counted - cashSales
+      // Efectivo esperado = Ventas en efectivo + Monto inicial de apertura - Pagos a proveedores en efectivo
+      const expectedCash = cashSales + (opening?.initial_cash_amount || 0) - supplierPaymentsCash
+      cashDifference = formData.cash_counted - expectedCash
+      
+      if (!opening && formData.shift) {
         warningMessage = "No se encontró apertura para esta fecha y turno. El cálculo de diferencia no incluye el monto inicial."
       }
     }
@@ -427,6 +494,7 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
         card_sales: cardSales,
         transfer_sales: transferSales,
         other_sales: otherSales,
+        supplier_payments_cash: supplierPaymentsCash,
         cash_counted: formData.cash_counted || null,
         cash_difference: cashDifference,
         notes: formData.notes || null,
@@ -439,6 +507,7 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
     if (closureError) throw closureError
 
     revalidatePath("/dashboard/cash-register")
+    revalidatePath("/dashboard") // Refresh financial stats on main dashboard
     return { 
       data: closure,
       warning: warningMessage,
@@ -477,9 +546,85 @@ export async function deleteCashRegisterClosure(id: string) {
     if (error) throw error
 
     revalidatePath("/dashboard/cash-register")
+    revalidatePath("/dashboard") // Refresh financial stats on main dashboard
     return { success: true }
   } catch (error) {
     console.error("Error deleting cash register closure:", error)
     return { error: "Error al eliminar el cierre de caja" }
   }
 }
+
+// Get supplier payments in cash for a date range
+export async function getSupplierPaymentsCash(dateFrom: string, dateTo: string): Promise<number> {
+  const supabase = await createClient()
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return 0
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.company_id) return 0
+
+    const { data: payments, error } = await supabase
+      .from("supplier_payments")
+      .select("amount, payment_method")
+      .eq("company_id", profile.company_id)
+      .gte("payment_date", dateFrom)
+      .lte("payment_date", dateTo)
+
+    if (error) throw error
+
+    let cashPayments = 0
+    if (payments) {
+      for (const payment of payments) {
+        const method = payment.payment_method?.toLowerCase() || ""
+        if (method.includes("efectivo") || method.includes("cash")) {
+          cashPayments += Number(payment.amount)
+        }
+      }
+    }
+
+    return cashPayments
+  } catch (error) {
+    console.error("Error fetching supplier payments:", error)
+    return 0
+  }
+}
+
+// Get supplier payments with details for filtering
+export async function getSupplierPayments(dateFrom: string, dateTo: string): Promise<SupplierPayment[]> {
+  const supabase = await createClient()
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.company_id) return []
+
+    const { data: payments, error } = await supabase
+      .from("supplier_payments")
+      .select("*")
+      .eq("company_id", profile.company_id)
+      .gte("payment_date", dateFrom)
+      .lte("payment_date", dateTo)
+      .order("created_at", { ascending: false })
+
+    if (error) throw error
+    return payments || []
+  } catch (error) {
+    console.error("Error fetching supplier payments:", error)
+    return []
+  }
+}
+

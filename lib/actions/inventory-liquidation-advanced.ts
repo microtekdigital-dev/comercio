@@ -30,7 +30,7 @@ export async function getAdvancedInventoryLiquidation(
   const summary = {
     totalProducts: byProduct.length,
     totalMovements: byProduct.reduce((sum, p) => sum + p.units, 0),
-    totalPurchaseValue: byProduct.reduce((sum, p) => sum + (p.value || 0), 0),
+    totalPurchaseValue: byCategory.reduce((sum, c) => sum + c.totalPurchaseValue, 0),
     totalSalesValue: byCategory.reduce((sum, c) => sum + c.totalSalesValue, 0),
     totalProfit: byCategory.reduce((sum, c) => sum + c.totalProfit, 0),
     profitMargin: 0,

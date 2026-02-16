@@ -527,6 +527,7 @@ export interface CashRegisterClosure {
   card_sales: number;
   transfer_sales: number;
   other_sales: number;
+  supplier_payments_cash: number;
   cash_counted: number | null;
   cash_difference: number | null;
   notes: string | null;
@@ -675,6 +676,42 @@ export interface FinancialStats {
   accountsReceivable: number;
   accountsPayable: number;
   monthlyProfit: number;
+}
+
+// =====================================================
+// Cash Movement Types (Movimientos de Caja)
+// =====================================================
+
+export interface CashMovement {
+  id: string;
+  company_id: string;
+  opening_id: string;
+  movement_type: 'income' | 'withdrawal';
+  amount: number;
+  description: string;
+  created_by: string;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashMovementFormData {
+  movement_type: 'income' | 'withdrawal';
+  amount: number;
+  description: string;
+}
+
+export interface CashMovementFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  movementType?: 'income' | 'withdrawal' | 'all';
+  openingId?: string;
+}
+
+export interface CashMovementsSummary {
+  totalIncome: number;
+  totalWithdrawals: number;
+  netMovement: number;
 }
 
 // =====================================================

@@ -26,7 +26,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, Search, Building2, Mail, Phone, MapPin, FileText, CreditCard, DollarSign, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { SupplierAccountModal } from "@/components/dashboard/supplier-account-modal";
-import { QuickPaymentModal } from "@/components/dashboard/quick-payment-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,9 +42,7 @@ export default function SuppliersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [supplierBalances, setSupplierBalances] = useState<Record<string, number>>({});
   const [selectedSupplierForAccount, setSelectedSupplierForAccount] = useState<Supplier | null>(null);
-  const [selectedSupplierForPayment, setSelectedSupplierForPayment] = useState<Supplier | null>(null);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     loadSuppliers();
@@ -81,17 +78,6 @@ export default function SuppliersPage() {
   const handleOpenAccountModal = (supplier: Supplier) => {
     setSelectedSupplierForAccount(supplier);
     setAccountModalOpen(true);
-  };
-
-  const handleOpenPaymentModal = (supplier: Supplier) => {
-    setSelectedSupplierForPayment(supplier);
-    setPaymentModalOpen(true);
-  };
-
-  const handlePaymentSuccess = () => {
-    setPaymentModalOpen(false);
-    loadSuppliers();
-    loadSupplierBalances();
   };
 
   const loadSuppliers = async () => {
@@ -301,10 +287,6 @@ export default function SuppliersPage() {
                           <FileText className="mr-2 h-4 w-4" />
                           Cuenta corriente
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenPaymentModal(supplier)}>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Registrar pago
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -327,17 +309,6 @@ export default function SuppliersPage() {
           supplierName={selectedSupplierForAccount.name}
           open={accountModalOpen}
           onOpenChange={setAccountModalOpen}
-        />
-      )}
-
-      {selectedSupplierForPayment && (
-        <QuickPaymentModal
-          entityId={selectedSupplierForPayment.id}
-          entityName={selectedSupplierForPayment.name}
-          entityType="supplier"
-          open={paymentModalOpen}
-          onOpenChange={setPaymentModalOpen}
-          onSuccess={handlePaymentSuccess}
         />
       )}
     </div>

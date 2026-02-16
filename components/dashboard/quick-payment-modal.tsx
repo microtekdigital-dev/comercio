@@ -27,10 +27,14 @@ import { toast } from "sonner";
 import { Loader2, Calculator } from "lucide-react";
 
 interface QuickPaymentModalProps {
-  sale: Sale;
+  sale?: Sale;
+  entityId?: string;
+  entityName?: string;
+  entityType?: "supplier" | "customer";
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPaymentSuccess: () => void;
+  onPaymentSuccess?: () => void;
+  onSuccess?: () => void;
 }
 
 interface PaymentFormState {
@@ -52,18 +56,28 @@ const PAYMENT_METHODS = [
 
 export function QuickPaymentModal({
   sale,
+  entityId,
+  entityName,
+  entityType,
   open,
   onOpenChange,
   onPaymentSuccess,
+  onSuccess,
 }: QuickPaymentModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<PaymentFormState>({
-    amount: sale.total,
+    amount: sale?.total || 0,
     paymentMethod: "",
     referenceNumber: "",
     notes: "",
     receivedAmount: 0,
   });
+
+  // Determinar si estamos trabajando con una venta o con un cliente/proveedor
+  const isSale = !!sale;
+  const displayName = isSale ? `#${sale.sale_number}` : entityName;
+  const totalAmount = isSale ? sale.total : 0;
+  const currency = isSale ? sale.currency : "ARS";
 
   // Calcular el vuelto
   const change = formData.receivedAmount - formData.amount;
@@ -83,6 +97,12 @@ export function QuickPaymentModal({
       return;
     }
 
+    // Si no es una venta, no podemos procesar el pago aquí
+    if (!isSale) {
+      toast.error("Este modal solo funciona para ventas. Usa el modal de cuenta corriente para clientes.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -98,7 +118,8 @@ export function QuickPaymentModal({
         toast.error(result.error);
       } else {
         toast.success("Pago registrado exitosamente");
-        onPaymentSuccess();
+        if (onPaymentSuccess) onPaymentSuccess();
+        if (onSuccess) onSuccess();
       }
     } catch (error) {
       toast.error("Error al registrar el pago");
@@ -112,8 +133,8 @@ export function QuickPaymentModal({
     if (!isNaN(numValue)) {
       setFormData({ ...formData, amount: numValue });
       
-      // Mostrar advertencia si excede el total
-      if (numValue > sale.total) {
+      // Mostrar advertencia si excede el total (solo para ventas)
+      if (isSale && numValue > sale.total) {
         toast.warning("El monto excede el total de la venta");
       }
     }
@@ -130,30 +151,47 @@ export function QuickPaymentModal({
         <DialogHeader>
           <DialogTitle>Registrar Pago</DialogTitle>
           <DialogDescription>
-            Registra el pago para la venta #{sale.sale_number}
+            {isSale 
+              ? `Registra el pago para la venta ${displayName}`
+              : `Registra el pago para ${entityType === 'customer' ? 'el cliente' : 'el proveedor'} ${displayName}`
+            }
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Información de la venta */}
-          <div className="rounded-lg border p-4 space-y-2 bg-muted/50">
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Venta:</span>
-              <span className="text-sm font-medium">#{sale.sale_number}</span>
-            </div>
-            {sale.customer && (
+          {/* Información de la venta o entidad */}
+          {isSale ? (
+            <div className="rounded-lg border p-4 space-y-2 bg-muted/50">
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Cliente:</span>
-                <span className="text-sm font-medium">{sale.customer.name}</span>
+                <span className="text-sm text-muted-foreground">Venta:</span>
+                <span className="text-sm font-medium">#{sale.sale_number}</span>
               </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Total:</span>
-              <span className="text-sm font-bold">
-                ${sale.total.toFixed(2)} {sale.currency}
-              </span>
+              {sale.customer && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Cliente:</span>
+                  <span className="text-sm font-medium">{sale.customer.name}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total:</span>
+                <span className="text-sm font-bold">
+                  ${sale.total.toFixed(2)} {sale.currency}
+                </span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border p-4 space-y-2 bg-muted/50">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {entityType === 'customer' ? 'Cliente:' : 'Proveedor:'}
+                </span>
+                <span className="text-sm font-medium">{displayName}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Este modal solo funciona para ventas. Por favor, usa el modal de cuenta corriente.
+              </div>
+            </div>
+          )}
 
           {/* Formulario de pago */}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -233,7 +271,7 @@ export function QuickPaymentModal({
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Vuelto a devolver:</span>
                       <span className={`text-lg font-bold ${change < 0 ? 'text-destructive' : 'text-primary'}`}>
-                        ${Math.abs(change).toFixed(2)} {sale.currency}
+                        ${Math.abs(change).toFixed(2)} {currency}
                       </span>
                     </div>
                     {change < 0 && (
@@ -287,7 +325,7 @@ export function QuickPaymentModal({
             </Button>
             <Button
               type="submit"
-              disabled={loading || !formData.paymentMethod}
+              disabled={loading || !formData.paymentMethod || !isSale}
               aria-busy={loading}
               className="w-full sm:w-auto"
             >
