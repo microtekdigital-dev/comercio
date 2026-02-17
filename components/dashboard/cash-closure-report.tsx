@@ -217,6 +217,23 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
           </div>
         </div>
 
+        {/* Supplier Payments Summary */}
+        {supplierPayments.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              RESUMEN DE PAGOS A PROVEEDORES
+            </h3>
+            <div className="bg-red-50 border border-red-200 p-4 rounded">
+              <div className="flex items-center gap-2 mb-2">
+                <ArrowDown className="h-5 w-5 text-red-600" />
+                <span className="text-sm text-gray-600">Total Pagos en Efectivo</span>
+              </div>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
+              <p className="text-xs text-gray-500 mt-1">{supplierPayments.length} pagos</p>
+            </div>
+          </div>
+        )}
+
         {/* Detailed Sales List */}
         <div className="mb-8 avoid-break">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">
