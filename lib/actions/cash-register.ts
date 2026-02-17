@@ -458,11 +458,26 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
 
     // Calculate supplier payments in cash
     let supplierPaymentsCash = 0
+    let supplierPaymentsCard = 0
+    let supplierPaymentsTransfer = 0
+    let supplierPaymentsOther = 0
+    let supplierPaymentsTotal = 0
+    
     if (supplierPayments) {
       for (const payment of supplierPayments) {
+        const amount = Number(payment.amount)
         const method = payment.payment_method?.toLowerCase() || ""
+        
+        supplierPaymentsTotal += amount
+        
         if (method.includes("efectivo") || method.includes("cash")) {
-          supplierPaymentsCash += Number(payment.amount)
+          supplierPaymentsCash += amount
+        } else if (method.includes("tarjeta") || method.includes("card") || method.includes("débito") || method.includes("crédito")) {
+          supplierPaymentsCard += amount
+        } else if (method.includes("transferencia") || method.includes("transfer")) {
+          supplierPaymentsTransfer += amount
+        } else {
+          supplierPaymentsOther += amount
         }
       }
     }
@@ -496,7 +511,11 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
         card_sales: cardSales,
         transfer_sales: transferSales,
         other_sales: otherSales,
+        supplier_payments_total: supplierPaymentsTotal,
         supplier_payments_cash: supplierPaymentsCash,
+        supplier_payments_card: supplierPaymentsCard,
+        supplier_payments_transfer: supplierPaymentsTransfer,
+        supplier_payments_other: supplierPaymentsOther,
         cash_counted: formData.cash_counted || null,
         cash_difference: cashDifference,
         notes: formData.notes || null,
@@ -701,7 +720,7 @@ export async function getCashMovementsForOpening(
   }
 }
 
-// Get supplier payments for closure date (cash only)
+// Get supplier payments for closure date (all payment methods)
 export async function getSupplierPaymentsForClosure(
   companyId: string,
   closureDate: string,
@@ -735,13 +754,8 @@ export async function getSupplierPaymentsForClosure(
 
     if (error) throw error
     
-    // Filter to cash payments only
-    const cashPayments = (data || []).filter(payment => {
-      const method = payment.payment_method?.toLowerCase() || ""
-      return method.includes("efectivo") || method.includes("cash")
-    })
-
-    return cashPayments
+    // Return all payments (not just cash)
+    return data || []
   } catch (error) {
     console.error("Error fetching supplier payments for closure:", error)
     return []

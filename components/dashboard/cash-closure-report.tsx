@@ -217,22 +217,22 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
           </div>
         </div>
 
-        {/* Supplier Payments Summary */}
-        {closure.supplier_payments_cash > 0 && (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              RESUMEN DE PAGOS A PROVEEDORES
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
-              <div className="bg-red-50 border border-red-200 p-4 rounded">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowDown className="h-5 w-5 text-red-600" />
-                  <span className="text-sm text-gray-600">Total Pagos</span>
-                </div>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
-                <p className="text-xs text-gray-500 mt-1">{supplierPayments.length} pagos</p>
+        {/* Supplier Payments Summary - ALWAYS SHOW */}
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            RESUMEN DE PAGOS A PROVEEDORES
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
+            <div className="bg-red-50 border border-red-200 p-4 rounded">
+              <div className="flex items-center gap-2 mb-2">
+                <ArrowDown className="h-5 w-5 text-red-600" />
+                <span className="text-sm text-gray-600">Total Pagos</span>
               </div>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(closure.supplier_payments_total)}</p>
+              <p className="text-xs text-gray-500 mt-1">{supplierPayments.length} pagos</p>
+            </div>
 
+            <div className="grid grid-cols-2 gap-2">
               <div className="border p-3 rounded">
                 <div className="flex items-center gap-1 mb-1">
                   <Wallet className="h-4 w-4 text-red-500" />
@@ -240,9 +240,35 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
                 </div>
                 <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
               </div>
+
+              <div className="border p-3 rounded">
+                <div className="flex items-center gap-1 mb-1">
+                  <CreditCard className="h-4 w-4 text-red-500" />
+                  <span className="text-xs text-gray-600">Tarjeta</span>
+                </div>
+                <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_card || 0)}</p>
+              </div>
+
+              <div className="border p-3 rounded">
+                <div className="flex items-center gap-1 mb-1">
+                  <Smartphone className="h-4 w-4 text-red-500" />
+                  <span className="text-xs text-gray-600">Transferencia</span>
+                </div>
+                <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_transfer || 0)}</p>
+              </div>
+
+              {(closure.supplier_payments_other || 0) > 0 && (
+                <div className="border p-3 rounded">
+                  <div className="flex items-center gap-1 mb-1">
+                    <TrendingUp className="h-4 w-4 text-red-500" />
+                    <span className="text-xs text-gray-600">Otros</span>
+                  </div>
+                  <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_other)}</p>
+                </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
         {/* Detailed Sales List */}
         <div className="mb-8 avoid-break">
@@ -328,7 +354,7 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
         {supplierPayments.length > 0 && (
           <div className="mb-8 avoid-break">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              PAGOS A PROVEEDORES (EFECTIVO)
+              DETALLE DE PAGOS A PROVEEDORES
             </h3>
             <table className="w-full border-collapse text-sm">
               <thead>

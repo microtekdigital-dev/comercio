@@ -530,7 +530,11 @@ export interface CashRegisterClosure {
   card_sales: number;
   transfer_sales: number;
   other_sales: number;
+  supplier_payments_total: number;
   supplier_payments_cash: number;
+  supplier_payments_card?: number;
+  supplier_payments_transfer?: number;
+  supplier_payments_other?: number;
   cash_counted: number | null;
   cash_difference: number | null;
   notes: string | null;

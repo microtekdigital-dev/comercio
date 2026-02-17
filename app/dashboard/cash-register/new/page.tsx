@@ -37,7 +37,12 @@ export default function NewCashRegisterClosurePage() {
     cardSales: number
     transferSales: number
     otherSales: number
+    supplierPaymentsTotal: number
     supplierPaymentsCash: number
+    supplierPaymentsCard: number
+    supplierPaymentsTransfer: number
+    supplierPaymentsOther: number
+    supplierPaymentsCount: number
     opening?: {
       id: string
       initial_cash_amount: number
@@ -190,13 +195,31 @@ export default function NewCashRegisterClosurePage() {
         }
       }
 
-      // Calculate supplier payments in cash from filtered payments
+      // Calculate supplier payments by method from filtered payments
+      let supplierPaymentsTotal = 0
       let supplierPaymentsCash = 0
+      let supplierPaymentsCard = 0
+      let supplierPaymentsTransfer = 0
+      let supplierPaymentsOther = 0
+      let supplierPaymentsCount = 0
+      
       if (supplierPayments) {
+        supplierPaymentsCount = supplierPayments.length
+        
         for (const payment of supplierPayments) {
+          const amount = Number(payment.amount)
           const method = payment.payment_method?.toLowerCase() || ""
+          
+          supplierPaymentsTotal += amount
+          
           if (method.includes("efectivo") || method.includes("cash")) {
-            supplierPaymentsCash += Number(payment.amount)
+            supplierPaymentsCash += amount
+          } else if (method.includes("tarjeta") || method.includes("card") || method.includes("débito") || method.includes("crédito")) {
+            supplierPaymentsCard += amount
+          } else if (method.includes("transferencia") || method.includes("transfer")) {
+            supplierPaymentsTransfer += amount
+          } else {
+            supplierPaymentsOther += amount
           }
         }
       }
@@ -221,7 +244,12 @@ export default function NewCashRegisterClosurePage() {
         cardSales,
         transferSales,
         otherSales,
+        supplierPaymentsTotal,
         supplierPaymentsCash,
+        supplierPaymentsCard,
+        supplierPaymentsTransfer,
+        supplierPaymentsOther,
+        supplierPaymentsCount,
         opening: matchingOpening ? {
           id: matchingOpening.id,
           initial_cash_amount: matchingOpening.initial_cash_amount,
@@ -501,60 +529,7 @@ export default function NewCashRegisterClosurePage() {
                         <span className="font-semibold">{formatCurrency(preview.otherSales)}</span>
                       </div>
                     )}
-
-                    {preview.supplierPaymentsCash > 0 && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg bg-red-50">
-                        <div className="flex items-center gap-2">
-                          <TrendingDown className="h-5 w-5 text-red-500" />
-                          <span className="font-medium">Pagos a Proveedores</span>
-                        </div>
-                        <span className="font-semibold text-red-600">-{formatCurrency(preview.supplierPaymentsCash)}</span>
-                      </div>
-                    )}
                   </div>
-
-                  {cashCounted && cashDifference !== null && (
-                    <div className="mt-4 pt-4 border-t">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Ventas en Efectivo:</span>
-                          <span className="font-medium">{formatCurrency(preview.cashSales)}</span>
-                        </div>
-                        {preview.opening && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">+ Monto Inicial Apertura:</span>
-                            <span className="font-medium">{formatCurrency(preview.opening.initial_cash_amount)}</span>
-                          </div>
-                        )}
-                        {preview.supplierPaymentsCash > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">- Pagos a Proveedores:</span>
-                            <span className="font-medium text-red-600">{formatCurrency(preview.supplierPaymentsCash)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-                          <span className="text-muted-foreground">Efectivo Esperado:</span>
-                          <span>{formatCurrency(preview.cashSales + (preview.opening?.initial_cash_amount || 0) - preview.supplierPaymentsCash)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Efectivo Contado:</span>
-                          <span className="font-medium">{formatCurrency(Number(cashCounted))}</span>
-                        </div>
-                        <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                          <span>Diferencia:</span>
-                          <span className={
-                            cashDifference < 0 
-                              ? "text-red-500" 
-                              : cashDifference > 0 
-                              ? "text-green-500" 
-                              : ""
-                          }>
-                            {formatCurrency(cashDifference)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -563,6 +538,125 @@ export default function NewCashRegisterClosurePage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Supplier Payments Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Resumen de Pagos a Proveedores</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {calculating ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Calculando...
+                </div>
+              ) : preview ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <TrendingDown className="h-8 w-8 text-red-600" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Pagos</p>
+                        <p className="text-2xl font-bold text-red-600">{formatCurrency(preview.supplierPaymentsTotal)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Cantidad</p>
+                      <p className="text-xl font-semibold">{preview.supplierPaymentsCount}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-red-500" />
+                        <span className="font-medium">Efectivo</span>
+                      </div>
+                      <span className="font-semibold text-red-600">{formatCurrency(preview.supplierPaymentsCash)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5 text-red-500" />
+                        <span className="font-medium">Tarjeta</span>
+                      </div>
+                      <span className="font-semibold text-red-600">{formatCurrency(preview.supplierPaymentsCard)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="h-5 w-5 text-red-500" />
+                        <span className="font-medium">Transferencia</span>
+                      </div>
+                      <span className="font-semibold text-red-600">{formatCurrency(preview.supplierPaymentsTransfer)}</span>
+                    </div>
+
+                    {preview.supplierPaymentsOther > 0 && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-5 w-5 text-red-500" />
+                          <span className="font-medium">Otros</span>
+                        </div>
+                        <span className="font-semibold text-red-600">{formatCurrency(preview.supplierPaymentsOther)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Selecciona una fecha para ver el resumen
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Cash Reconciliation */}
+          {preview && cashCounted && cashDifference !== null && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Reconciliación de Efectivo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Ventas en Efectivo:</span>
+                    <span className="font-medium">{formatCurrency(preview.cashSales)}</span>
+                  </div>
+                  {preview.opening && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">+ Monto Inicial Apertura:</span>
+                      <span className="font-medium">{formatCurrency(preview.opening.initial_cash_amount)}</span>
+                    </div>
+                  )}
+                  {preview.supplierPaymentsCash > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">- Pagos a Proveedores:</span>
+                      <span className="font-medium text-red-600">{formatCurrency(preview.supplierPaymentsCash)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                    <span className="text-muted-foreground">Efectivo Esperado:</span>
+                    <span>{formatCurrency(preview.cashSales + (preview.opening?.initial_cash_amount || 0) - preview.supplierPaymentsCash)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Efectivo Contado:</span>
+                    <span className="font-medium">{formatCurrency(Number(cashCounted))}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Diferencia:</span>
+                    <span className={
+                      cashDifference < 0 
+                        ? "text-red-500" 
+                        : cashDifference > 0 
+                        ? "text-green-500" 
+                        : ""
+                    }>
+                      {formatCurrency(cashDifference)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
