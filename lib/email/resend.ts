@@ -463,7 +463,7 @@ export async function sendWelcomeEmail(
               </div>
 
               <div style="text-align: center; margin: 40px 0 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://tu-dominio.com'}/dashboard" 
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.negociopymes.com.ar'}/dashboard" 
                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                           color: white; 
                           padding: 14px 40px; 
