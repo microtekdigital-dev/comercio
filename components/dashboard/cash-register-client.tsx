@@ -286,6 +286,23 @@ export function CashRegisterClient() {
                   </div>
                 </div>
 
+                {/* Supplier Payments Summary */}
+                {closure.supplier_payments_cash > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <h4 className="text-sm font-semibold mb-3 text-red-600">Pagos a Proveedores</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="text-sm text-muted-foreground mb-1">Total Pagos</p>
+                        <p className="text-2xl font-bold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
+                      </div>
+                      <div className="border rounded-lg p-3">
+                        <p className="text-sm text-muted-foreground mb-1">Efectivo</p>
+                        <p className="text-lg font-semibold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {closure.cash_counted !== null && (
                   <div className="mt-4 pt-4 border-t">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
