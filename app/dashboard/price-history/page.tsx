@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation"
+import { getCurrentUser } from "@/lib/actions/users"
+import { canAccessPriceHistory } from "@/lib/utils/plan-limits"
 import { createClient } from "@/lib/supabase/server"
 import { getPriceChanges } from "@/lib/actions/price-changes"
 import { PriceHistoryTable } from "@/components/dashboard/price-history-table"
@@ -9,22 +11,20 @@ export const metadata = {
 }
 
 export default async function PriceHistoryPage() {
-  const supabase = await createClient()
+  const user = await getCurrentUser()
   
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    redirect("/auth/login")
+  if (!user?.company_id) {
+    redirect("/dashboard")
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("company_id, role")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile?.company_id) {
-    redirect("/auth/login")
+  // Verificar permisos server-side
+  const permission = await canAccessPriceHistory(user.company_id)
+  
+  if (!permission.allowed) {
+    redirect("/dashboard?error=insufficient_permissions")
   }
+
+  const supabase = await createClient()
 
   // Get all price changes
   const changes = await getPriceChanges()
@@ -33,7 +33,7 @@ export default async function PriceHistoryPage() {
   const { data: employees } = await supabase
     .from("profiles")
     .select("id, full_name, email")
-    .eq("company_id", profile.company_id)
+    .eq("company_id", user.company_id)
     .order("full_name")
 
   const employeesList = employees?.map(emp => ({
@@ -45,7 +45,7 @@ export default async function PriceHistoryPage() {
   const { data: products } = await supabase
     .from("products")
     .select("id, name")
-    .eq("company_id", profile.company_id)
+    .eq("company_id", user.company_id)
     .eq("is_active", true)
     .order("name")
 
@@ -58,7 +58,7 @@ export default async function PriceHistoryPage() {
   const { data: company } = await supabase
     .from("companies")
     .select("currency")
-    .eq("id", profile.company_id)
+    .eq("id", user.company_id)
     .single()
 
   const currencySymbol = company?.currency === "USD" ? "$" : company?.currency === "EUR" ? "€" : "$"

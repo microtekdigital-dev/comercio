@@ -16,6 +16,8 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { createClient } from "@/lib/supabase/client"
 import { useState, useEffect, useMemo } from "react"
+import { toast } from "sonner"
+import type { FeaturePermission } from "@/lib/types/plans"
 import {
   Building2,
   LayoutDashboard,
@@ -39,6 +41,7 @@ import {
   PackageSearch,
   Scale,
   Wallet,
+  Lock,
 } from "lucide-react"
 
 interface Profile {
@@ -55,24 +58,30 @@ interface Profile {
 
 interface SidebarProps {
   user: Profile
-  canSeePurchaseOrders?: boolean
-  canSeeSuppliers?: boolean
-  canSeeStockHistory?: boolean
-  canSeePriceHistory?: boolean
-  canSeeCashRegister?: boolean
-  canSeeInventoryLiquidation?: boolean
-  canSeeAccountsSettlement?: boolean
+  permissions: {
+    purchaseOrders: FeaturePermission
+    suppliers: FeaturePermission
+    stockHistory: FeaturePermission
+    priceHistory: FeaturePermission
+    cashRegister: FeaturePermission
+    inventoryLiquidation: FeaturePermission
+    accountsSettlement: FeaturePermission
+  }
 }
 
 interface NavSection {
   title: string
-  items: NavItem[]
+  items: NavItemWithPermission[]
 }
 
 interface NavItem {
   href: string
   label: string
   icon: any
+}
+
+interface NavItemWithPermission extends NavItem {
+  permission?: FeaturePermission
 }
 
 const adminNavItems = [
@@ -112,11 +121,69 @@ const employeeNavItems = [
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ]
 
-export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSuppliers = true, canSeeStockHistory = true, canSeePriceHistory = true, canSeeCashRegister = true, canSeeInventoryLiquidation = true, canSeeAccountsSettlement = true }: SidebarProps) {
+export function DashboardSidebar({ user, permissions }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
+
+  // Función para manejar clicks en funcionalidades bloqueadas
+  const handleLockedFeatureClick = (permission: FeaturePermission) => {
+    toast.error(permission.message || "Esta funcionalidad no está disponible en tu plan actual", {
+      description: "Actualiza tu plan para acceder a esta funcionalidad",
+      action: {
+        label: "Ver Planes",
+        onClick: () => router.push("/dashboard/billing"),
+      },
+    })
+  }
+
+  // Función para renderizar items de navegación (bloqueados o accesibles)
+  const renderNavItem = (item: NavItemWithPermission) => {
+    const Icon = item.icon
+    const isActive = pathname === item.href || 
+      (item.href !== "/dashboard" && pathname.startsWith(item.href))
+    const isLocked = item.permission && !item.permission.allowed
+
+    if (isLocked && item.permission) {
+      // Renderizar como bloqueado
+      return (
+        <button
+          key={item.href}
+          onClick={() => handleLockedFeatureClick(item.permission!)}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors w-full text-left",
+            "text-muted-foreground hover:bg-muted/50 cursor-not-allowed opacity-60"
+          )}
+        >
+          <Icon className="h-4 w-4" />
+          <span className="flex-1">{item.label}</span>
+          <span className="text-xs flex items-center gap-1">
+            <Lock className="h-3 w-3" />
+            {item.permission.requiredPlan}
+          </span>
+        </button>
+      )
+    }
+
+    // Renderizar como accesible
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setOpen(false)}
+        className={cn(
+          "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+          isActive
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+        )}
+      >
+        <Icon className="h-4 w-4" />
+        {item.label}
+      </Link>
+    )
+  }
 
   // Usar useMemo para evitar problemas de hidratación
   const navSections = useMemo((): NavSection[] => {
@@ -133,8 +200,8 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
         {
           title: "COMPRAS",
           items: [
-            ...(canSeePurchaseOrders ? [{ href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList }] : []),
-            ...(canSeeSuppliers ? [{ href: "/dashboard/suppliers", label: "Proveedores", icon: Building2 }] : []),
+            { href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList, permission: permissions.purchaseOrders },
+            { href: "/dashboard/suppliers", label: "Proveedores", icon: Building2, permission: permissions.suppliers },
           ],
         },
         {
@@ -142,16 +209,16 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
           items: [
             { href: "/dashboard/products", label: "Productos", icon: Package },
             { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
-            ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
-            ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-            ...(canSeeInventoryLiquidation ? [{ href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch }] : []),
+            { href: "/dashboard/stock-history", label: "Historial de Stock", icon: History, permission: permissions.stockHistory },
+            { href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp, permission: permissions.priceHistory },
+            { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch, permission: permissions.inventoryLiquidation },
           ],
         },
         {
           title: "CAJA Y FINANZAS",
           items: [
-            ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign }] : []),
-            ...(canSeeAccountsSettlement ? [{ href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale }] : []),
+            { href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign, permission: permissions.cashRegister },
+            { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale, permission: permissions.accountsSettlement },
             { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
           ],
         },
@@ -186,16 +253,16 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
           items: [
             { href: "/dashboard/products", label: "Productos", icon: Package },
             { href: "/dashboard/categories", label: "Categorías", icon: FolderTree },
-            ...(canSeeStockHistory ? [{ href: "/dashboard/stock-history", label: "Historial de Stock", icon: History }] : []),
-            ...(canSeePriceHistory ? [{ href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp }] : []),
-            ...(canSeeInventoryLiquidation ? [{ href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch }] : []),
+            { href: "/dashboard/stock-history", label: "Historial de Stock", icon: History, permission: permissions.stockHistory },
+            { href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp, permission: permissions.priceHistory },
+            { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch, permission: permissions.inventoryLiquidation },
           ],
         },
         {
           title: "CAJA Y FINANZAS",
           items: [
-            ...(canSeeCashRegister ? [{ href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign }] : []),
-            ...(canSeeAccountsSettlement ? [{ href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale }] : []),
+            { href: "/dashboard/cash-register", label: "Apertura / Cierre de Caja", icon: DollarSign, permission: permissions.cashRegister },
+            { href: "/dashboard/accounts-settlement", label: "Liquidación de Cuentas", icon: Scale, permission: permissions.accountsSettlement },
             { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
           ],
         },
@@ -207,7 +274,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
         },
       ]
     }
-  }, [user.role, canSeePurchaseOrders, canSeeSuppliers, canSeeStockHistory, canSeePriceHistory, canSeeCashRegister, canSeeInventoryLiquidation, canSeeAccountsSettlement])
+  }, [user.role, permissions])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -269,28 +336,7 @@ export function DashboardSidebar({ user, canSeePurchaseOrders = true, canSeeSupp
             <h3 className="px-3 text-xs font-semibold text-muted-foreground tracking-wider">
               {section.title}
             </h3>
-            {section.items.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href || 
-                (item.href !== "/dashboard" && pathname.startsWith(item.href))
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
+            {section.items.map((item) => renderNavItem(item))}
           </div>
         ))}
       </nav>

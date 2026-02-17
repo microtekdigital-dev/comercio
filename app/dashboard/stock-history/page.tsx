@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation"
+import { getCurrentUser } from "@/lib/actions/users"
+import { canAccessStockHistory } from "@/lib/utils/plan-limits"
 import { getStockMovements } from "@/lib/actions/stock-movements"
 import { getProducts } from "@/lib/actions/products"
 import { StockHistoryTable } from "@/components/dashboard/stock-history-table"
@@ -5,6 +8,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { History } from "lucide-react"
 
 export default async function StockHistoryPage() {
+  const user = await getCurrentUser()
+  
+  if (!user?.company_id) {
+    redirect("/dashboard")
+  }
+
+  // Verificar permisos server-side
+  const permission = await canAccessStockHistory(user.company_id)
+  
+  if (!permission.allowed) {
+    redirect("/dashboard?error=insufficient_permissions")
+  }
+
   const [movements, products] = await Promise.all([
     getStockMovements(),
     getProducts(),

@@ -188,21 +188,24 @@ export async function hasFeature(
  */
 export async function canAccessPurchaseOrders(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
   
-  // Solo Pro/Profesional y Empresarial tienen acceso a órdenes de compra
-  // Usar includes para ser más flexible con variaciones del nombre (ej: "Profesional Anual")
+  // CAMBIO: Ahora Trial también tiene acceso
   const planName = limits.planName.toLowerCase();
   const hasAccess = 
+    planName.includes("trial") ||
+    planName.includes("básico") ||
     planName.includes("pro") || 
     planName.includes("profesional") || 
     planName.includes("empresarial");
   
   return {
     allowed: hasAccess,
-    message: hasAccess ? undefined : "Las órdenes de compra están disponibles en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+    requiredPlan: hasAccess ? undefined : "Básico",
+    message: hasAccess ? undefined : "Las órdenes de compra están disponibles en el plan Básico o superior.",
   };
 }
 
@@ -211,21 +214,24 @@ export async function canAccessPurchaseOrders(companyId: string): Promise<{
  */
 export async function canAccessSuppliers(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
   
-  // Solo Pro/Profesional y Empresarial tienen acceso a proveedores
-  // Usar includes para ser más flexible con variaciones del nombre
+  // CAMBIO: Ahora Trial también tiene acceso
   const planName = limits.planName.toLowerCase();
   const hasAccess = 
+    planName.includes("trial") ||
+    planName.includes("básico") ||
     planName.includes("pro") || 
     planName.includes("profesional") || 
     planName.includes("empresarial");
   
   return {
     allowed: hasAccess,
-    message: hasAccess ? undefined : "La gestión de proveedores está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+    requiredPlan: hasAccess ? undefined : "Básico",
+    message: hasAccess ? undefined : "La gestión de proveedores está disponible en el plan Básico o superior.",
   };
 }
 
@@ -257,6 +263,7 @@ export async function canExportToExcel(companyId: string): Promise<{
  */
 export async function canAccessAdvancedReports(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
@@ -271,9 +278,10 @@ export async function canAccessAdvancedReports(companyId: string): Promise<{
   
   return {
     allowed: hasAccess,
+    requiredPlan: hasAccess ? undefined : "Profesional",
     message: hasAccess 
       ? undefined 
-      : "Los reportes avanzados están disponibles en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+      : "Los reportes avanzados están disponibles en el plan Profesional o superior.",
   };
 }
 
@@ -302,6 +310,7 @@ export async function canAccessCompleteReports(companyId: string): Promise<{
  */
 export async function canAccessStockHistory(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
@@ -311,9 +320,10 @@ export async function canAccessStockHistory(companyId: string): Promise<{
   
   return {
     allowed: hasAccess,
+    requiredPlan: hasAccess ? undefined : "Básico",
     message: hasAccess 
       ? undefined 
-      : "El historial de stock está disponible en planes de pago. Actualiza tu plan para acceder a esta funcionalidad.",
+      : "El historial de stock está disponible en planes de pago.",
   };
 }
 
@@ -322,6 +332,7 @@ export async function canAccessStockHistory(companyId: string): Promise<{
  */
 export async function canAccessPriceHistory(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
@@ -331,9 +342,10 @@ export async function canAccessPriceHistory(companyId: string): Promise<{
   
   return {
     allowed: hasAccess,
+    requiredPlan: hasAccess ? undefined : "Básico",
     message: hasAccess 
       ? undefined 
-      : "El historial de precios está disponible en planes de pago. Actualiza tu plan para acceder a esta funcionalidad.",
+      : "El historial de precios está disponible en planes de pago.",
   };
 }
 
@@ -342,6 +354,7 @@ export async function canAccessPriceHistory(companyId: string): Promise<{
  */
 export async function canAccessCashRegister(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
@@ -351,9 +364,10 @@ export async function canAccessCashRegister(companyId: string): Promise<{
   
   return {
     allowed: hasAccess,
+    requiredPlan: hasAccess ? undefined : "Básico",
     message: hasAccess 
       ? undefined 
-      : "El cierre de caja está disponible en planes de pago. Actualiza tu plan para acceder a esta funcionalidad.",
+      : "El cierre de caja está disponible en planes de pago.",
   };
 }
 
@@ -362,6 +376,7 @@ export async function canAccessCashRegister(companyId: string): Promise<{
  */
 export async function canAccessInventoryLiquidation(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
@@ -375,9 +390,10 @@ export async function canAccessInventoryLiquidation(companyId: string): Promise<
   
   return {
     allowed: hasAccess,
+    requiredPlan: hasAccess ? undefined : "Profesional",
     message: hasAccess 
       ? undefined 
-      : "La liquidación de inventario está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+      : "La liquidación de inventario está disponible en el plan Profesional o superior.",
   };
 }
 
@@ -386,6 +402,7 @@ export async function canAccessInventoryLiquidation(companyId: string): Promise<
  */
 export async function canAccessAccountsSettlement(companyId: string): Promise<{
   allowed: boolean;
+  requiredPlan?: string;
   message?: string;
 }> {
   const limits = await getCurrentPlanLimits(companyId);
@@ -399,9 +416,10 @@ export async function canAccessAccountsSettlement(companyId: string): Promise<{
   
   return {
     allowed: hasAccess,
+    requiredPlan: hasAccess ? undefined : "Profesional",
     message: hasAccess 
       ? undefined 
-      : "La liquidación de cuentas está disponible en el plan Profesional o superior. Actualiza tu plan para acceder a esta funcionalidad.",
+      : "La liquidación de cuentas está disponible en el plan Profesional o superior.",
   };
 }
 
