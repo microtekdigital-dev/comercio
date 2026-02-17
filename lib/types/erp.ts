@@ -376,6 +376,9 @@ export interface SupplierPayment {
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  supplier?: {
+    name: string;
+  };
 }
 
 // Form types

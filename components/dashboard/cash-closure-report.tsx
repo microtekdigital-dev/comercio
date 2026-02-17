@@ -315,7 +315,7 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
               <tbody>
                 {supplierPayments.map((payment) => (
                   <tr key={payment.id} className="border-b border-gray-200">
-                    <td className="p-2 text-gray-900">{payment.supplier_id}</td>
+                    <td className="p-2 text-gray-900">{payment.supplier?.name || "Proveedor desconocido"}</td>
                     <td className="text-right p-2 text-red-600 font-semibold">{formatCurrency(payment.amount)}</td>
                     <td className="p-2 text-gray-900 capitalize">{payment.payment_method}</td>
                     <td className="p-2 text-gray-600">{payment.reference_number || "N/A"}</td>
