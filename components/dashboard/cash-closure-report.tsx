@@ -218,18 +218,28 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
         </div>
 
         {/* Supplier Payments Summary */}
-        {supplierPayments.length > 0 && (
+        {closure.supplier_payments_cash > 0 && (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
               RESUMEN DE PAGOS A PROVEEDORES
             </h3>
-            <div className="bg-red-50 border border-red-200 p-4 rounded">
-              <div className="flex items-center gap-2 mb-2">
-                <ArrowDown className="h-5 w-5 text-red-600" />
-                <span className="text-sm text-gray-600">Total Pagos en Efectivo</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
+              <div className="bg-red-50 border border-red-200 p-4 rounded">
+                <div className="flex items-center gap-2 mb-2">
+                  <ArrowDown className="h-5 w-5 text-red-600" />
+                  <span className="text-sm text-gray-600">Total Pagos</span>
+                </div>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
+                <p className="text-xs text-gray-500 mt-1">{supplierPayments.length} pagos</p>
               </div>
-              <p className="text-2xl font-bold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
-              <p className="text-xs text-gray-500 mt-1">{supplierPayments.length} pagos</p>
+
+              <div className="border p-3 rounded">
+                <div className="flex items-center gap-1 mb-1">
+                  <Wallet className="h-4 w-4 text-red-500" />
+                  <span className="text-xs text-gray-600">Efectivo</span>
+                </div>
+                <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
+              </div>
             </div>
           </div>
         )}
