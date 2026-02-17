@@ -7,7 +7,9 @@ import type {
   CashRegisterClosureFormData,
   CashRegisterOpening,
   CashRegisterOpeningFormData,
-  SupplierPayment
+  SupplierPayment,
+  Sale,
+  CashMovement
 } from "@/lib/types/erp"
 
 // =====================================================
@@ -628,3 +630,421 @@ export async function getSupplierPayments(dateFrom: string, dateTo: string): Pro
   }
 }
 
+
+
+// =====================================================
+// Cash Register Report Actions
+// =====================================================
+
+// Get sales for a closure period
+export async function getSalesForClosure(
+  companyId: string,
+  closureDate: string,
+  lastClosureTime?: string | null
+): Promise<Sale[]> {
+  const supabase = await createClient()
+  
+  try {
+    const date = new Date(closureDate)
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    let query = supabase
+      .from("sales")
+      .select(`
+        *,
+        customer:customers(*),
+        payments:sale_payments(*)
+      `)
+      .eq("company_id", companyId)
+      .eq("status", "completed")
+      .gte("sale_date", startOfDay.toISOString())
+      .lte("sale_date", endOfDay.toISOString())
+
+    // Only get sales created after the last closure
+    if (lastClosureTime) {
+      query = query.gt("created_at", lastClosureTime)
+    }
+
+    query = query.order("sale_date", { ascending: true })
+
+    const { data, error } = await query
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching sales for closure:", error)
+    return []
+  }
+}
+
+// Get cash movements for an opening
+export async function getCashMovementsForOpening(
+  openingId: string
+): Promise<CashMovement[]> {
+  const supabase = await createClient()
+  
+  try {
+    const { data, error } = await supabase
+      .from("cash_movements")
+      .select("*")
+      .eq("opening_id", openingId)
+      .order("created_at", { ascending: true })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching cash movements:", error)
+    return []
+  }
+}
+
+// Get supplier payments for closure date (cash only)
+export async function getSupplierPaymentsForClosure(
+  companyId: string,
+  closureDate: string,
+  lastClosureTime?: string | null
+): Promise<SupplierPayment[]> {
+  const supabase = await createClient()
+  
+  try {
+    const date = new Date(closureDate)
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    let query = supabase
+      .from("supplier_payments")
+      .select("*")
+      .eq("company_id", companyId)
+      .gte("payment_date", startOfDay.toISOString().split('T')[0])
+      .lte("payment_date", endOfDay.toISOString().split('T')[0])
+
+    // Only get payments created after the last closure
+    if (lastClosureTime) {
+      query = query.gt("created_at", lastClosureTime)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+    
+    // Filter to cash payments only
+    const cashPayments = (data || []).filter(payment => {
+      const method = payment.payment_method?.toLowerCase() || ""
+      return method.includes("efectivo") || method.includes("cash")
+    })
+
+    return cashPayments
+  } catch (error) {
+    console.error("Error fetching supplier payments for closure:", error)
+    return []
+  }
+}
+
+// Get complete closure report data
+export async function getClosureReportData(closureId: string) {
+  const supabase = await createClient()
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { error: "No autenticado" }
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.company_id) {
+      return { error: "No se encontró la empresa" }
+    }
+
+    // Fetch closure
+    const closure = await getCashRegisterClosure(closureId)
+    if (!closure) {
+      return { error: "Cierre no encontrado" }
+    }
+
+    // Fetch opening if linked
+    let opening: CashRegisterOpening | null = null
+    if (closure.opening_id) {
+      opening = await getCashRegisterOpening(closure.opening_id)
+    }
+
+    // Get existing closures for this date to find the last closure timestamp
+    const closureDate = new Date(closure.closure_date)
+    const startOfDay = new Date(closureDate)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(closureDate)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const { data: existingClosures } = await supabase
+      .from("cash_register_closures")
+      .select("created_at")
+      .eq("company_id", profile.company_id)
+      .gte("closure_date", startOfDay.toISOString())
+      .lte("closure_date", endOfDay.toISOString())
+      .lt("created_at", closure.created_at)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    const lastClosureTime = existingClosures && existingClosures.length > 0 
+      ? existingClosures[0].created_at 
+      : null
+
+    // Fetch all related data in parallel
+    const [sales, cashMovements, supplierPayments, companySettings] = await Promise.all([
+      getSalesForClosure(profile.company_id, closure.closure_date, lastClosureTime),
+      opening ? getCashMovementsForOpening(opening.id) : Promise.resolve([]),
+      getSupplierPaymentsForClosure(profile.company_id, closure.closure_date, lastClosureTime),
+      supabase
+        .from("company_settings")
+        .select("*")
+        .eq("company_id", profile.company_id)
+        .single()
+    ])
+
+    // Get company info
+    const { data: company } = await supabase
+      .from("companies")
+      .select("name")
+      .eq("id", profile.company_id)
+      .single()
+
+    const companyInfo = {
+      name: company?.name || "Mi Empresa",
+      address: companySettings.data?.address || undefined,
+      phone: companySettings.data?.phone || undefined,
+      email: companySettings.data?.email || undefined,
+      taxId: companySettings.data?.tax_id || undefined,
+      logoUrl: companySettings.data?.logo_url || undefined,
+    }
+
+    return {
+      closure,
+      opening,
+      sales,
+      cashMovements,
+      supplierPayments,
+      companyInfo,
+    }
+  } catch (error: any) {
+    console.error("Error fetching closure report data:", error)
+    return { error: error.message || "Error al obtener datos del reporte" }
+  }
+}
+
+
+// =====================================================
+// Cash Register Report Actions
+// =====================================================
+
+// Get sales for a closure period
+export async function getSalesForClosure(
+  companyId: string,
+  closureDate: string,
+  lastClosureTime?: string | null
+): Promise<Sale[]> {
+  const supabase = await createClient()
+  
+  try {
+    const date = new Date(closureDate)
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    let query = supabase
+      .from("sales")
+      .select(`
+        *,
+        customer:customers(*),
+        payments:sale_payments(*)
+      `)
+      .eq("company_id", companyId)
+      .eq("status", "completed")
+      .gte("sale_date", startOfDay.toISOString())
+      .lte("sale_date", endOfDay.toISOString())
+
+    // Only get sales created after the last closure
+    if (lastClosureTime) {
+      query = query.gt("created_at", lastClosureTime)
+    }
+
+    query = query.order("sale_date", { ascending: true })
+
+    const { data, error } = await query
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching sales for closure:", error)
+    return []
+  }
+}
+
+// Get cash movements for an opening
+export async function getCashMovementsForOpening(
+  openingId: string
+): Promise<CashMovement[]> {
+  const supabase = await createClient()
+  
+  try {
+    const { data, error } = await supabase
+      .from("cash_movements")
+      .select("*")
+      .eq("opening_id", openingId)
+      .order("created_at", { ascending: true })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching cash movements:", error)
+    return []
+  }
+}
+
+// Get supplier payments for closure date (cash only)
+export async function getSupplierPaymentsForClosure(
+  companyId: string,
+  closureDate: string,
+  lastClosureTime?: string | null
+): Promise<SupplierPayment[]> {
+  const supabase = await createClient()
+  
+  try {
+    const date = new Date(closureDate)
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    let query = supabase
+      .from("supplier_payments")
+      .select("*")
+      .eq("company_id", companyId)
+      .gte("payment_date", startOfDay.toISOString().split('T')[0])
+      .lte("payment_date", endOfDay.toISOString().split('T')[0])
+
+    // Only get payments created after the last closure
+    if (lastClosureTime) {
+      query = query.gt("created_at", lastClosureTime)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+    
+    // Filter to cash payments only
+    const cashPayments = (data || []).filter(payment => {
+      const method = payment.payment_method?.toLowerCase() || ""
+      return method.includes("efectivo") || method.includes("cash")
+    })
+
+    return cashPayments
+  } catch (error) {
+    console.error("Error fetching supplier payments for closure:", error)
+    return []
+  }
+}
+
+// Get complete closure report data
+export async function getClosureReportData(closureId: string) {
+  const supabase = await createClient()
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { error: "No autenticado" }
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.company_id) {
+      return { error: "No se encontró la empresa" }
+    }
+
+    // Fetch closure
+    const closure = await getCashRegisterClosure(closureId)
+    if (!closure) {
+      return { error: "Cierre no encontrado" }
+    }
+
+    // Fetch opening if linked
+    let opening: CashRegisterOpening | null = null
+    if (closure.opening_id) {
+      opening = await getCashRegisterOpening(closure.opening_id)
+    }
+
+    // Get existing closures for this date to find the last closure timestamp
+    const closureDate = new Date(closure.closure_date)
+    const startOfDay = new Date(closureDate)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(closureDate)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const { data: existingClosures } = await supabase
+      .from("cash_register_closures")
+      .select("created_at")
+      .eq("company_id", profile.company_id)
+      .gte("closure_date", startOfDay.toISOString())
+      .lte("closure_date", endOfDay.toISOString())
+      .lt("created_at", closure.created_at)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    const lastClosureTime = existingClosures && existingClosures.length > 0 
+      ? existingClosures[0].created_at 
+      : null
+
+    // Fetch all related data in parallel
+    const [sales, cashMovements, supplierPayments, companySettings] = await Promise.all([
+      getSalesForClosure(profile.company_id, closure.closure_date, lastClosureTime),
+      opening ? getCashMovementsForOpening(opening.id) : Promise.resolve([]),
+      getSupplierPaymentsForClosure(profile.company_id, closure.closure_date, lastClosureTime),
+      supabase
+        .from("company_settings")
+        .select("*")
+        .eq("company_id", profile.company_id)
+        .single()
+    ])
+
+    // Get company info
+    const { data: company } = await supabase
+      .from("companies")
+      .select("name")
+      .eq("id", profile.company_id)
+      .single()
+
+    const companyInfo = {
+      name: company?.name || "Mi Empresa",
+      address: companySettings.data?.address || undefined,
+      phone: companySettings.data?.phone || undefined,
+      email: companySettings.data?.email || undefined,
+      taxId: companySettings.data?.tax_id || undefined,
+      logoUrl: companySettings.data?.logo_url || undefined,
+    }
+
+    return {
+      closure,
+      opening,
+      sales,
+      cashMovements,
+      supplierPayments,
+      companyInfo,
+    }
+  } catch (error: any) {
+    console.error("Error fetching closure report data:", error)
+    return { error: error.message || "Error al obtener datos del reporte" }
+  }
+}

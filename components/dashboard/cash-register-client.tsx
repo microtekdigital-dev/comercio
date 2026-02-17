@@ -6,7 +6,7 @@ import { getCashMovements } from "@/lib/actions/cash-movements"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Calendar, User, DollarSign, TrendingUp, TrendingDown, Clock, Lock } from "lucide-react"
+import { Plus, Calendar, User, DollarSign, TrendingUp, TrendingDown, Clock, Lock, Eye } from "lucide-react"
 import Link from "next/link"
 import type { CashRegisterClosure, CashRegisterOpening, CashMovement } from "@/lib/types/erp"
 import { CashMovementModal } from "@/components/dashboard/cash-movement-modal"
@@ -319,6 +319,15 @@ export function CashRegisterClient() {
                     <p className="text-sm">{closure.notes}</p>
                   </div>
                 )}
+
+                <div className="mt-4 pt-4 border-t">
+                  <Link href={`/dashboard/cash-register/${closure.id}`}>
+                    <Button variant="outline" className="w-full">
+                      <Eye className="mr-2 h-4 w-4" />
+                      Ver Informe Detallado
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -123,3 +123,64 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print-specific styles for cash closure report */
+@media print {
+  /* Hide navigation, buttons, and other UI elements */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Set page size and margins */
+  @page {
+    size: A4;
+    margin: 2cm;
+  }
+  
+  /* Prevent page breaks inside important sections */
+  .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Force page breaks before major sections if needed */
+  .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+  
+  /* Ensure print uses desktop layout */
+  .print\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  /* Remove shadows and backgrounds for better printing */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* Ensure black text for printing */
+  body {
+    color: #000 !important;
+    background: #fff !important;
+  }
+  
+  /* Optimize table printing */
+  table {
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  thead {
+    display: table-header-group;
+  }
+  
+  tfoot {
+    display: table-footer-group;
+  }
+}
