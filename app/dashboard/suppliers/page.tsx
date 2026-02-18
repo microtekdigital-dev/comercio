@@ -186,116 +186,197 @@ export default function SuppliersPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Proveedor</TableHead>
-                <TableHead>Contacto</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Ubicación</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredSuppliers.map((supplier) => (
-                <TableRow key={supplier.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{supplier.name}</p>
-                      {supplier.tax_id && (
-                        <p className="text-sm text-muted-foreground">
-                          CUIT: {supplier.tax_id}
-                        </p>
+        <>
+          {/* Vista de tabla para escritorio */}
+          <Card className="hidden md:block">
+            <div className="overflow-x-auto">
+              <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Proveedor</TableHead>
+                  <TableHead>Contacto</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Ubicación</TableHead>
+                  <TableHead className="text-right">Saldo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSuppliers.map((supplier) => (
+                  <TableRow key={supplier.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{supplier.name}</p>
+                        {supplier.tax_id && (
+                          <p className="text-sm text-muted-foreground">
+                            CUIT: {supplier.tax_id}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {supplier.contact_name || (
+                        <span className="text-muted-foreground">-</span>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {supplier.contact_name || (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {supplier.email ? (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{supplier.email}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {supplier.phone ? (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{supplier.phone}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {supplier.city || supplier.state ? (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {[supplier.city, supplier.state]
-                            .filter(Boolean)
-                            .join(", ")}
+                    </TableCell>
+                    <TableCell>
+                      {supplier.email ? (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{supplier.email}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {supplier.phone ? (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{supplier.phone}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {supplier.city || supplier.state ? (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {[supplier.city, supplier.state]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className={`font-semibold ${supplierBalances[supplier.id] > 0 ? 'text-red-600' : ''}`}>
+                          ${(supplierBalances[supplier.id] || 0).toFixed(2)}
                         </span>
                       </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className={`font-semibold ${supplierBalances[supplier.id] > 0 ? 'text-red-600' : ''}`}>
-                        ${(supplierBalances[supplier.id] || 0).toFixed(2)}
-                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          supplier.status === "active" ? "default" : "secondary"
+                        }
+                      >
+                        {supplier.status === "active" ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/suppliers/${supplier.id}`}>
+                              Ver detalles
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenAccountModal(supplier)}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Cuenta corriente
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            </div>
+          </Card>
+
+          {/* Vista de tarjetas para móvil */}
+          <div className="block md:hidden space-y-3">
+            {filteredSuppliers.map((supplier) => (
+              <Card key={supplier.id} className="p-4">
+                <div className="space-y-3">
+                  {/* Header con nombre y estado */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{supplier.name}</p>
+                      {supplier.tax_id && (
+                        <p className="text-xs text-muted-foreground">CUIT: {supplier.tax_id}</p>
+                      )}
+                      {supplier.contact_name && (
+                        <p className="text-xs text-muted-foreground">Contacto: {supplier.contact_name}</p>
+                      )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        supplier.status === "active" ? "default" : "secondary"
-                      }
-                    >
+                    <Badge variant={supplier.status === "active" ? "default" : "secondary"} className="flex-shrink-0">
                       {supplier.status === "active" ? "Activo" : "Inactivo"}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/suppliers/${supplier.id}`}>
-                            Ver detalles
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenAccountModal(supplier)}>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Cuenta corriente
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+
+                  {/* Información de contacto */}
+                  <div className="space-y-2 text-sm">
+                    {supplier.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate">{supplier.email}</span>
+                      </div>
+                    )}
+                    {supplier.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span>{supplier.phone}</span>
+                      </div>
+                    )}
+                    {(supplier.city || supplier.state) && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate">
+                          {[supplier.city, supplier.state].filter(Boolean).join(", ")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Saldo */}
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Saldo</span>
+                    </div>
+                    <span className={`font-bold ${supplierBalances[supplier.id] > 0 ? 'text-red-600' : ''}`}>
+                      ${(supplierBalances[supplier.id] || 0).toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Botones de acción */}
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Link href={`/dashboard/suppliers/${supplier.id}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full">
+                        Ver detalles
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleOpenAccountModal(supplier)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Cuenta
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
-        </Card>
+        </>
       )}
 
       <div className="text-sm text-muted-foreground px-4 md:px-0">
