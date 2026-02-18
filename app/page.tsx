@@ -13,7 +13,7 @@ export default function HomePage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <Building2 className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-lg">ERP SaaS</span>
+            <span className="font-semibold text-lg">Sistema de gestión para comercios</span>
           </div>
           <div className="flex items-center gap-4">
             <Button asChild variant="ghost">
@@ -29,13 +29,14 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-24 text-center">
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-balance">
-          Sistema de Gestión para
+          ¿No sabés cuánto ganás
           <br />
-          <span className="text-muted-foreground">tu comercio PYME</span>
+          <span className="text-muted-foreground">realmente cada día?</span>
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 text-pretty">
-          Controla tu inventario, ventas, compras y clientes desde un solo lugar. 
-          La solución completa para hacer crecer tu negocio de forma organizada.
+          Entrá ahora, probá 14 días sin costo y empezá a ver tus resultados hoy mismo
+          <br />
+          <span className="text-sm">Sin tarjeta • Sin contratos • Fácil de usar desde el primer minuto</span>
         </p>
         <div className="flex items-center justify-center gap-4">
           <Button asChild size="lg">
@@ -543,7 +544,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} ERP SaaS. Todos los derechos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Sistema de gestión para comercios. Todos los derechos reservados.</p>
         </div>
       </footer>
     </div>
