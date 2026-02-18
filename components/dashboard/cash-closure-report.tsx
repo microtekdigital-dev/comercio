@@ -223,47 +223,47 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
             RESUMEN DE PAGOS A PROVEEDORES
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
-            <div className="bg-red-50 border border-red-200 p-4 rounded">
+            <div className="bg-gray-50 border p-4 rounded">
               <div className="flex items-center gap-2 mb-2">
-                <ArrowDown className="h-5 w-5 text-red-600" />
+                <ArrowDown className="h-5 w-5 text-gray-600" />
                 <span className="text-sm text-gray-600">Total Pagos</span>
               </div>
-              <p className="text-2xl font-bold text-red-600">{formatCurrency(closure.supplier_payments_total)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(closure.supplier_payments_total)}</p>
               <p className="text-xs text-gray-500 mt-1">{supplierPayments.length} pagos</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="border p-3 rounded">
                 <div className="flex items-center gap-1 mb-1">
-                  <Wallet className="h-4 w-4 text-red-500" />
+                  <Wallet className="h-4 w-4 text-gray-500" />
                   <span className="text-xs text-gray-600">Efectivo</span>
                 </div>
-                <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_cash)}</p>
+                <p className="font-semibold text-gray-900">{formatCurrency(closure.supplier_payments_cash)}</p>
               </div>
 
               <div className="border p-3 rounded">
                 <div className="flex items-center gap-1 mb-1">
-                  <CreditCard className="h-4 w-4 text-red-500" />
+                  <CreditCard className="h-4 w-4 text-gray-500" />
                   <span className="text-xs text-gray-600">Tarjeta</span>
                 </div>
-                <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_card || 0)}</p>
+                <p className="font-semibold text-gray-900">{formatCurrency(closure.supplier_payments_card || 0)}</p>
               </div>
 
               <div className="border p-3 rounded">
                 <div className="flex items-center gap-1 mb-1">
-                  <Smartphone className="h-4 w-4 text-red-500" />
+                  <Smartphone className="h-4 w-4 text-gray-500" />
                   <span className="text-xs text-gray-600">Transferencia</span>
                 </div>
-                <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_transfer || 0)}</p>
+                <p className="font-semibold text-gray-900">{formatCurrency(closure.supplier_payments_transfer || 0)}</p>
               </div>
 
               {(closure.supplier_payments_other || 0) > 0 && (
                 <div className="border p-3 rounded">
                   <div className="flex items-center gap-1 mb-1">
-                    <TrendingUp className="h-4 w-4 text-red-500" />
+                    <TrendingUp className="h-4 w-4 text-gray-500" />
                     <span className="text-xs text-gray-600">Otros</span>
                   </div>
-                  <p className="font-semibold text-red-600">{formatCurrency(closure.supplier_payments_other)}</p>
+                  <p className="font-semibold text-gray-900">{formatCurrency(closure.supplier_payments_other)}</p>
                 </div>
               )}
             </div>
@@ -369,7 +369,7 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
                 {supplierPayments.map((payment) => (
                   <tr key={payment.id} className="border-b border-gray-200">
                     <td className="p-2 text-gray-900">{payment.supplier?.name || "Proveedor desconocido"}</td>
-                    <td className="text-right p-2 text-red-600 font-semibold">{formatCurrency(payment.amount)}</td>
+                    <td className="text-right p-2 text-gray-900 font-semibold">{formatCurrency(payment.amount)}</td>
                     <td className="p-2 text-gray-900 capitalize">{payment.payment_method}</td>
                     <td className="p-2 text-gray-600">{payment.reference_number || "N/A"}</td>
                   </tr>
@@ -397,7 +397,7 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
               {supplierPaymentsCash > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">- Pagos a proveedores:</span>
-                  <span className="font-semibold text-red-600">{formatCurrency(supplierPaymentsCash)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(supplierPaymentsCash)}</span>
                 </div>
               )}
               {cashMovementsIncome > 0 && (
@@ -409,7 +409,7 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
               {cashMovementsWithdrawals > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">- Retiros de caja:</span>
-                  <span className="font-semibold text-red-600">{formatCurrency(cashMovementsWithdrawals)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(cashMovementsWithdrawals)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm pt-2 border-t border-gray-300 font-semibold">
