@@ -88,18 +88,19 @@ export function CashRegisterClient() {
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Apertura/Cierre Caja</h2>
           <p className="text-muted-foreground">
             Gestiona las aperturas y cierres de caja
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 md:flex">
           <Button
             variant="outline"
             onClick={() => setIncomeModalOpen(true)}
             disabled={!hasOpenOpeningToday}
+            className="w-full md:w-auto"
           >
             {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
             {hasOpenOpeningToday && <TrendingUp className="mr-2 h-4 w-4" />}
@@ -109,26 +110,27 @@ export function CashRegisterClient() {
             variant="outline"
             onClick={() => setWithdrawalModalOpen(true)}
             disabled={!hasOpenOpeningToday}
+            className="w-full md:w-auto"
           >
             {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
             {hasOpenOpeningToday && <TrendingDown className="mr-2 h-4 w-4" />}
             Registrar Retiro
           </Button>
-          <Link href="/dashboard/cash-register/opening/new">
+          <Link href="/dashboard/cash-register/opening/new" className="w-full md:w-auto">
             <Button 
               variant="outline"
               disabled={hasOpenOpeningToday}
-              className="relative"
+              className="relative w-full"
             >
               {hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
               {!hasOpenOpeningToday && <Plus className="mr-2 h-4 w-4" />}
               Nueva Apertura
             </Button>
           </Link>
-          <Link href="/dashboard/cash-register/new">
+          <Link href="/dashboard/cash-register/new" className="w-full md:w-auto">
             <Button
               disabled={!hasOpenOpeningToday}
-              className="relative"
+              className="relative w-full"
             >
               {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
               {hasOpenOpeningToday && <Plus className="mr-2 h-4 w-4" />}
