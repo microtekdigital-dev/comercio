@@ -352,14 +352,27 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
         </Link>
 
         {/* Sections */}
-        {navSections.map((section) => (
-          <div key={section.title} className="space-y-1">
-            <h3 className="px-3 text-xs font-semibold text-muted-foreground tracking-wider">
-              {section.title}
-            </h3>
-            {section.items.map((item) => renderNavItem(item))}
-          </div>
-        ))}
+        {navSections.map((section) => {
+          // Filtrar items que no están permitidos (ocultar completamente)
+          const visibleItems = section.items.filter(item => {
+            // Si no tiene permiso, siempre es visible
+            if (!item.permission) return true
+            // Si tiene permiso, solo es visible si está permitido
+            return item.permission.allowed
+          })
+
+          // Si no hay items visibles, no mostrar la sección
+          if (visibleItems.length === 0) return null
+
+          return (
+            <div key={section.title} className="space-y-1">
+              <h3 className="px-3 text-xs font-semibold text-muted-foreground tracking-wider">
+                {section.title}
+              </h3>
+              {visibleItems.map((item) => renderNavItem(item))}
+            </div>
+          )
+        })}
       </nav>
 
       {/* User menu */}
