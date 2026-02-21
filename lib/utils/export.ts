@@ -549,3 +549,336 @@ export function exportCustomersToPDF(customers: Customer[], companyName: string 
 
   doc.save(`clientes-${new Date().toISOString().split("T")[0]}.pdf`);
 }
+
+// Repairs Export Functions
+
+export function exportRepairsToExcel(repairs: any[]) {
+  const data: any[] = [];
+  
+  repairs.forEach(repair => {
+    const r = repair.repair;
+    const customerName = (r.customer as any)?.name || 'Sin cliente';
+    const technicianName = (r.technician as any)?.name || 'Sin asignar';
+    
+    // Add main repair row
+    data.push({
+      "Orden": r.order_number,
+      "Fecha Ingreso": new Date(r.received_date).toLocaleDateString("es-AR"),
+      "Fecha Entrega": r.delivered_date ? new Date(r.delivered_date).toLocaleDateString("es-AR") : '-',
+      "Días": repair.repair_days || '-',
+      "Cliente": customerName,
+      "Técnico": technicianName,
+      "Dispositivo": r.device_type,
+      "Marca": r.brand,
+      "Modelo": r.model,
+      "Estado": r.status,
+      "Costo Repuestos": repair.parts_cost,
+      "Mano de Obra": r.labor_cost || 0,
+      "Costo Total": repair.total_cost,
+      "Total Cobrado": repair.total_paid,
+      "Saldo": repair.balance,
+    });
+  });
+
+  exportToExcel(data, `reparaciones-${new Date().toISOString().split("T")[0]}`, "Reparaciones");
+}
+
+export function exportRepairsToCSV(repairs: any[]) {
+  const data: any[] = [];
+  
+  repairs.forEach(repair => {
+    const r = repair.repair;
+    const customerName = (r.customer as any)?.name || 'Sin cliente';
+    const technicianName = (r.technician as any)?.name || 'Sin asignar';
+    
+    data.push({
+      "Orden": r.order_number,
+      "Fecha Ingreso": new Date(r.received_date).toLocaleDateString("es-AR"),
+      "Fecha Entrega": r.delivered_date ? new Date(r.delivered_date).toLocaleDateString("es-AR") : '-',
+      "Días": repair.repair_days || '-',
+      "Cliente": customerName,
+      "Técnico": technicianName,
+      "Dispositivo": r.device_type,
+      "Marca": r.brand,
+      "Modelo": r.model,
+      "Estado": r.status,
+      "Costo Repuestos": repair.parts_cost,
+      "Mano de Obra": r.labor_cost || 0,
+      "Costo Total": repair.total_cost,
+      "Total Cobrado": repair.total_paid,
+      "Saldo": repair.balance,
+    });
+  });
+
+  exportToCSV(data, `reparaciones-${new Date().toISOString().split("T")[0]}`);
+}
+
+export function exportRepairsToPDF(repairs: any[], companyName: string = "Mi Empresa") {
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  // Title
+  doc.setFontSize(18);
+  doc.text("Reporte de Reparaciones Realizadas", 14, 15);
+
+  // Company name
+  doc.setFontSize(11);
+  doc.text(companyName, 14, 22);
+
+  // Date
+  doc.setFontSize(9);
+  doc.text(`Generado: ${new Date().toLocaleDateString("es-AR")} ${new Date().toLocaleTimeString("es-AR")}`, 14, 28);
+
+  // Summary stats
+  const totalRepairs = repairs.length;
+  const totalRevenue = repairs.reduce((sum, r) => sum + r.total_paid, 0);
+  const totalCost = repairs.reduce((sum, r) => sum + r.total_cost, 0);
+  const totalProfit = totalRevenue - totalCost;
+  const avgDays = repairs.filter(r => r.repair_days).length > 0
+    ? Math.round(repairs.filter(r => r.repair_days).reduce((sum, r) => sum + (r.repair_days || 0), 0) / repairs.filter(r => r.repair_days).length)
+    : 0;
+
+  doc.setFontSize(10);
+  doc.text(`Total Reparaciones: ${totalRepairs}`, 14, 35);
+  doc.text(`Ingresos: $${totalRevenue.toFixed(2)}`, 80, 35);
+  doc.text(`Costos: $${totalCost.toFixed(2)}`, 140, 35);
+  doc.text(`Ganancia: $${totalProfit.toFixed(2)}`, 200, 35);
+  doc.text(`Tiempo Promedio: ${avgDays} días`, 14, 42);
+
+  // Prepare table data
+  const tableData: any[] = [];
+  
+  repairs.forEach(repair => {
+    const r = repair.repair;
+    const customerName = (r.customer as any)?.name || 'Sin cliente';
+    const technicianName = (r.technician as any)?.name || 'Sin asignar';
+    
+    tableData.push([
+      r.order_number.toString(),
+      new Date(r.received_date).toLocaleDateString("es-AR"),
+      r.delivered_date ? new Date(r.delivered_date).toLocaleDateString("es-AR") : '-',
+      customerName,
+      `${r.device_type}\n${r.brand} ${r.model}`,
+      technicianName,
+      repair.total_cost.toFixed(2),
+      repair.total_paid.toFixed(2),
+      r.status,
+    ]);
+  });
+
+  autoTable(doc, {
+    startY: 50,
+    head: [["Orden", "Ingreso", "Entrega", "Cliente", "Dispositivo", "Técnico", "Costo", "Cobrado", "Estado"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: { fillColor: [59, 130, 246], fontSize: 7 },
+    styles: { fontSize: 6, cellPadding: 1.5 },
+    columnStyles: {
+      0: { cellWidth: 20, halign: "center" },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 40 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 35 },
+      6: { cellWidth: 25, halign: "right" },
+      7: { cellWidth: 25, halign: "right" },
+      8: { cellWidth: 25, halign: "center" },
+    },
+  });
+
+  doc.save(`reparaciones-${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+// Print function for repairs report
+export function printRepairsReport(repairs: any[], companyName: string = "Mi Empresa") {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Por favor permite las ventanas emergentes para imprimir');
+    return;
+  }
+
+  const totalRepairs = repairs.length;
+  const totalRevenue = repairs.reduce((sum, r) => sum + r.total_paid, 0);
+  const totalCost = repairs.reduce((sum, r) => sum + r.total_cost, 0);
+  const totalProfit = totalRevenue - totalCost;
+  const avgDays = repairs.filter(r => r.repair_days).length > 0
+    ? Math.round(repairs.filter(r => r.repair_days).reduce((sum, r) => sum + (r.repair_days || 0), 0) / repairs.filter(r => r.repair_days).length)
+    : 0;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Reporte de Reparaciones</title>
+      <style>
+        @media print {
+          @page { margin: 1cm; }
+          body { margin: 0; }
+        }
+        body {
+          font-family: Arial, sans-serif;
+          padding: 20px;
+          font-size: 12px;
+        }
+        h1 {
+          font-size: 24px;
+          margin-bottom: 5px;
+        }
+        h2 {
+          font-size: 16px;
+          color: #666;
+          margin-top: 0;
+        }
+        .header {
+          border-bottom: 2px solid #333;
+          padding-bottom: 10px;
+          margin-bottom: 20px;
+        }
+        .summary {
+          background: #f5f5f5;
+          padding: 15px;
+          border-radius: 5px;
+          margin-bottom: 20px;
+        }
+        .summary-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+        }
+        .summary-item {
+          padding: 10px;
+          background: white;
+          border-radius: 3px;
+        }
+        .summary-label {
+          font-size: 11px;
+          color: #666;
+          margin-bottom: 5px;
+        }
+        .summary-value {
+          font-size: 18px;
+          font-weight: bold;
+          color: #333;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+        }
+        th, td {
+          border: 1px solid #ddd;
+          padding: 8px;
+          text-align: left;
+        }
+        th {
+          background-color: #3b82f6;
+          color: white;
+          font-weight: bold;
+        }
+        tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        .text-right {
+          text-align: right;
+        }
+        .text-center {
+          text-align: center;
+        }
+        .footer {
+          margin-top: 30px;
+          padding-top: 10px;
+          border-top: 1px solid #ddd;
+          font-size: 10px;
+          color: #666;
+          text-align: center;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Reporte de Reparaciones Realizadas</h1>
+        <h2>${companyName}</h2>
+        <p>Generado: ${new Date().toLocaleDateString("es-AR")} ${new Date().toLocaleTimeString("es-AR")}</p>
+      </div>
+
+      <div class="summary">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-label">Total Reparaciones</div>
+            <div class="summary-value">${totalRepairs}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Ingresos Totales</div>
+            <div class="summary-value">$${totalRevenue.toFixed(2)}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Ganancia Total</div>
+            <div class="summary-value">$${totalProfit.toFixed(2)}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Costos Totales</div>
+            <div class="summary-value">$${totalCost.toFixed(2)}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Tiempo Promedio</div>
+            <div class="summary-value">${avgDays} días</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Margen Promedio</div>
+            <div class="summary-value">${totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0}%</div>
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="text-center">Orden</th>
+            <th>Fecha Ingreso</th>
+            <th>Fecha Entrega</th>
+            <th>Cliente</th>
+            <th>Dispositivo</th>
+            <th>Técnico</th>
+            <th class="text-right">Costo</th>
+            <th class="text-right">Cobrado</th>
+            <th class="text-center">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${repairs.map(repair => {
+            const r = repair.repair;
+            const customerName = (r.customer as any)?.name || 'Sin cliente';
+            const technicianName = (r.technician as any)?.name || 'Sin asignar';
+            
+            return `
+              <tr>
+                <td class="text-center">#${r.order_number}</td>
+                <td>${new Date(r.received_date).toLocaleDateString("es-AR")}</td>
+                <td>${r.delivered_date ? new Date(r.delivered_date).toLocaleDateString("es-AR") : '-'}</td>
+                <td>${customerName}</td>
+                <td>${r.device_type} ${r.brand} ${r.model}</td>
+                <td>${technicianName}</td>
+                <td class="text-right">$${repair.total_cost.toFixed(2)}</td>
+                <td class="text-right">$${repair.total_paid.toFixed(2)}</td>
+                <td class="text-center">${r.status}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <p>Este reporte fue generado automáticamente por el sistema ERP</p>
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        }
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.write(html);
+  printWindow.document.close();
+}

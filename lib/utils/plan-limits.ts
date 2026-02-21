@@ -520,6 +520,29 @@ export async function canExportAdvancedReports(companyId: string): Promise<{
 }
 
 /**
+ * Verifica si el plan tiene acceso al módulo de reparaciones
+ */
+export async function canAccessRepairs(companyId: string): Promise<{
+  allowed: boolean;
+  requiredPlan?: string;
+  message?: string;
+}> {
+  const limits = await getCurrentPlanLimits(companyId);
+  
+  // Solo el plan "Pro Reparaciones" tiene acceso al módulo de reparaciones
+  const planName = limits.planName.toLowerCase();
+  const hasAccess = planName.includes("pro reparaciones") || planName.includes("reparaciones");
+  
+  return {
+    allowed: hasAccess,
+    requiredPlan: hasAccess ? undefined : "Pro Reparaciones",
+    message: hasAccess 
+      ? undefined 
+      : "El módulo de reparaciones está disponible en el plan Pro Reparaciones. Actualiza tu plan para acceder a esta funcionalidad.",
+  };
+}
+
+/**
  * Obtiene información de uso actual vs límites del plan
  */
 export async function getPlanUsage(companyId: string) {

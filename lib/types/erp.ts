@@ -728,7 +728,10 @@ export interface CashMovementsSummary {
 export interface CompanySettings {
   id: string;
   company_id: string;
-  currency: string;
+  currency: string; // Deprecated - mantener por compatibilidad
+  currency_code: string; // Nuevo: código ISO (USD, EUR, ARS, etc.)
+  currency_symbol: string; // Nuevo: símbolo visual ($, €, etc.)
+  currency_position: 'before' | 'after'; // Nuevo: posición del símbolo
   tax_rate: number;
   invoice_prefix: string;
   invoice_next_number: number;
@@ -740,4 +743,245 @@ export interface CompanySettings {
   initial_cash_configured_at?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface CurrencyConfig {
+  code: string;
+  symbol: string;
+  name: string;
+  position: 'before' | 'after';
+}
+
+// =====================================================
+// Repairs Module Types
+// =====================================================
+
+export type RepairStatus = 
+  | 'received'
+  | 'diagnosing'
+  | 'waiting_parts'
+  | 'repairing'
+  | 'repaired'
+  | 'delivered'
+  | 'cancelled';
+
+export interface Technician {
+  id: string;
+  company_id: string;
+  name: string;
+  specialty?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  active_repairs_count?: number; // Count of active repairs assigned to this technician
+}
+
+export interface CreateTechnicianInput {
+  name: string;
+  specialty?: string;
+}
+
+export interface UpdateTechnicianInput {
+  name?: string;
+  specialty?: string;
+  is_active?: boolean;
+}
+
+export interface TechnicianStats {
+  technician_id: string;
+  technician_name: string;
+  active_repairs: number;
+  completed_repairs: number;
+  average_repair_time: number;
+  total_revenue: number;
+}
+
+export interface RepairOrder {
+  id: string;
+  company_id: string;
+  order_number: number;
+  customer_id: string;
+  technician_id?: string | null;
+  
+  // Device information
+  device_type: string;
+  brand: string;
+  model: string;
+  serial_number?: string | null;
+  accessories?: string | null;
+  
+  // Problem and diagnosis
+  reported_problem: string;
+  diagnosis?: string | null;
+  diagnosis_date?: string | null;
+  
+  // Status and dates
+  status: RepairStatus;
+  received_date: string;
+  estimated_delivery_date?: string | null;
+  repair_completed_date?: string | null;
+  delivered_date?: string | null;
+  
+  // Budget and approval
+  labor_cost: number;
+  budget_approved?: boolean | null;
+  approval_date?: string | null;
+  approval_notes?: string | null;
+  
+  // Photos
+  photos?: string[] | null;
+  
+  // Internal notes
+  internal_notes?: string | null;
+  
+  // Audit
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+}
+
+export interface CreateRepairOrderInput {
+  customer_id: string;
+  technician_id?: string;
+  device_type: string;
+  brand: string;
+  model: string;
+  serial_number?: string;
+  accessories?: string;
+  reported_problem: string;
+  estimated_delivery_date?: string;
+  photos?: string[];
+}
+
+export interface UpdateRepairOrderInput {
+  technician_id?: string | null;
+  device_type?: string;
+  brand?: string;
+  model?: string;
+  serial_number?: string;
+  accessories?: string;
+  reported_problem?: string;
+  diagnosis?: string;
+  estimated_delivery_date?: string;
+  labor_cost?: number;
+  budget_approved?: boolean;
+  approval_notes?: string;
+  photos?: string[];
+  internal_notes?: string;
+}
+
+export interface RepairOrderWithDetails extends RepairOrder {
+  customer: Customer;
+  technician?: Technician | null;
+  items: RepairItemWithProduct[];
+  payments: RepairPayment[];
+  notes: RepairNote[];
+  total_parts: number;
+  total_cost: number;
+  total_paid: number;
+  balance: number;
+}
+
+export interface RepairOrderFilters {
+  companyId: string;
+  status?: RepairStatus;
+  technicianId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface RepairItem {
+  id: string;
+  repair_order_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  is_used: boolean;
+  created_at: string;
+}
+
+export interface RepairItemWithProduct extends RepairItem {
+  product: Product;
+}
+
+export interface AddRepairItemInput {
+  repair_order_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface UpdateRepairItemInput {
+  quantity?: number;
+  unit_price?: number;
+}
+
+export interface RepairTotal {
+  parts_total: number;
+  labor_cost: number;
+  total: number;
+}
+
+export interface RepairPayment {
+  id: string;
+  repair_order_id: string;
+  company_id: string;
+  amount: number;
+  payment_method: string;
+  payment_date: string;
+  cash_register_closure_id?: string | null;
+  notes?: string | null;
+  created_at: string;
+  created_by?: string | null;
+}
+
+export interface CreateRepairPaymentInput {
+  repair_order_id: string;
+  amount: number;
+  payment_method: string;
+  notes?: string;
+}
+
+export interface PaymentBalance {
+  total: number;
+  paid: number;
+  balance: number;
+}
+
+export interface RepairNote {
+  id: string;
+  repair_order_id: string;
+  note: string;
+  created_at: string;
+  created_by?: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+// =====================================================
+// Repair Metrics Types (Métricas de Reparaciones)
+// =====================================================
+
+export interface RepairMetrics {
+  totalRevenue: number;
+  completedCount: number;
+  recentRepairs: RecentRepair[];
+  currency: string;
+}
+
+export interface RecentRepair {
+  id: string;
+  order_number: number;
+  customer_name: string;
+  device_type: string;
+  device_brand: string;
+  device_model: string;
+  delivered_date: string;
+  total_amount: number;
 }

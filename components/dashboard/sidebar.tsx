@@ -42,6 +42,8 @@ import {
   Scale,
   Wallet,
   Lock,
+  Wrench,
+  FileBarChart,
 } from "lucide-react"
 
 interface Profile {
@@ -66,6 +68,7 @@ interface SidebarProps {
     cashRegister: FeaturePermission
     inventoryLiquidation: FeaturePermission
     accountsSettlement: FeaturePermission
+    repairs: FeaturePermission
   }
 }
 
@@ -95,6 +98,7 @@ const adminNavItems = [
   { href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+  { href: "/dashboard/repairs", label: "Reparaciones", icon: Wrench },
   { href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
@@ -114,6 +118,7 @@ const employeeNavItems = [
   { href: "/dashboard/price-history", label: "Historial de Precios", icon: TrendingUp },
   { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
   { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+  { href: "/dashboard/repairs", label: "Reparaciones", icon: Wrench },
   { href: "/dashboard/cash-register", label: "Apertura/Cierre Caja", icon: DollarSign },
   { href: "/dashboard/analytics", label: "Reportes", icon: BarChart3 },
   { href: "/dashboard/inventory-report", label: "Liquidación de Inventario", icon: PackageSearch },
@@ -198,6 +203,14 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
           ],
         },
         {
+          title: "REPARACIONES",
+          items: [
+            { href: "/dashboard/repairs", label: "Reparaciones", icon: Wrench, permission: permissions.repairs },
+            { href: "/dashboard/repairs/reports", label: "Historial de Reparaciones", icon: FileBarChart, permission: permissions.repairs },
+            { href: "/dashboard/technicians", label: "Técnicos", icon: Users, permission: permissions.repairs },
+          ],
+        },
+        {
           title: "COMPRAS",
           items: [
             { href: "/dashboard/purchase-orders", label: "Órdenes de Compra", icon: ClipboardList, permission: permissions.purchaseOrders },
@@ -246,6 +259,14 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
             { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
             { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
             { href: "/dashboard/customers", label: "Clientes", icon: Users },
+          ],
+        },
+        {
+          title: "REPARACIONES",
+          items: [
+            { href: "/dashboard/repairs", label: "Reparaciones", icon: Wrench, permission: permissions.repairs },
+            { href: "/dashboard/repairs/reports", label: "Historial de Reparaciones", icon: FileBarChart, permission: permissions.repairs },
+            { href: "/dashboard/technicians", label: "Técnicos", icon: Users, permission: permissions.repairs },
           ],
         },
         {

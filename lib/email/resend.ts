@@ -373,6 +373,128 @@ export async function sendNewSubscriptionNotification(
 }
 
 /**
+ * Envía un presupuesto de reparación por email al cliente
+ */
+export async function sendRepairOrderEmail(
+  to: string,
+  subject: string,
+  message: string,
+  repairData: {
+    orderNumber: string
+    customerName: string
+    deviceType: string
+    deviceBrand?: string
+    deviceModel?: string
+    estimatedCost: number
+    companyName: string
+  }
+) {
+  try {
+    // Verificar que la API key esté configurada
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_dummy_key_for_build") {
+      console.warn("[Resend] API key not configured. Email will not be sent.");
+      return { 
+        success: false, 
+        error: "Resend API key not configured. Please add RESEND_API_KEY to your environment variables." 
+      };
+    }
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+      to,
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Presupuesto de Reparación</title>
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f3f4f6;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">Presupuesto de Reparación</h1>
+              <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">Orden #${repairData.orderNumber}</p>
+            </div>
+            
+            <div style="background: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+              <p style="font-size: 16px; margin-bottom: 20px;">Estimado/a ${repairData.customerName},</p>
+              
+              ${message ? `
+                <p style="font-size: 16px; margin-bottom: 30px; white-space: pre-line;">${message}</p>
+              ` : ''}
+              
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #667eea;">
+                <h3 style="margin-top: 0; color: #1f2937; font-size: 18px;">Información del Dispositivo</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: 600; color: #6b7280; width: 40%;">Tipo:</td>
+                    <td style="padding: 8px 0; color: #1f2937;">${repairData.deviceType}</td>
+                  </tr>
+                  ${repairData.deviceBrand ? `
+                    <tr>
+                      <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Marca:</td>
+                      <td style="padding: 8px 0; color: #1f2937;">${repairData.deviceBrand}</td>
+                    </tr>
+                  ` : ''}
+                  ${repairData.deviceModel ? `
+                    <tr>
+                      <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Modelo:</td>
+                      <td style="padding: 8px 0; color: #1f2937;">${repairData.deviceModel}</td>
+                    </tr>
+                  ` : ''}
+                </table>
+              </div>
+              
+              <div style="text-align: center; background: #f9fafb; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
+                <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Costo Estimado:</p>
+                <div style="font-size: 32px; font-weight: 700; color: #667eea;">
+                  $${repairData.estimatedCost.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+              
+              <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #92400e; font-size: 14px;">
+                  <strong>📋 Nota:</strong> Este presupuesto es una estimación basada en el diagnóstico inicial. El costo final puede variar según los repuestos necesarios y la complejidad de la reparación.
+                </p>
+              </div>
+              
+              <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+                Para cualquier consulta o para confirmar la reparación, no dude en contactarnos.
+              </p>
+              
+              <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+                Saludos cordiales,<br/>
+                <strong>${repairData.companyName}</strong>
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding: 20px; color: #9ca3af; font-size: 12px;">
+              <p>Este email fue enviado por ${repairData.companyName}</p>
+              <p style="margin-top: 10px;">© ${new Date().getFullYear()} Todos los derechos reservados</p>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("[Resend] Error sending repair order email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("[Resend] Repair order email sent successfully:", data?.id);
+    return { success: true, messageId: data?.id };
+  } catch (error) {
+    console.error("[Resend] Exception sending repair order email:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Error desconocido" 
+    };
+  }
+}
+
+/**
  * Envía un email de bienvenida cuando un usuario se registra
  */
 export async function sendWelcomeEmail(

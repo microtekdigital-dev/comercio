@@ -53,7 +53,7 @@ export function PlanCard({
   const features = Array.isArray(plan.features) ? plan.features : [];
   const isAnnual = plan.interval === "year";
   const isTrial = plan.name?.toLowerCase().includes("trial") || Number(plan.price) === 0;
-  const isProfesional = plan.name?.toLowerCase().includes("profesional");
+  const isPopular = plan.is_popular === true;
 
   return (
     <Card
@@ -69,14 +69,14 @@ export function PlanCard({
         </Badge>
       )}
       
-      {!isCurrentPlan && isProfesional && (
+      {!isCurrentPlan && isPopular && (
         <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600" variant="default">
           <Sparkles className="h-3 w-3 mr-1" />
           Más Elegido
         </Badge>
       )}
       
-      {!isCurrentPlan && !isProfesional && isAnnual && (
+      {!isCurrentPlan && !isPopular && isAnnual && (
         <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600" variant="default">
           <Sparkles className="h-3 w-3 mr-1" />
           Ahorra 2 meses

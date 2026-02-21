@@ -6,7 +6,8 @@ import {
   canAccessPriceHistory,
   canAccessCashRegister,
   canAccessInventoryLiquidation,
-  canAccessAccountsSettlement
+  canAccessAccountsSettlement,
+  canAccessRepairs
 } from "@/lib/utils/plan-limits";
 import { DashboardSidebar } from "./sidebar";
 import type { FeaturePermission } from "@/lib/types/plans";
@@ -29,7 +30,7 @@ export async function DashboardSidebarServer() {
       : { allowed: false, requiredPlan: "Básico", message: "Las órdenes de compra están disponibles en el plan Básico o superior." },
     suppliers: user.company_id 
       ? await canAccessSuppliers(user.company_id)
-      : { allowed: false, requiredPlan: "Básico", message: "La gestión de proveedores está disponible en el plan Básico o superior." },
+      : { allowed: false, requiredPlan: "Básico", message: "La gestión de proveedores está disponibles en el plan Básico o superior." },
     stockHistory: user.company_id
       ? await canAccessStockHistory(user.company_id)
       : { allowed: false, requiredPlan: "Básico", message: "El historial de stock está disponible en planes de pago." },
@@ -45,6 +46,9 @@ export async function DashboardSidebarServer() {
     accountsSettlement: user.company_id
       ? await canAccessAccountsSettlement(user.company_id)
       : { allowed: false, requiredPlan: "Profesional", message: "La liquidación de cuentas está disponible en el plan Profesional o superior." },
+    repairs: user.company_id
+      ? await canAccessRepairs(user.company_id)
+      : { allowed: false, requiredPlan: "Pro Reparaciones", message: "El módulo de reparaciones está disponible en el plan Pro Reparaciones." },
   };
 
   // Serializar los datos para evitar problemas de hidratación

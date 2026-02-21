@@ -62,11 +62,79 @@ export async function getDashboardStats() {
       .eq("company_id", profile.company_id)
       .eq("is_active", true);
 
-    // Calculate stats
+    // Calculate sales revenue
     const thisMonthRevenue = thisMonthSales?.reduce((sum, sale) => sum + sale.total, 0) || 0;
     const lastMonthRevenue = lastMonthSales?.reduce((sum, sale) => sum + sale.total, 0) || 0;
-    const revenueGrowth = lastMonthRevenue > 0 
-      ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
+
+    // Calculate repairs revenue (if repairs module is available)
+    let thisMonthRepairsRevenue = 0;
+    let lastMonthRepairsRevenue = 0;
+    
+    try {
+      const { canAccessRepairs } = await import('@/lib/utils/plan-limits');
+      const access = await canAccessRepairs(profile.company_id);
+      
+      if (access.allowed) {
+        // This month repairs - use repair_completed_date or created_at as fallback
+        const { data: thisMonthRepairs } = await supabase
+          .from('repair_orders')
+          .select('id, repair_completed_date, created_at')
+          .eq('company_id', profile.company_id)
+          .in('status', ['repaired', 'delivered']);
+
+        // Filter by date in memory to handle NULL delivered_date
+        const thisMonthRepairIds = (thisMonthRepairs || [])
+          .filter(r => {
+            const dateToCheck = r.repair_completed_date || r.created_at;
+            return new Date(dateToCheck) >= firstDayThisMonth;
+          })
+          .map(r => r.id);
+
+        if (thisMonthRepairIds.length > 0) {
+          const { data: payments } = await supabase
+            .from('repair_payments')
+            .select('amount')
+            .in('repair_order_id', thisMonthRepairIds);
+          
+          thisMonthRepairsRevenue = (payments || []).reduce((sum, p) => sum + p.amount, 0);
+        }
+
+        // Last month repairs
+        const { data: lastMonthRepairs } = await supabase
+          .from('repair_orders')
+          .select('id, repair_completed_date, created_at')
+          .eq('company_id', profile.company_id)
+          .in('status', ['repaired', 'delivered']);
+
+        // Filter by date in memory
+        const lastMonthRepairIds = (lastMonthRepairs || [])
+          .filter(r => {
+            const dateToCheck = r.repair_completed_date || r.created_at;
+            const date = new Date(dateToCheck);
+            return date >= firstDayLastMonth && date <= lastDayLastMonth;
+          })
+          .map(r => r.id);
+
+        if (lastMonthRepairIds.length > 0) {
+          const repairIds = lastMonthRepairIds;
+          const { data: payments } = await supabase
+            .from('repair_payments')
+            .select('amount')
+            .in('repair_order_id', repairIds);
+          
+          lastMonthRepairsRevenue = (payments || []).reduce((sum, p) => sum + p.amount, 0);
+        }
+      }
+    } catch (error) {
+      console.log('[getDashboardStats] Repairs module not available or error:', error);
+    }
+
+    // Calculate total revenue including repairs
+    const totalThisMonthRevenue = thisMonthRevenue + thisMonthRepairsRevenue;
+    const totalLastMonthRevenue = lastMonthRevenue + lastMonthRepairsRevenue;
+    
+    const revenueGrowth = totalLastMonthRevenue > 0 
+      ? ((totalThisMonthRevenue - totalLastMonthRevenue) / totalLastMonthRevenue) * 100 
       : 0;
 
     const salesGrowth = lastMonthSales && lastMonthSales.length > 0
@@ -79,7 +147,7 @@ export async function getDashboardStats() {
 
     return {
       totalSales: thisMonthSales?.length || 0,
-      totalRevenue: thisMonthRevenue,
+      totalRevenue: totalThisMonthRevenue,
       totalCustomers: customers?.length || 0,
       totalProducts: products?.length || 0,
       pendingSales: pendingSales?.length || 0,

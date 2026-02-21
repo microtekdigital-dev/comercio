@@ -42,13 +42,14 @@ export async function getFinancialStats(): Promise<FinancialStats | null> {
 
     const currency = "ARS"; // Default currency
 
-    // Calculate all metrics in parallel
-    const [dailySales, currentCashBalance, accountsReceivable, accountsPayable, monthlyProfit] = await Promise.all([
+    // Calculate all metrics in parallel (agregar repairsRevenue)
+    const [dailySales, currentCashBalance, accountsReceivable, accountsPayable, monthlyProfit, repairsRevenue] = await Promise.all([
       calculateDailySales(profile.company_id),
       calculateCurrentCashBalance(profile.company_id),
       calculateAccountsReceivable(profile.company_id),
       calculateAccountsPayable(profile.company_id),
       calculateMonthlyProfit(profile.company_id),
+      calculateRepairsRevenue(profile.company_id), // NUEVO
     ]);
 
     console.log("[FinancialStats] Results:", {
@@ -57,14 +58,15 @@ export async function getFinancialStats(): Promise<FinancialStats | null> {
       accountsReceivable,
       accountsPayable,
       monthlyProfit,
+      repairsRevenue,
     });
 
     return {
-      dailySales,
+      dailySales: dailySales + repairsRevenue, // Sumar reparaciones a ventas diarias
       currentCashBalance,
       accountsReceivable,
       accountsPayable,
-      monthlyProfit,
+      monthlyProfit: monthlyProfit + repairsRevenue, // Sumar reparaciones a ganancia mensual
       currency,
       lastUpdated: new Date(),
     };
@@ -353,6 +355,53 @@ async function calculateMonthlyProfit(companyId: string): Promise<number> {
     return totalProfit;
   } catch (error) {
     console.error("Error calculating monthly profit:", error);
+    return 0;
+  }
+}
+
+/**
+ * Calcula los ingresos totales por reparaciones completadas del mes actual
+ */
+async function calculateRepairsRevenue(companyId: string): Promise<number> {
+  const supabase = await createClient();
+  
+  try {
+    // Verificar si tiene acceso al módulo de reparaciones
+    const { canAccessRepairs } = await import('@/lib/utils/plan-limits');
+    const access = await canAccessRepairs(companyId);
+    if (!access.allowed) {
+      return 0;
+    }
+
+    // Obtener inicio y fin del mes actual
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+    // Obtener reparaciones completadas del mes
+    const { data: repairs, error } = await supabase
+      .from('repair_orders')
+      .select('id')
+      .eq('company_id', companyId)
+      .in('status', ['repaired', 'delivered'])
+      .gte('delivered_date', startOfMonth)
+      .lte('delivered_date', endOfMonth);
+
+    if (error || !repairs || repairs.length === 0) {
+      return 0;
+    }
+
+    const repairIds = repairs.map(r => r.id);
+
+    // Obtener pagos de esas reparaciones
+    const { data: payments } = await supabase
+      .from('repair_payments')
+      .select('amount')
+      .in('repair_order_id', repairIds);
+
+    return (payments || []).reduce((sum, payment) => sum + payment.amount, 0);
+  } catch (error) {
+    console.error('Error calculating repairs revenue:', error);
     return 0;
   }
 }

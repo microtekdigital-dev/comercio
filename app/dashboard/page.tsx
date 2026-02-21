@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Users, Mail, Building2, Shield } from "lucide-react"
 import { ERPStats } from "@/components/dashboard/erp-stats"
 import { FinancialStatsPanel } from "@/components/dashboard/financial-stats-panel"
+import { RepairMetricsPanel } from "@/components/dashboard/repair-metrics-panel"
 import { InitialCashSetupWrapper } from "@/components/dashboard/initial-cash-setup-wrapper"
 import { PlanUsageServer } from "@/components/dashboard/plan-usage-server"
+import { canAccessRepairs } from "@/lib/utils/plan-limits"
 // import { TutorialBanner } from "@/components/dashboard/tutorial-banner"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -16,6 +18,11 @@ export default async function DashboardPage() {
   const teamMembers = await getTeamMembers()
   const invitations = user?.role === "admin" ? await getInvitations() : []
   const needsSetup = await needsInitialCashSetup()
+  
+  // Verificar acceso a reparaciones
+  const repairsAccess = user?.companies?.id 
+    ? await canAccessRepairs(user.companies.id)
+    : { allowed: false }
   
   const pendingInvitations = invitations.filter((inv) => inv.status === "pending")
   const adminCount = teamMembers.filter((m) => m.role === "admin").length
@@ -42,6 +49,13 @@ export default async function DashboardPage() {
       <Suspense fallback={<FinancialStatsLoading />}>
         <FinancialStatsPanel />
       </Suspense>
+
+      {/* Repair Metrics Panel - Solo si tiene acceso */}
+      {repairsAccess.allowed && user?.companies?.id && (
+        <Suspense fallback={<RepairMetricsLoading />}>
+          <RepairMetricsPanel companyId={user.companies.id} />
+        </Suspense>
+      )}
 
       {/* ERP Statistics */}
       <Suspense fallback={<StatsLoading />}>
@@ -169,5 +183,32 @@ function PlanUsageLoading() {
         <Skeleton className="h-16 w-full" />
       </CardContent>
     </Card>
+  );
+}
+
+function RepairMetricsLoading() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-5 w-32" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="space-y-0 pb-2">
+            <Skeleton className="h-4 w-40" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-3 w-40 mt-2" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="space-y-0 pb-2">
+            <Skeleton className="h-4 w-40" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-20 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
