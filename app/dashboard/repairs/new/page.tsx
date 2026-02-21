@@ -191,7 +191,7 @@ export default function NewRepairPage() {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="customer">Cliente *</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Select value={customerId} onValueChange={setCustomerId}>
                   <SelectTrigger id="customer" className="flex-1">
                     <SelectValue placeholder="Seleccionar cliente" />
@@ -207,11 +207,11 @@ export default function NewRepairPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon"
+                  className="w-full sm:w-auto"
                   onClick={() => setShowCustomerModal(true)}
-                  title="Crear nuevo cliente"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo Cliente
                 </Button>
               </div>
             </div>

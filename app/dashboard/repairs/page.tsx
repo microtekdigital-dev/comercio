@@ -221,18 +221,19 @@ export default function RepairsPage() {
 
   return (
     <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Reparaciones</h2>
           <p className="text-muted-foreground text-sm md:text-base">
             Gestiona las órdenes de reparación de dispositivos
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Link href="/dashboard/repairs/reports" className="w-full sm:w-auto">
             <Button variant="outline" className="w-full sm:w-auto">
               <BarChart3 className="mr-2 h-4 w-4" />
-              Historial de Reparaciones
+              <span className="hidden sm:inline">Historial de Reparaciones</span>
+              <span className="sm:hidden">Historial</span>
             </Button>
           </Link>
           <Link href="/dashboard/repairs/new" className="w-full sm:w-auto">
@@ -383,24 +384,24 @@ export default function RepairsPage() {
                   href={`/dashboard/repairs/${repair.id}`}
                   className="block"
                 >
-                  <Card className="p-4 hover:bg-muted/50 transition-colors">
-                    <div className="space-y-3">
+                  <Card className="p-3 md:p-4 hover:bg-muted/50 transition-colors">
+                    <div className="space-y-2 md:space-y-3">
                       {/* Header */}
-                      <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-sm md:text-base">
+                            <p className="font-semibold text-base md:text-lg">
                               #{repair.order_number}
                             </p>
                             {isOverdue(repair) && (
-                              <AlertCircle className="h-4 w-4 text-destructive" />
+                              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs md:text-sm text-muted-foreground truncate">
                             {getCustomerName(repair.customer_id)}
                           </p>
                         </div>
-                        <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                        <div className="flex flex-wrap gap-1 sm:flex-col sm:items-end">
                           {getStatusBadge(repair.status)}
                           {getPaymentStatusBadge(repair)}
                           {repair.budget_approved === true && (
@@ -422,30 +423,30 @@ export default function RepairsPage() {
                       </div>
 
                       {/* Device Info */}
-                      <div className="text-sm">
+                      <div className="text-sm md:text-base">
                         <p className="font-medium truncate">
                           {repair.device_type} - {repair.brand} {repair.model}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                           {repair.reported_problem}
                         </p>
                       </div>
 
                       {/* Footer Info */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm text-muted-foreground">
-                        <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 text-xs md:text-sm text-muted-foreground">
+                        <div className="flex flex-wrap gap-1">
                           <span>Ingreso: {formatDate(repair.received_date)}</span>
                           {repair.estimated_delivery_date && (
                             <>
-                              <span>•</span>
+                              <span className="hidden sm:inline">•</span>
                               <span className={isOverdue(repair) ? "text-destructive font-medium" : ""}>
-                                Estimado: {formatDate(repair.estimated_delivery_date)}
+                                Est: {formatDate(repair.estimated_delivery_date)}
                               </span>
                             </>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Técnico: {getTechnicianName(repair.technician_id)}
+                        <p className="text-xs">
+                          Téc: {getTechnicianName(repair.technician_id)}
                         </p>
                       </div>
                     </div>

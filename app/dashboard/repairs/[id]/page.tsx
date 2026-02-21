@@ -266,27 +266,32 @@ export default function RepairDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-col sm:flex-row gap-2 mb-6">
         <Button 
           variant="outline" 
           size="sm"
+          className="w-full sm:w-auto"
           onClick={() => router.push(`/dashboard/repairs/${order.id}/print`)}
         >
           <Printer className="h-4 w-4 mr-2" />
-          Imprimir Orden
+          <span className="hidden sm:inline">Imprimir Orden</span>
+          <span className="sm:hidden">Imprimir</span>
         </Button>
         <Button 
           variant="outline" 
           size="sm"
+          className="w-full sm:w-auto"
           onClick={() => setShowEmailModal(true)}
         >
           <Send className="h-4 w-4 mr-2" />
-          Enviar Presupuesto
+          <span className="hidden sm:inline">Enviar Presupuesto</span>
+          <span className="sm:hidden">Enviar</span>
         </Button>
         {(order.status === 'repaired' || order.status === 'delivered') && order.customer.email && (
           <Button 
             variant="outline" 
             size="sm"
+            className="w-full sm:w-auto"
             onClick={handleResendNotification}
             disabled={sendingNotification}
           >
@@ -295,12 +300,14 @@ export default function RepairDetailPage({ params }: { params: Promise<{ id: str
             ) : (
               <Send className="h-4 w-4 mr-2" />
             )}
-            Reenviar Notificación
+            <span className="hidden sm:inline">Reenviar Notificación</span>
+            <span className="sm:hidden">Reenviar</span>
           </Button>
         )}
         <Button
           variant="default"
           size="sm"
+          className="w-full sm:w-auto"
           onClick={() => setShowPaymentModal(true)}
           disabled={order.balance <= 0}
         >
@@ -310,16 +317,22 @@ export default function RepairDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       <Tabs defaultValue="info" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="info">Información</TabsTrigger>
-          <TabsTrigger value="diagnosis">Diagnóstico</TabsTrigger>
-          <TabsTrigger value="parts">
-            <Package className="h-4 w-4 mr-2" />
-            Repuestos
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full">
+          <TabsTrigger value="info" className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">Información</span>
+            <span className="sm:hidden">Info</span>
           </TabsTrigger>
-          <TabsTrigger value="notes">
-            <FileText className="h-4 w-4 mr-2" />
-            Notas Internas
+          <TabsTrigger value="diagnosis" className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">Diagnóstico</span>
+            <span className="sm:hidden">Diag</span>
+          </TabsTrigger>
+          <TabsTrigger value="parts" className="text-xs sm:text-sm">
+            <Package className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Repuestos</span>
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="text-xs sm:text-sm">
+            <FileText className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Notas</span>
           </TabsTrigger>
         </TabsList>
 
@@ -330,32 +343,32 @@ export default function RepairDetailPage({ params }: { params: Promise<{ id: str
             <CardHeader>
               <CardTitle>Información del Dispositivo</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label className="text-muted-foreground">Tipo</Label>
-                <div className="font-medium">{order.device_type}</div>
+                <Label className="text-muted-foreground text-xs sm:text-sm">Tipo</Label>
+                <div className="font-medium text-sm sm:text-base">{order.device_type}</div>
               </div>
               <div>
-                <Label className="text-muted-foreground">Marca</Label>
-                <div className="font-medium">{order.brand}</div>
+                <Label className="text-muted-foreground text-xs sm:text-sm">Marca</Label>
+                <div className="font-medium text-sm sm:text-base">{order.brand}</div>
               </div>
               <div>
-                <Label className="text-muted-foreground">Modelo</Label>
-                <div className="font-medium">{order.model}</div>
+                <Label className="text-muted-foreground text-xs sm:text-sm">Modelo</Label>
+                <div className="font-medium text-sm sm:text-base">{order.model}</div>
               </div>
               <div>
-                <Label className="text-muted-foreground">Número de Serie</Label>
-                <div className="font-medium">{order.serial_number || '-'}</div>
+                <Label className="text-muted-foreground text-xs sm:text-sm">Número de Serie</Label>
+                <div className="font-medium text-sm sm:text-base">{order.serial_number || '-'}</div>
               </div>
               {order.accessories && (
-                <div className="col-span-2">
-                  <Label className="text-muted-foreground">Accesorios</Label>
-                  <div className="font-medium">{order.accessories}</div>
+                <div className="sm:col-span-2">
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Accesorios</Label>
+                  <div className="font-medium text-sm sm:text-base">{order.accessories}</div>
                 </div>
               )}
-              <div className="col-span-2">
-                <Label className="text-muted-foreground">Problema Reportado</Label>
-                <div className="font-medium whitespace-pre-wrap">{order.reported_problem}</div>
+              <div className="sm:col-span-2">
+                <Label className="text-muted-foreground text-xs sm:text-sm">Problema Reportado</Label>
+                <div className="font-medium text-sm sm:text-base whitespace-pre-wrap">{order.reported_problem}</div>
               </div>
             </CardContent>
           </Card>
@@ -426,21 +439,21 @@ export default function RepairDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t">
                 <div>
-                  <Label className="text-muted-foreground">Fecha de Ingreso</Label>
-                  <div className="font-medium">{formatDate(order.received_date)}</div>
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Fecha de Ingreso</Label>
+                  <div className="font-medium text-sm sm:text-base">{formatDate(order.received_date)}</div>
                 </div>
                 {order.repair_completed_date && (
                   <div>
-                    <Label className="text-muted-foreground">Fecha de Reparación</Label>
-                    <div className="font-medium">{formatDate(order.repair_completed_date)}</div>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Fecha de Reparación</Label>
+                    <div className="font-medium text-sm sm:text-base">{formatDate(order.repair_completed_date)}</div>
                   </div>
                 )}
                 {order.delivered_date && (
                   <div>
-                    <Label className="text-muted-foreground">Fecha de Entrega</Label>
-                    <div className="font-medium">{formatDate(order.delivered_date)}</div>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Fecha de Entrega</Label>
+                    <div className="font-medium text-sm sm:text-base">{formatDate(order.delivered_date)}</div>
                   </div>
                 )}
               </div>
