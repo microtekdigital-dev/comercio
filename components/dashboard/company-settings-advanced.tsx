@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Building2, FileText, Settings, Save } from "lucide-react";
 import { toast } from "sonner";
+import { CurrencySelector } from "@/components/dashboard/currency-selector";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface CompanyData {
   id: string;
@@ -29,6 +31,9 @@ interface CompanyData {
   invoice_prefix?: string;
   invoice_next_number?: number;
   terms_and_conditions?: string;
+  currency_code?: string;
+  currency_symbol?: string;
+  currency_position?: 'before' | 'after';
 }
 
 interface CompanySettingsAdvancedProps {
@@ -54,6 +59,9 @@ export function CompanySettingsAdvanced({ company, onUpdate }: CompanySettingsAd
     invoice_prefix: company.invoice_prefix || "FAC",
     invoice_next_number: company.invoice_next_number || 1,
     terms_and_conditions: company.terms_and_conditions || "",
+    currency_code: company.currency_code || "USD",
+    currency_symbol: company.currency_symbol || "$",
+    currency_position: (company.currency_position || "before") as 'before' | 'after',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,6 +233,37 @@ export function CompanySettingsAdvanced({ company, onUpdate }: CompanySettingsAd
         </TabsContent>
 
         <TabsContent value="invoicing" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuración de Moneda</CardTitle>
+              <CardDescription>
+                Selecciona la moneda en la que opera tu empresa
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currency">Moneda</Label>
+                <CurrencySelector
+                  value={formData.currency_code}
+                  onChange={(code, symbol, position) => {
+                    setFormData({
+                      ...formData,
+                      currency_code: code,
+                      currency_symbol: symbol,
+                      currency_position: position,
+                    });
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Vista previa: {formatCurrency(1234.56, {
+                    currencySymbol: formData.currency_symbol,
+                    currencyPosition: formData.currency_position,
+                  })}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Configuración de Facturación</CardTitle>

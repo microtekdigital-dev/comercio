@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { validateCurrencyCode } from "@/lib/utils/currency";
 
 export async function getCompanyInfo() {
   const supabase = await createClient();
@@ -47,10 +48,26 @@ export async function updateCompanySettings(companyData: {
   invoice_prefix?: string;
   invoice_next_number?: number;
   terms_and_conditions?: string;
+  currency_code?: string;
+  currency_symbol?: string;
+  currency_position?: 'before' | 'after';
 }) {
   const supabase = await createClient();
   
   try {
+    // Validar código de moneda si se proporciona
+    if (companyData.currency_code) {
+      const validation = validateCurrencyCode(companyData.currency_code);
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
+      }
+    }
+
+    // Validar posición de símbolo si se proporciona
+    if (companyData.currency_position && !['before', 'after'].includes(companyData.currency_position)) {
+      return { success: false, error: 'Posición de símbolo inválida. Debe ser "before" o "after"' };
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: "No autenticado" };
 
