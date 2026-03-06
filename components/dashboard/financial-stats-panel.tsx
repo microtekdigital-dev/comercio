@@ -1,4 +1,6 @@
 import { getFinancialStats } from "@/lib/actions/financial-stats";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   TrendingUp, 
@@ -10,6 +12,7 @@ import {
 
 export async function FinancialStatsPanel() {
   const stats = await getFinancialStats();
+  const settings = await getCompanySettings();
 
   if (!stats) {
     return (
@@ -20,12 +23,10 @@ export async function FinancialStatsPanel() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: stats.currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    if (!settings) {
+      return `$${amount.toFixed(2)}`;
+    }
+    return formatCompanyCurrency(amount, settings);
   };
 
   const metrics = [

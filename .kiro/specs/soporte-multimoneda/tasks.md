@@ -72,7 +72,7 @@ Este plan implementa el soporte multimoneda en el ERP SaaS siguiendo un enfoque 
     - **Property 10: Currency change flexibility**
     - **Validates: Requirements 12.4**
 
-- [ ] 4. Checkpoint - Verificar infraestructura base
+- [x] 4. Checkpoint - Verificar infraestructura base
   - Asegurar que todos los tests pasan, preguntar al usuario si surgen dudas.
 
 - [x] 5. Crear componente selector de moneda
@@ -115,112 +115,112 @@ Este plan implementa el soporte multimoneda en el ERP SaaS siguiendo un enfoque 
     - **Property 8: Variant price formatting**
     - **Validates: Requirements 4.4**
 
-- [ ] 8. Actualizar módulo de Ventas y Presupuestos
-  - [ ] 8.1 Actualizar componentes de ventas
+- [x] 8. Actualizar módulo de Ventas y Presupuestos
+  - [x] 8.1 Actualizar componentes de ventas
     - Aplicar formato en app/dashboard/sales/page.tsx (lista)
     - Aplicar formato en app/dashboard/sales/[id]/page.tsx (detalle)
     - Aplicar formato en app/dashboard/sales/new/page.tsx (formulario)
     - _Requirements: 5.1, 5.2, 5.3_
   
-  - [ ] 8.2 Actualizar componente de impresión de facturas
+  - [x] 8.2 Actualizar componente de impresión de facturas
     - Aplicar formato en components/dashboard/invoice-print.tsx
     - _Requirements: 5.4_
   
-  - [ ] 8.3 Actualizar componentes de presupuestos
+  - [x] 8.3 Actualizar componentes de presupuestos
     - Aplicar formato en app/dashboard/quotes/page.tsx
     - Aplicar formato en app/dashboard/quotes/[id]/page.tsx
     - Aplicar formato en app/dashboard/quotes/new/quote-form.tsx
     - _Requirements: 5.5_
 
-- [ ] 9. Actualizar módulo de Compras
+- [x] 9. Actualizar módulo de Compras
   - Aplicar formato en app/dashboard/purchase-orders/page.tsx (lista)
   - Aplicar formato en app/dashboard/purchase-orders/new/page.tsx (formulario y detalle)
   - Aplicar formato en componentes de items de órdenes de compra
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 10. Checkpoint - Verificar módulos transaccionales
+- [x] 10. Checkpoint - Verificar módulos transaccionales
   - Asegurar que todos los tests pasan, preguntar al usuario si surgen dudas.
 
-- [ ] 11. Actualizar módulo de Reparaciones
-  - [ ] 11.1 Actualizar componentes de lista y detalle
+- [x] 11. Actualizar módulo de Reparaciones
+  - [x] 11.1 Actualizar componentes de lista y detalle
     - Aplicar formato en app/dashboard/repairs/page.tsx
     - Aplicar formato en app/dashboard/repairs/[id]/page.tsx
     - _Requirements: 7.1, 7.2_
   
-  - [ ] 11.2 Actualizar componentes de pagos y items
+  - [x] 11.2 Actualizar componentes de pagos y items
     - Aplicar formato en components/dashboard/repair-payment-modal.tsx
     - Aplicar formato en components/dashboard/repair-items-table.tsx
     - _Requirements: 7.2, 7.3_
   
-  - [ ] 11.3 Actualizar impresión de órdenes
+  - [x] 11.3 Actualizar impresión de órdenes
     - Aplicar formato en components/dashboard/repair-order-print.tsx
     - _Requirements: 7.4_
 
-- [ ] 12. Actualizar módulo de Caja
-  - [ ] 12.1 Actualizar aperturas de caja
+- [x] 12. Actualizar módulo de Caja
+  - [x] 12.1 Actualizar aperturas de caja
     - Aplicar formato en app/dashboard/cash-register/opening/new/page.tsx
     - _Requirements: 8.1_
   
-  - [ ] 12.2 Actualizar cierres de caja
+  - [x] 12.2 Actualizar cierres de caja
     - Aplicar formato en app/dashboard/cash-register/new/page.tsx
     - Aplicar formato en app/dashboard/cash-register/page.tsx (lista)
     - _Requirements: 8.2_
   
-  - [ ] 12.3 Actualizar movimientos de caja
+  - [x] 12.3 Actualizar movimientos de caja
     - Aplicar formato en componentes de movimientos
     - _Requirements: 8.3_
   
-  - [ ] 12.4 Actualizar informe de cierre
+  - [x] 12.4 Actualizar informe de cierre
     - Aplicar formato en components/dashboard/cash-closure-report.tsx
     - _Requirements: 8.4_
 
-- [ ] 13. Actualizar Reportes Financieros
-  - [ ] 13.1 Actualizar reporte de liquidación de inventario
+- [x] 13. Actualizar Reportes Financieros
+  - [x] 13.1 Actualizar reporte de liquidación de inventario
     - Aplicar formato en components/dashboard/inventory-liquidation-report.tsx
     - _Requirements: 9.1_
   
-  - [ ] 13.2 Actualizar reporte de liquidación de cuentas
+  - [x] 13.2 Actualizar reporte de liquidación de cuentas
     - Aplicar formato en components/dashboard/accounts-settlement-report.tsx
     - _Requirements: 9.2_
   
-  - [ ] 13.3 Actualizar estado de caja
+  - [x] 13.3 Actualizar estado de caja
     - Aplicar formato en componentes de estado de caja
     - _Requirements: 9.3_
   
-  - [ ] 13.4 Actualizar exportaciones
+  - [x] 13.4 Actualizar exportaciones
     - Aplicar formato en lib/utils/export.ts
     - _Requirements: 9.4_
 
-- [ ] 14. Actualizar Dashboard y Estadísticas
-  - [ ] 14.1 Actualizar componente de estadísticas
+- [x] 14. Actualizar Dashboard y Estadísticas
+  - [x] 14.1 Actualizar componente de estadísticas
     - Aplicar formato en components/dashboard/erp-stats.tsx
     - _Requirements: 10.1, 10.2_
   
-  - [ ] 14.2 Actualizar métricas financieras
+  - [x] 14.2 Actualizar métricas financieras
     - Aplicar formato en lib/actions/financial-stats.ts (si retorna strings formateados)
     - Aplicar formato en componentes que muestran métricas
     - _Requirements: 10.2_
   
-  - [ ] 14.3 Actualizar gráficos
+  - [x] 14.3 Actualizar gráficos
     - Aplicar formato en etiquetas de gráficos en app/dashboard/analytics/page.tsx
     - _Requirements: 10.3_
 
-- [ ] 15. Actualizar Cuentas Corrientes
-  - [ ] 15.1 Actualizar cuentas de clientes
+- [x] 15. Actualizar Cuentas Corrientes
+  - [x] 15.1 Actualizar cuentas de clientes
     - Aplicar formato en componentes de cuentas corrientes de clientes
     - _Requirements: 11.1, 11.3_
   
-  - [ ] 15.2 Actualizar cuentas de proveedores
+  - [x] 15.2 Actualizar cuentas de proveedores
     - Aplicar formato en components/dashboard/supplier-account-modal.tsx
     - Aplicar formato en otros componentes de proveedores
     - _Requirements: 11.2, 11.3_
   
-  - [ ] 15.3 Actualizar registro de pagos
+  - [x] 15.3 Actualizar registro de pagos
     - Aplicar formato en components/dashboard/quick-payment-modal.tsx
     - Aplicar formato en components/dashboard/payment-manager.tsx
     - _Requirements: 11.4_
 
-- [ ] 16. Checkpoint final - Testing integral
+- [x] 16. Checkpoint final - Testing integral
   - Asegurar que todos los tests pasan, preguntar al usuario si surgen dudas.
 
 - [ ]* 17. Testing de integración end-to-end

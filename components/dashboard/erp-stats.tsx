@@ -1,5 +1,7 @@
 import { getDashboardStats, getTopProducts, getTopCustomers } from "@/lib/actions/analytics";
 import { getLowStockProducts } from "@/lib/actions/products";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   ShoppingCart, 
@@ -17,17 +19,17 @@ export async function ERPStats() {
   const topProducts = await getTopProducts(5);
   const topCustomers = await getTopCustomers(5);
   const lowStockProducts = await getLowStockProducts();
+  const settings = await getCompanySettings();
   
   // Debug log
   console.log('[ERPStats] Low stock products count:', lowStockProducts.length);
   console.log('[ERPStats] Low stock products:', lowStockProducts);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(amount);
+    if (!settings) {
+      return `$${amount.toFixed(2)}`;
+    }
+    return formatCompanyCurrency(amount, settings);
   };
 
   const formatPercent = (value: number) => {

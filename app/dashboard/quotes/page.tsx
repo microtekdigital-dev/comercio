@@ -1,4 +1,6 @@
 import { getQuotes } from "@/lib/actions/quotes"
+import { getCompanySettings } from "@/lib/actions/company-settings"
+import { formatCompanyCurrency } from "@/lib/utils/currency"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -7,6 +9,15 @@ import Link from "next/link"
 
 export default async function QuotesPage() {
   const quotes = await getQuotes()
+  const settings = await getCompanySettings()
+
+  const formatPrice = (amount: number) => {
+    if (!settings) return `$${amount.toLocaleString()}`
+    return formatCompanyCurrency(amount, { 
+      currency_symbol: settings.currency_symbol, 
+      currency_position: settings.currency_position 
+    })
+  }
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "success" | "destructive"> = {
@@ -63,7 +74,7 @@ export default async function QuotesPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold">
-                      ${quote.total.toLocaleString()}
+                      {formatPrice(quote.total)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(quote.quote_date).toLocaleDateString()}

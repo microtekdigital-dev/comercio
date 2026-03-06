@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { getSale, updateSale, addSalePayment, deleteSale } from "@/lib/actions/sales";
 import { getCompanyInfo } from "@/lib/actions/company";
+import { getCompanySettings } from "@/lib/actions/company-settings";
 import { sendInvoiceEmail } from "@/lib/actions/email";
 import { getUserPermissions } from "@/lib/utils/permissions";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +60,8 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [canDelete, setCanDelete] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
+  const [currencySymbol, setCurrencySymbol] = useState("$");
+  const [currencyPosition, setCurrencyPosition] = useState<"before" | "after">("before");
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -71,8 +75,17 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
       loadSale(resolvedParams.id);
       loadCompanyInfo();
       checkPermissions();
+      loadCurrencySettings();
     });
   }, []);
+
+  const loadCurrencySettings = async () => {
+    const settings = await getCompanySettings();
+    if (settings) {
+      setCurrencySymbol(settings.currency_symbol);
+      setCurrencyPosition(settings.currency_position);
+    }
+  };
 
   const checkPermissions = async () => {
     const permissions = await getUserPermissions();
@@ -91,6 +104,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
 
   const loadCompanyInfo = async () => {
     const data = await getCompanyInfo();
+    const settings = await getCompanySettings();
     if (data) {
       setCompanyInfo({
         name: data.name,
@@ -100,6 +114,8 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
         taxId: data.tax_id,
         logoUrl: data.logo_url,
         termsAndConditions: data.terms_and_conditions,
+        currencySymbol: settings?.currency_symbol || "$",
+        currencyPosition: settings?.currency_position || "before",
       });
     }
   };
@@ -160,11 +176,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: sale.currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
+    return formatCompanyCurrency(amount, { currency_symbol: currencySymbol, currency_position: currencyPosition });
   };
 
   const formatDate = (dateString: string) => {

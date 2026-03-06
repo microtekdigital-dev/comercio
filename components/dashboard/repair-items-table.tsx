@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2, CheckCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,9 +13,10 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import type { RepairItemWithProduct, Product } from '@/lib/types/erp'
-import { formatCurrency } from '@/lib/utils'
+import type { RepairItemWithProduct, Product, CompanySettings } from '@/lib/types/erp'
+import { formatCompanyCurrency } from '@/lib/utils/currency'
 import { deleteRepairItem, markItemAsUsed } from '@/lib/actions/repair-items'
+import { getCompanySettings } from '@/lib/actions/company-settings'
 import { toast } from '@/hooks/use-toast'
 
 interface RepairItemsTableProps {
@@ -34,6 +35,15 @@ export function RepairItemsTable({
   readOnly = false
 }: RepairItemsTableProps) {
   const [loading, setLoading] = useState<string | null>(null)
+  const [settings, setSettings] = useState<CompanySettings | null>(null)
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const data = await getCompanySettings()
+      setSettings(data)
+    }
+    loadSettings()
+  }, [])
 
   const partsTotal = items.reduce((sum, item) => sum + item.subtotal, 0)
   const total = partsTotal + laborCost
@@ -148,10 +158,10 @@ export function RepairItemsTable({
                     </TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(item.unit_price)}
+                      {settings ? formatCompanyCurrency(item.unit_price, settings) : `$${item.unit_price.toFixed(2)}`}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(item.subtotal)}
+                      {settings ? formatCompanyCurrency(item.subtotal, settings) : `$${item.subtotal.toFixed(2)}`}
                     </TableCell>
                     <TableCell className="text-center">
                       {item.is_used ? (
@@ -201,15 +211,15 @@ export function RepairItemsTable({
       <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Subtotal Repuestos:</span>
-          <span className="font-medium">{formatCurrency(partsTotal)}</span>
+          <span className="font-medium">{settings ? formatCompanyCurrency(partsTotal, settings) : `$${partsTotal.toFixed(2)}`}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Mano de Obra:</span>
-          <span className="font-medium">{formatCurrency(laborCost)}</span>
+          <span className="font-medium">{settings ? formatCompanyCurrency(laborCost, settings) : `$${laborCost.toFixed(2)}`}</span>
         </div>
         <div className="flex justify-between text-lg font-bold pt-2 border-t">
           <span>Total:</span>
-          <span>{formatCurrency(total)}</span>
+          <span>{settings ? formatCompanyCurrency(total, settings) : `$${total.toFixed(2)}`}</span>
         </div>
       </div>
 

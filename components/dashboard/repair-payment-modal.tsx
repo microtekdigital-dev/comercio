@@ -30,10 +30,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import type { RepairOrderWithDetails } from '@/lib/types/erp'
+import type { RepairOrderWithDetails, CompanySettings } from '@/lib/types/erp'
 import { processRepairPayment } from '@/lib/actions/repair-payments'
+import { getCompanySettings } from '@/lib/actions/company-settings'
+import { formatCompanyCurrency } from '@/lib/utils/currency'
 import { toast } from '@/hooks/use-toast'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 
 interface RepairPaymentModalProps {
   order: RepairOrderWithDetails
@@ -59,6 +61,16 @@ export function RepairPaymentModal({
   const [paymentMethod, setPaymentMethod] = useState('')
   const [notes, setNotes] = useState('')
   const [processing, setProcessing] = useState(false)
+  const [settings, setSettings] = useState<CompanySettings | null>(null)
+
+  // Load settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      const data = await getCompanySettings()
+      setSettings(data)
+    }
+    loadSettings()
+  }, [])
 
   // Reset form when modal opens
   useEffect(() => {
@@ -92,7 +104,9 @@ export function RepairPaymentModal({
     }
 
     if (amountNum > order.balance) {
-      if (!confirm(`El monto ingresado (${formatCurrency(amountNum)}) es mayor al saldo pendiente (${formatCurrency(order.balance)}). ¿Desea continuar?`)) {
+      const formattedAmount = settings ? formatCompanyCurrency(amountNum, settings) : `$${amountNum.toFixed(2)}`
+      const formattedBalance = settings ? formatCompanyCurrency(order.balance, settings) : `$${order.balance.toFixed(2)}`
+      if (!confirm(`El monto ingresado (${formattedAmount}) es mayor al saldo pendiente (${formattedBalance}). ¿Desea continuar?`)) {
         return
       }
     }
@@ -151,16 +165,16 @@ export function RepairPaymentModal({
           <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total de la Reparación:</span>
-              <span className="font-medium">{formatCurrency(order.total_cost)}</span>
+              <span className="font-medium">{settings ? formatCompanyCurrency(order.total_cost, settings) : `$${order.total_cost.toFixed(2)}`}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total Pagado:</span>
-              <span className="font-medium">{formatCurrency(order.total_paid)}</span>
+              <span className="font-medium">{settings ? formatCompanyCurrency(order.total_paid, settings) : `$${order.total_paid.toFixed(2)}`}</span>
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t">
               <span>Saldo Pendiente:</span>
               <span className={order.balance > 0 ? 'text-destructive' : 'text-green-600'}>
-                {formatCurrency(order.balance)}
+                {settings ? formatCompanyCurrency(order.balance, settings) : `$${order.balance.toFixed(2)}`}
               </span>
             </div>
             <div className="flex justify-between items-center pt-2">
@@ -244,7 +258,7 @@ export function RepairPaymentModal({
                           {PAYMENT_METHODS.find(m => m.value === payment.payment_method)?.label || payment.payment_method}
                         </TableCell>
                         <TableCell className="text-sm text-right font-medium">
-                          {formatCurrency(payment.amount)}
+                          {settings ? formatCompanyCurrency(payment.amount, settings) : `$${payment.amount.toFixed(2)}`}
                         </TableCell>
                       </TableRow>
                     ))}

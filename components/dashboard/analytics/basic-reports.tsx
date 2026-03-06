@@ -8,6 +8,9 @@ import {
   getCashFlow,
   getSalesByCategory,
 } from "@/lib/actions/analytics";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import type { CompanySettings } from "@/lib/types/erp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -58,12 +61,19 @@ export function BasicReports({ canExport = false }: BasicReportsProps) {
   const [inventoryData, setInventoryData] = useState<any[]>([]);
   const [cashFlowData, setCashFlowData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    loadSettings();
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
+
+  const loadSettings = async () => {
+    const data = await getCompanySettings();
+    setSettings(data);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -90,11 +100,10 @@ export function BasicReports({ canExport = false }: BasicReportsProps) {
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(value);
+    if (!settings) {
+      return `$${value.toFixed(2)}`;
+    }
+    return formatCompanyCurrency(value, settings);
   };
 
   const formatDate = (dateString: any) => {

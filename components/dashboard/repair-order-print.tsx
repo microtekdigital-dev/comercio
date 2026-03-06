@@ -1,11 +1,13 @@
 "use client";
 
 import { forwardRef } from "react";
-import type { RepairOrderWithDetails } from "@/lib/types/erp";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import type { RepairOrderWithDetails, CompanySettings } from "@/lib/types/erp";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import { formatDate } from "@/lib/utils";
 
 interface RepairOrderPrintProps {
   order: RepairOrderWithDetails;
+  settings?: CompanySettings | null;
   companyInfo?: {
     name: string;
     address?: string;
@@ -18,7 +20,7 @@ interface RepairOrderPrintProps {
 }
 
 export const RepairOrderPrint = forwardRef<HTMLDivElement, RepairOrderPrintProps>(
-  ({ order, companyInfo }, ref) => {
+  ({ order, settings, companyInfo }, ref) => {
     const getStatusLabel = (status: string) => {
       const labels: Record<string, string> = {
         received: "Recibido",
@@ -222,10 +224,10 @@ export const RepairOrderPrint = forwardRef<HTMLDivElement, RepairOrderPrintProps
                       </td>
                       <td className="text-right p-3 text-gray-900">{item.quantity}</td>
                       <td className="text-right p-3 text-gray-900">
-                        {formatCurrency(item.unit_price)}
+                        {settings ? formatCompanyCurrency(item.unit_price, settings) : `$${item.unit_price.toFixed(2)}`}
                       </td>
                       <td className="text-right p-3 font-semibold text-gray-900">
-                        {formatCurrency(item.subtotal)}
+                        {settings ? formatCompanyCurrency(item.subtotal, settings) : `$${item.subtotal.toFixed(2)}`}
                       </td>
                     </tr>
                   ))}
@@ -239,18 +241,18 @@ export const RepairOrderPrint = forwardRef<HTMLDivElement, RepairOrderPrintProps
                 {order.items.length > 0 && (
                   <div className="flex justify-between py-2 text-gray-700">
                     <span>Repuestos:</span>
-                    <span className="font-semibold">{formatCurrency(order.total_parts)}</span>
+                    <span className="font-semibold">{settings ? formatCompanyCurrency(order.total_parts, settings) : `$${order.total_parts.toFixed(2)}`}</span>
                   </div>
                 )}
                 {order.labor_cost > 0 && (
                   <div className="flex justify-between py-2 text-gray-700">
                     <span>Mano de Obra:</span>
-                    <span className="font-semibold">{formatCurrency(order.labor_cost)}</span>
+                    <span className="font-semibold">{settings ? formatCompanyCurrency(order.labor_cost, settings) : `$${order.labor_cost.toFixed(2)}`}</span>
                   </div>
                 )}
                 <div className="flex justify-between py-3 border-t-2 border-gray-300 text-lg font-bold text-gray-900">
                   <span>TOTAL:</span>
-                  <span>{formatCurrency(order.total_cost)}</span>
+                  <span>{settings ? formatCompanyCurrency(order.total_cost, settings) : `$${order.total_cost.toFixed(2)}`}</span>
                 </div>
               </div>
             </div>
@@ -289,19 +291,19 @@ export const RepairOrderPrint = forwardRef<HTMLDivElement, RepairOrderPrintProps
               <div className="flex justify-between mb-2">
                 <span className="text-gray-700">Total:</span>
                 <span className="font-semibold text-gray-900">
-                  {formatCurrency(order.total_cost)}
+                  {settings ? formatCompanyCurrency(order.total_cost, settings) : `$${order.total_cost.toFixed(2)}`}
                 </span>
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-gray-700">Pagado:</span>
                 <span className="font-semibold text-green-600">
-                  {formatCurrency(order.total_paid)}
+                  {settings ? formatCompanyCurrency(order.total_paid, settings) : `$${order.total_paid.toFixed(2)}`}
                 </span>
               </div>
               <div className="flex justify-between pt-2 border-t border-gray-300">
                 <span className="font-semibold text-gray-700">Saldo:</span>
                 <span className={`font-bold ${order.balance > 0 ? "text-red-600" : "text-green-600"}`}>
-                  {formatCurrency(order.balance)}
+                  {settings ? formatCompanyCurrency(order.balance, settings) : `$${order.balance.toFixed(2)}`}
                 </span>
               </div>
             </div>

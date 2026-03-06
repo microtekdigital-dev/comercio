@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { createSale } from "@/lib/actions/sales";
 import { getCustomers, searchCustomers } from "@/lib/actions/customers";
 import { getProducts, searchProducts } from "@/lib/actions/products";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +35,8 @@ export default function NewSalePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [createdSale, setCreatedSale] = useState<Sale | null>(null);
+  const [currencySymbol, setCurrencySymbol] = useState("$");
+  const [currencyPosition, setCurrencyPosition] = useState<"before" | "after">("before");
   const [formData, setFormData] = useState({
     customer_id: "",
     status: "completed" as "draft" | "completed" | "cancelled",
@@ -45,6 +49,7 @@ export default function NewSalePage() {
 
   useEffect(() => {
     loadData();
+    loadCurrencySettings();
   }, []);
 
   const loadData = async () => {
@@ -54,6 +59,14 @@ export default function NewSalePage() {
     ]);
     setCustomers(customersData);
     setProducts(productsData.filter((p) => p.is_active));
+  };
+
+  const loadCurrencySettings = async () => {
+    const settings = await getCompanySettings();
+    if (settings) {
+      setCurrencySymbol(settings.currency_symbol);
+      setCurrencyPosition(settings.currency_position);
+    }
   };
 
   const addItem = () => {
@@ -152,6 +165,10 @@ export default function NewSalePage() {
   };
 
   const totals = calculateTotals();
+
+  const formatPrice = (amount: number) => {
+    return formatCompanyCurrency(amount, { currency_symbol: currencySymbol, currency_position: currencyPosition });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -384,8 +401,7 @@ export default function NewSalePage() {
                             <SelectContent>
                               {products.map((product) => (
                                 <SelectItem key={product.id} value={product.id}>
-                                  {product.name} - $
-                                  {product.price.toLocaleString()}
+                                  {product.name} - {formatPrice(product.price)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -462,7 +478,7 @@ export default function NewSalePage() {
                         <div className="space-y-2">
                           <Label>Total</Label>
                           <Input
-                            value={calculateItemTotal(item).toFixed(2)}
+                            value={formatPrice(calculateItemTotal(item))}
                             disabled
                             className="font-semibold"
                           />
@@ -478,18 +494,18 @@ export default function NewSalePage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal:</span>
                     <span className="font-semibold">
-                      ${totals.subtotal.toFixed(2)}
+                      {formatPrice(totals.subtotal)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Impuestos:</span>
                     <span className="font-semibold">
-                      ${totals.taxAmount.toFixed(2)}
+                      {formatPrice(totals.taxAmount)}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
                     <span>Total:</span>
-                    <span>${totals.total.toFixed(2)}</span>
+                    <span>{formatPrice(totals.total)}</span>
                   </div>
                 </div>
               )}

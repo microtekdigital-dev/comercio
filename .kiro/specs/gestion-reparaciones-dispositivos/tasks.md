@@ -265,7 +265,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Implementar función para descargar como PDF
     - _Requirements: 8.1, 8.4_
 
-  - [ ] 11.3 Escribir test de propiedad para documento imprimible
+  - [x] 11.3 Escribir test de propiedad para documento imprimible
     - **Property 23: Printable Document Generation**
     - **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 19.4**
 
@@ -278,7 +278,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Implementar resendNotification para reintentos manuales
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-  - [ ] 12.2 Escribir tests de propiedad para notificaciones
+  - [x] 12.2 Escribir tests de propiedad para notificaciones
     - **Property 24: Repair Ready Notification**
     - **Property 25: Notification Error Handling**
     - **Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5, 9.6**
@@ -299,7 +299,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Permitir click para ir al detalle de la reparación
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 12.3_
 
-  - [ ] 13.2 Escribir tests de propiedad para historial de cliente
+  - [x] 13.2 Escribir tests de propiedad para historial de cliente
     - **Property 26: Customer Repair History**
     - **Property 29: Customer Integration**
     - **Property 30: Active Repairs Summary**
@@ -316,7 +316,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Todas las funciones deben aceptar filtro de rango de fechas
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7_
 
-  - [ ] 14.2 Escribir tests de propiedad para reportes
+  - [x] 14.2 Escribir tests de propiedad para reportes
     - **Property 38: Pending Repairs Report**
     - **Property 39: Technician Performance Report**
     - **Property 40: Status Distribution Report**
@@ -372,7 +372,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Retornar error 400 si la fecha es inválida
     - _Requirements: 20.6_
 
-  - [ ] 16.3 Escribir tests de propiedad para validaciones
+  - [x] 16.3 Escribir tests de propiedad para validaciones
     - **Property 45: Required Field Validation**
     - **Property 46: Budget Validation**
     - **Property 47: Payment Validation**
@@ -396,7 +396,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Permitir continuar con la operación (solo advertencia)
     - _Requirements: 7.5_
 
-  - [ ] 17.4 Escribir test de propiedad para advertencia de stock
+  - [x] 17.4 Escribir test de propiedad para advertencia de stock
     - **Property 20: Low Stock Warning**
     - **Validates: Requirements 7.5**
 
@@ -407,7 +407,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Agregar filtro de "órdenes vencidas" en lista
     - _Requirements: 19.1, 19.2, 19.5, 19.6_
 
-  - [ ] 17.6 Escribir test de propiedad para fecha estimada
+  - [x] 17.6 Escribir test de propiedad para fecha estimada
     - **Property 44: Estimated Delivery Date Management**
     - **Validates: Requirements 19.1, 19.2, 19.5, 19.6**
 
@@ -418,7 +418,7 @@ Este plan implementa el módulo completo de gestión de reparaciones de disposit
     - Usar auth.uid() de Supabase para obtener usuario actual
     - _Requirements: 21.4, 21.5_
 
-  - [ ] 18.2 Escribir test de propiedad para auditoría
+  - [x] 18.2 Escribir test de propiedad para auditoría
     - **Property 50: Audit Trail**
     - **Validates: Requirements 21.4, 21.5**
 

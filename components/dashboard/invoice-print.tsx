@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import type { Sale } from "@/lib/types/erp";
 
 interface InvoicePrintProps {
@@ -13,12 +14,21 @@ interface InvoicePrintProps {
     taxId?: string;
     logoUrl?: string;
     termsAndConditions?: string;
+    currencySymbol?: string;
+    currencyPosition?: "before" | "after";
   };
 }
 
 export const InvoicePrint = forwardRef<HTMLDivElement, InvoicePrintProps>(
   ({ sale, companyInfo }, ref) => {
     const formatCurrency = (amount: number) => {
+      if (companyInfo?.currencySymbol && companyInfo?.currencyPosition) {
+        return formatCompanyCurrency(amount, {
+          currency_symbol: companyInfo.currencySymbol,
+          currency_position: companyInfo.currencyPosition,
+        });
+      }
+      // Fallback to default formatting
       return new Intl.NumberFormat("es-AR", {
         style: "currency",
         currency: sale.currency,

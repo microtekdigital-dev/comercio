@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
+import { getCompanySettings } from "@/lib/actions/company-settings"
+import { formatCompanyCurrency } from "@/lib/utils/currency"
+import type { CompanySettings } from "@/lib/types/erp"
 import { InventoryReportFilters } from "./inventory-report-filters"
 import { InventoryReportTable } from "./inventory-report-table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -75,6 +78,27 @@ export function InventoryLiquidationReport({
   const [isExporting, setIsExporting] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [settings, setSettings] = useState<CompanySettings | null>(null)
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      const data = await getCompanySettings()
+      setSettings(data)
+    } catch (error) {
+      console.error("Error loading settings:", error)
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return settings 
+      ? formatCompanyCurrency(amount, settings)
+      : `$${amount.toFixed(2)}`
+  }
 
   // Validate dates whenever they change
   useEffect(() => {
@@ -251,7 +275,7 @@ export function InventoryLiquidationReport({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${advancedReport.summary.totalPurchaseValue.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                {formatCurrency(advancedReport.summary.totalPurchaseValue)}
               </div>
               <p className="text-xs text-muted-foreground">Valor total de compras</p>
             </CardContent>
@@ -264,7 +288,7 @@ export function InventoryLiquidationReport({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${advancedReport.summary.totalSalesValue.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                {formatCurrency(advancedReport.summary.totalSalesValue)}
               </div>
               <p className="text-xs text-muted-foreground">Valor total de ventas</p>
             </CardContent>
@@ -277,7 +301,7 @@ export function InventoryLiquidationReport({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${advancedReport.summary.totalProfit.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                {formatCurrency(advancedReport.summary.totalProfit)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Margen: {advancedReport.summary.profitMargin.toFixed(1)}%
@@ -334,13 +358,13 @@ export function InventoryLiquidationReport({
                             <td className="p-2 text-right text-sm">{cat.totalProducts}</td>
                             <td className="p-2 text-right text-sm">{cat.totalMovements}</td>
                             <td className="p-2 text-right text-sm">
-                              ${cat.totalPurchaseValue.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                              {formatCurrency(cat.totalPurchaseValue)}
                             </td>
                             <td className="p-2 text-right text-sm">
-                              ${cat.totalSalesValue.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                              {formatCurrency(cat.totalSalesValue)}
                             </td>
                             <td className="p-2 text-right text-sm">
-                              ${cat.totalProfit.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                              {formatCurrency(cat.totalProfit)}
                             </td>
                             <td className="p-2 text-right text-sm">
                               <Badge variant={cat.profitMargin > 30 ? "default" : "secondary"}>

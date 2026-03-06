@@ -4,6 +4,9 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createCashRegisterClosure, getCashRegisterOpenings, getCashRegisterClosures, getSupplierPayments } from "@/lib/actions/cash-register"
 import { getSales } from "@/lib/actions/sales"
+import { getCompanySettings } from "@/lib/actions/company-settings"
+import { formatCompanyCurrency } from "@/lib/utils/currency"
+import type { CompanySettings } from "@/lib/types/erp"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,6 +25,7 @@ export default function NewCashRegisterClosurePage() {
   const [loading, setLoading] = useState(false)
   const [calculating, setCalculating] = useState(false)
   const [activeOpenings, setActiveOpenings] = useState<CashRegisterOpening[]>([])
+  const [settings, setSettings] = useState<CompanySettings | null>(null)
   
   // Form state
   const [closureDate, setClosureDate] = useState(new Date().toISOString().split("T")[0])
@@ -59,10 +63,20 @@ export default function NewCashRegisterClosurePage() {
     }
   }, [closureDate, shift, activeOpenings])
 
-  // Load active openings on mount
+  // Load active openings and settings on mount
   useEffect(() => {
     loadActiveOpenings()
+    loadSettings()
   }, [])
+
+  const loadSettings = async () => {
+    try {
+      const data = await getCompanySettings()
+      setSettings(data)
+    } catch (error) {
+      console.error("Error loading settings:", error)
+    }
+  }
 
   const loadActiveOpenings = async () => {
     try {
@@ -91,11 +105,9 @@ export default function NewCashRegisterClosurePage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(amount)
+    return settings 
+      ? formatCompanyCurrency(amount, settings)
+      : `$${amount.toFixed(2)}`
   }
 
   const formatDateTime = (dateString: string) => {

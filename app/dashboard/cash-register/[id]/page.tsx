@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getClosureReportData } from "@/lib/actions/cash-register";
+import { getCompanySettings } from "@/lib/actions/company-settings";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -14,7 +15,8 @@ import type {
   CashRegisterOpening, 
   Sale, 
   CashMovement, 
-  SupplierPayment 
+  SupplierPayment,
+  CompanySettings
 } from "@/lib/types/erp";
 
 export default function CashRegisterClosureDetailPage() {
@@ -29,6 +31,7 @@ export default function CashRegisterClosureDetailPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
   const [supplierPayments, setSupplierPayments] = useState<SupplierPayment[]>([]);
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [companyInfo, setCompanyInfo] = useState<{
     name: string;
     address?: string;
@@ -40,7 +43,17 @@ export default function CashRegisterClosureDetailPage() {
 
   useEffect(() => {
     loadReportData();
+    loadSettings();
   }, [closureId]);
+
+  const loadSettings = async () => {
+    try {
+      const data = await getCompanySettings();
+      setSettings(data);
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+  };
 
   const loadReportData = async () => {
     try {
@@ -79,7 +92,7 @@ export default function CashRegisterClosureDetailPage() {
     );
   }
 
-  if (!closure) {
+  if (!closure || !settings) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
@@ -126,6 +139,7 @@ export default function CashRegisterClosureDetailPage() {
           sales={sales}
           cashMovements={cashMovements}
           supplierPayments={supplierPayments}
+          settings={settings}
           companyInfo={companyInfo}
         />
       </div>

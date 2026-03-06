@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { getSales } from "@/lib/actions/sales";
 import { getCustomers } from "@/lib/actions/customers";
+import { getCompanySettings } from "@/lib/actions/company-settings";
 import { canExportToExcel } from "@/lib/utils/plan-limits";
 import { createClient } from "@/lib/supabase/client";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,12 +43,23 @@ export default function SalesPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [currencySymbol, setCurrencySymbol] = useState("$");
+  const [currencyPosition, setCurrencyPosition] = useState<"before" | "after">("before");
 
   useEffect(() => {
     loadCustomers();
     loadSales();
     checkExportPermissions();
+    loadCurrencySettings();
   }, []);
+
+  const loadCurrencySettings = async () => {
+    const settings = await getCompanySettings();
+    if (settings) {
+      setCurrencySymbol(settings.currency_symbol);
+      setCurrencyPosition(settings.currency_position);
+    }
+  };
 
   const checkExportPermissions = async () => {
     const supabase = createClient();
@@ -180,10 +193,7 @@ export default function SalesPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-    }).format(amount);
+    return formatCompanyCurrency(amount, { currency_symbol: currencySymbol, currency_position: currencyPosition });
   };
 
   const formatDate = (dateString: string) => {

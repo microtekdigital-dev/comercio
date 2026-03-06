@@ -6,6 +6,8 @@ import { getQuote, updateQuote, deleteQuote, sendQuoteByEmail, convertQuoteToSal
 import { getCustomers } from "@/lib/actions/customers"
 import { getProducts } from "@/lib/actions/products"
 import { getProductVariants } from "@/lib/actions/product-variants"
+import { getCompanySettings } from "@/lib/actions/company-settings"
+import { formatCompanyCurrency } from "@/lib/utils/currency"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +30,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [quoteId, setQuoteId] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [currencySymbol, setCurrencySymbol] = useState("$")
+  const [currencyPosition, setCurrencyPosition] = useState<"before" | "after">("before")
   
   // Edit form state
   const [customerId, setCustomerId] = useState("")
@@ -56,8 +60,17 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       loadQuote(resolvedParams.id)
       loadCustomers()
       loadProducts()
+      loadCurrencySettings()
     })
   }, [])
+
+  const loadCurrencySettings = async () => {
+    const settings = await getCompanySettings()
+    if (settings) {
+      setCurrencySymbol(settings.currency_symbol)
+      setCurrencyPosition(settings.currency_position)
+    }
+  }
 
   const loadQuote = async (id: string) => {
     try {
@@ -258,11 +271,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: quote.currency,
-      minimumFractionDigits: 2,
-    }).format(amount)
+    return formatCompanyCurrency(amount, { currency_symbol: currencySymbol, currency_position: currencyPosition })
   }
 
   const formatDate = (dateString: string) => {

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import type { CompanySettings } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -52,7 +55,22 @@ export function AccountsSettlementReport({
     totalPayable: 0,
     netBalance: 0,
   });
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
   const { toast } = useToast();
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const data = await getCompanySettings();
+      setSettings(data);
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+  };
 
   // Load data when cutoff date changes
   useEffect(() => {

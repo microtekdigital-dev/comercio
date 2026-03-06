@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react"
 import { getCashRegisterClosures, getCashRegisterOpenings } from "@/lib/actions/cash-register"
 import { getCashMovements } from "@/lib/actions/cash-movements"
+import { getCompanySettings } from "@/lib/actions/company-settings"
+import { formatCompanyCurrency } from "@/lib/utils/currency"
+import type { CompanySettings } from "@/lib/types/erp"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +22,7 @@ export function CashRegisterClient() {
   const [loading, setLoading] = useState(true)
   const [incomeModalOpen, setIncomeModalOpen] = useState(false)
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false)
+  const [settings, setSettings] = useState<CompanySettings | null>(null)
 
   const loadData = async () => {
     const [closuresData, openingsData] = await Promise.all([
@@ -45,14 +49,22 @@ export function CashRegisterClient() {
 
   useEffect(() => {
     loadData()
+    loadSettings()
   }, [])
 
+  const loadSettings = async () => {
+    try {
+      const data = await getCompanySettings()
+      setSettings(data)
+    } catch (error) {
+      console.error("Error loading settings:", error)
+    }
+  }
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(amount)
+    return settings 
+      ? formatCompanyCurrency(amount, settings)
+      : `$${amount.toFixed(2)}`
   }
 
   const formatDate = (dateString: string) => {

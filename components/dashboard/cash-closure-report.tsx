@@ -1,12 +1,14 @@
 "use client";
 
 import { forwardRef } from "react";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import type { 
   CashRegisterClosure, 
   CashRegisterOpening, 
   Sale, 
   CashMovement, 
-  SupplierPayment 
+  SupplierPayment,
+  CompanySettings
 } from "@/lib/types/erp";
 import { 
   DollarSign, 
@@ -25,6 +27,7 @@ interface CashClosureReportProps {
   sales: Sale[];
   cashMovements: CashMovement[];
   supplierPayments: SupplierPayment[];
+  settings: CompanySettings;
   companyInfo: {
     name: string;
     address?: string;
@@ -36,13 +39,9 @@ interface CashClosureReportProps {
 }
 
 export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportProps>(
-  ({ closure, opening, sales, cashMovements, supplierPayments, companyInfo }, ref) => {
+  ({ closure, opening, sales, cashMovements, supplierPayments, settings, companyInfo }, ref) => {
     const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat("es-AR", {
-        style: "currency",
-        currency: closure.currency,
-        minimumFractionDigits: 2,
-      }).format(amount);
+      return formatCompanyCurrency(amount, settings);
     };
 
     const formatDate = (dateString: string) => {
@@ -263,7 +262,7 @@ export const CashClosureReport = forwardRef<HTMLDivElement, CashClosureReportPro
                     <TrendingUp className="h-4 w-4 text-gray-500" />
                     <span className="text-xs text-gray-600">Otros</span>
                   </div>
-                  <p className="font-semibold text-gray-900">{formatCurrency(closure.supplier_payments_other)}</p>
+                  <p className="font-semibold text-gray-900">{formatCurrency(closure.supplier_payments_other || 0)}</p>
                 </div>
               )}
             </div>

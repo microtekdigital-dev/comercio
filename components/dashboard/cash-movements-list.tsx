@@ -1,7 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { deleteCashMovement } from "@/lib/actions/cash-movements"
+import { getCompanySettings } from "@/lib/actions/company-settings"
+import { formatCompanyCurrency } from "@/lib/utils/currency"
+import type { CompanySettings } from "@/lib/types/erp"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -35,14 +38,26 @@ interface CashMovementsListProps {
 export function CashMovementsList({ movements, onDelete }: CashMovementsListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [settings, setSettings] = useState<CompanySettings | null>(null)
   const { toast } = useToast()
 
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      const data = await getCompanySettings()
+      setSettings(data)
+    } catch (error) {
+      console.error("Error loading settings:", error)
+    }
+  }
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(amount)
+    return settings 
+      ? formatCompanyCurrency(amount, settings)
+      : `$${amount.toFixed(2)}`
   }
 
   const formatDate = (dateString: string) => {

@@ -1,4 +1,6 @@
 import { getRepairMetrics } from "@/lib/actions/repair-metrics"
+import { getCompanySettings } from "@/lib/actions/company-settings"
+import { formatCompanyCurrency } from "@/lib/utils/currency"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Wrench, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
@@ -7,18 +9,17 @@ import { es } from "date-fns/locale"
 
 export async function RepairMetricsPanel({ companyId }: { companyId: string }) {
   const metrics = await getRepairMetrics(companyId)
+  const settings = await getCompanySettings()
 
   if (!metrics) {
     return null // No mostrar nada si no tiene acceso
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: metrics.currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
+    if (!settings) {
+      return `$${amount.toFixed(2)}`
+    }
+    return formatCompanyCurrency(amount, settings)
   }
 
   const formatDate = (dateString: string) => {

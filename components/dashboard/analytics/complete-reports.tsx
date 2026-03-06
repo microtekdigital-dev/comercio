@@ -6,6 +6,9 @@ import {
   getPredictiveAnalytics,
   executeCustomReport,
 } from "@/lib/actions/analytics";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import type { CompanySettings } from "@/lib/types/erp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -51,10 +54,17 @@ export function CompleteReports() {
   const [customReportData, setCustomReportData] = useState<any[]>([]);
   const [forecastDays, setForecastDays] = useState("30");
   const [customDataSource, setCustomDataSource] = useState<"sales" | "products" | "customers">("sales");
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
 
   useEffect(() => {
+    loadSettings();
     loadData();
   }, []);
+
+  const loadSettings = async () => {
+    const data = await getCompanySettings();
+    setSettings(data);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -108,11 +118,10 @@ export function CompleteReports() {
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(value);
+    if (!settings) {
+      return `$${value.toFixed(2)}`;
+    }
+    return formatCompanyCurrency(value, settings);
   };
 
   const formatDate = (dateString: string) => {

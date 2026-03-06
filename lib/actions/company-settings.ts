@@ -150,9 +150,9 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
     if (!profile?.company_id) return null;
 
     const { data: settings, error } = await supabase
-      .from("company_settings")
+      .from("companies")
       .select("*")
-      .eq("company_id", profile.company_id)
+      .eq("id", profile.company_id)
       .single();
 
     if (error) throw error;

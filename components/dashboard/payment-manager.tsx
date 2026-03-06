@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import type { CompanySettings } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +44,7 @@ export function PaymentManager({ sale, onPaymentAdded, onAddPayment }: PaymentMa
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [amountReceived, setAmountReceived] = useState<number>(0);
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [formData, setFormData] = useState({
     amount: 0,
     paymentMethod: "efectivo",
@@ -48,6 +52,15 @@ export function PaymentManager({ sale, onPaymentAdded, onAddPayment }: PaymentMa
     referenceNumber: "",
     notes: "",
   });
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    const data = await getCompanySettings();
+    setSettings(data);
+  };
 
   // Cuando se abre el diálogo, establecer el monto al saldo pendiente
   const handleDialogOpen = (open: boolean) => {
@@ -64,11 +77,10 @@ export function PaymentManager({ sale, onPaymentAdded, onAddPayment }: PaymentMa
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: sale.currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
+    if (!settings) {
+      return `$${amount.toFixed(2)}`;
+    }
+    return formatCompanyCurrency(amount, settings);
   };
 
   const formatDate = (dateString: string) => {

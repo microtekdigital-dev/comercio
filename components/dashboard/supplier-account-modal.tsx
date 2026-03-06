@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { getSupplierAccountMovements, getSupplierBalance, addGeneralSupplierPayment } from "@/lib/actions/suppliers";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import type { AccountMovement } from "@/lib/actions/suppliers";
+import type { CompanySettings } from "@/lib/types/erp";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +51,7 @@ export function SupplierAccountModal({
 }: SupplierAccountModalProps) {
   const [movements, setMovements] = useState<AccountMovement[]>([]);
   const [balance, setBalance] = useState(0);
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -63,9 +67,15 @@ export function SupplierAccountModal({
 
   useEffect(() => {
     if (open) {
+      loadSettings();
       loadData();
     }
   }, [open, supplierId]);
+
+  const loadSettings = async () => {
+    const data = await getCompanySettings();
+    setSettings(data);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -81,6 +91,13 @@ export function SupplierAccountModal({
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (!settings) {
+      return `$${amount.toFixed(2)}`;
+    }
+    return formatCompanyCurrency(amount, settings);
   };
 
   const handleSubmitPayment = async (e: React.FormEvent) => {
@@ -154,7 +171,7 @@ export function SupplierAccountModal({
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Saldo Actual:</span>
             <span className={`text-2xl font-bold ${balance > 0 ? 'text-red-600' : balance < 0 ? 'text-green-600' : ''}`}>
-              ${balance.toFixed(2)}
+              {formatCurrency(balance)}
             </span>
           </div>
           {balance > 0 && (
@@ -297,13 +314,13 @@ export function SupplierAccountModal({
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {movement.debit > 0 ? `$${movement.debit.toFixed(2)}` : '-'}
+                      {movement.debit > 0 ? formatCurrency(movement.debit) : '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      {movement.credit > 0 ? `$${movement.credit.toFixed(2)}` : '-'}
+                      {movement.credit > 0 ? formatCurrency(movement.credit) : '-'}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      ${movement.balance.toFixed(2)}
+                      {formatCurrency(movement.balance)}
                     </TableCell>
                   </TableRow>
                 ))}

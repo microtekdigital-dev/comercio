@@ -6,7 +6,9 @@ import { createPurchaseOrder } from "@/lib/actions/purchase-orders";
 import { getSuppliers } from "@/lib/actions/suppliers";
 import { getProducts, getProductsBySupplier } from "@/lib/actions/products";
 import { getProductVariants } from "@/lib/actions/product-variants";
-import type { PurchaseOrderFormData, PurchaseOrderItemFormData, Supplier, Product, ProductVariant } from "@/lib/types/erp";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import type { PurchaseOrderFormData, PurchaseOrderItemFormData, Supplier, Product, ProductVariant, CompanySettings } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +41,7 @@ export default function NewPurchaseOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [productVariants, setProductVariants] = useState<Record<string, ProductVariant[]>>({});
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [formData, setFormData] = useState<PurchaseOrderFormData>({
     supplier_id: "",
     order_date: new Date().toISOString().split("T")[0],
@@ -58,12 +61,14 @@ export default function NewPurchaseOrderPage() {
   }, [formData.supplier_id, products]);
 
   const loadData = async () => {
-    const [suppliersData, productsData] = await Promise.all([
+    const [suppliersData, productsData, settingsData] = await Promise.all([
       getSuppliers({ status: "active" }),
       getProducts({ isActive: true }),
+      getCompanySettings(),
     ]);
     setSuppliers(suppliersData);
     setProducts(productsData);
+    setSettings(settingsData);
   };
 
   const filterProductsBySupplier = async () => {
@@ -252,14 +257,6 @@ export default function NewPurchaseOrderPage() {
         return;
       }
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(value);
   };
 
   const totals = calculateTotals();
@@ -544,7 +541,7 @@ export default function NewPurchaseOrderPage() {
                             />
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(calculateItemTotal(item))}
+                            {settings ? formatCompanyCurrency(calculateItemTotal(item), settings) : `$${calculateItemTotal(item).toFixed(2)}`}
                           </TableCell>
                           <TableCell>
                             <Button
@@ -573,15 +570,15 @@ export default function NewPurchaseOrderPage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
+                  <span className="font-medium">{settings ? formatCompanyCurrency(totals.subtotal, settings) : `$${totals.subtotal.toFixed(2)}`}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>IVA:</span>
-                  <span className="font-medium">{formatCurrency(totals.tax)}</span>
+                  <span className="font-medium">{settings ? formatCompanyCurrency(totals.tax, settings) : `$${totals.tax.toFixed(2)}`}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span>{formatCurrency(totals.total)}</span>
+                  <span>{settings ? formatCompanyCurrency(totals.total, settings) : `$${totals.total.toFixed(2)}`}</span>
                 </div>
               </div>
             </CardContent>

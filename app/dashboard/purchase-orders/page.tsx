@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { getPurchaseOrders } from "@/lib/actions/purchase-orders";
 import { getSuppliers } from "@/lib/actions/suppliers";
-import type { PurchaseOrder, Supplier } from "@/lib/types/erp";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import type { PurchaseOrder, Supplier, CompanySettings } from "@/lib/types/erp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +32,7 @@ import Link from "next/link";
 export default function PurchaseOrdersPage() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -40,6 +43,7 @@ export default function PurchaseOrdersPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
+    loadSettings();
     loadSuppliers();
     loadOrders();
   }, []);
@@ -47,6 +51,11 @@ export default function PurchaseOrdersPage() {
   useEffect(() => {
     loadOrders();
   }, [search, statusFilter, paymentStatusFilter, supplierFilter, dateFrom, dateTo]);
+
+  const loadSettings = async () => {
+    const data = await getCompanySettings();
+    setSettings(data);
+  };
 
   const loadSuppliers = async () => {
     const data = await getSuppliers();
@@ -77,14 +86,6 @@ export default function PurchaseOrdersPage() {
   };
 
   const hasActiveFilters = search || statusFilter || paymentStatusFilter || supplierFilter || dateFrom || dateTo;
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-AR");
@@ -319,7 +320,7 @@ export default function PurchaseOrdersPage() {
                     <TableCell>{order.supplier?.name}</TableCell>
                     <TableCell>{formatDate(order.order_date)}</TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(order.total)}
+                      {settings ? formatCompanyCurrency(order.total, settings) : `$${order.total.toFixed(2)}`}
                     </TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
                     <TableCell>{getPaymentStatusBadge(order.payment_status)}</TableCell>
@@ -361,7 +362,7 @@ export default function PurchaseOrdersPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">Total</p>
-                      <p className="font-bold">{formatCurrency(order.total)}</p>
+                      <p className="font-bold">{settings ? formatCompanyCurrency(order.total, settings) : `$${order.total.toFixed(2)}`}</p>
                     </div>
                   </div>
 

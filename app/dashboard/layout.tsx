@@ -54,10 +54,11 @@ export default async function DashboardLayout({
       
       console.log("[DashboardLayout] Period end date:", periodEnd)
       console.log("[DashboardLayout] Current date:", now)
-      console.log("[DashboardLayout] Is expired:", periodEnd ? periodEnd < now : "NO DATE")
+      console.log("[DashboardLayout] Is expired:", periodEnd ? periodEnd <= now : "NO DATE")
       
       // If subscription is active but period has ended, mark as expired
-      if (subscription.status === "active" && periodEnd && periodEnd < now) {
+      // Use <= to block at the exact moment, not before
+      if (subscription.status === "active" && periodEnd && periodEnd <= now) {
         subscriptionStatus = "expired"
         console.log("[DashboardLayout] Subscription marked as EXPIRED")
       } else {

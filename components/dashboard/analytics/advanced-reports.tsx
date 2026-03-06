@@ -10,6 +10,9 @@ import {
   getSupplierPerformance,
   getPurchaseOrderAnalytics,
 } from "@/lib/actions/analytics";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
+import type { CompanySettings } from "@/lib/types/erp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -58,10 +61,17 @@ export function AdvancedReports({
   const [inventoryTurnover, setInventoryTurnover] = useState<any[]>([]);
   const [supplierPerformance, setSupplierPerformance] = useState<any[]>([]);
   const [purchaseOrderStats, setPurchaseOrderStats] = useState<any>(null);
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
 
   useEffect(() => {
+    loadSettings();
     loadData();
   }, []);
+
+  const loadSettings = async () => {
+    const data = await getCompanySettings();
+    setSettings(data);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -105,11 +115,10 @@ export function AdvancedReports({
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(value);
+    if (!settings) {
+      return `$${value.toFixed(2)}`;
+    }
+    return formatCompanyCurrency(value, settings);
   };
 
   if (loading) {
