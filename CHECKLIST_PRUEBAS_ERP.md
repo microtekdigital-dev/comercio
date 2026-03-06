@@ -1,31 +1,31 @@
 # Checklist de Pruebas del ERP
 
 ## 1. Autenticación y Usuarios
-- [ ] Registro de nuevo usuario
-- [ ] Login con credenciales correctas
-- [ ] Login con credenciales incorrectas (debe fallar)
+- [X] Registro de nuevo usuario
+- [X] Login con credenciales correctas
+- [X] Login con credenciales incorrectas (debe fallar)
 - [ ] Recuperación de contraseña
-- [ ] Logout
+- [X] Logout
 
 ## 2. Gestión de Productos
-- [ ] Crear producto sin variantes
-- [ ] Crear producto con variantes (remeras/pantalones)
-- [ ] Editar producto existente
-- [ ] Cambiar precio de producto (verificar historial de precios)
+- [X] Crear producto sin variantes
+- [X] Crear producto con variantes (remeras/pantalones)
+- [X] Editar producto existente
+- [X] Cambiar precio de producto (verificar historial de precios)
 - [ ] Ajustar stock manualmente
 - [ ] Verificar alerta de stock bajo
 - [ ] Eliminar/desactivar producto
 
 ## 3. Gestión de Clientes
-- [ ] Crear nuevo cliente
-- [ ] Editar cliente existente
-- [ ] Ver cuenta corriente del cliente
+- [X] Crear nuevo cliente
+- [X] Editar cliente existente
+- [X] Ver cuenta corriente del cliente
 - [ ] Registrar pago de cliente
 - [ ] Verificar saldo actualizado
 
 ## 4. Gestión de Proveedores
-- [ ] Crear nuevo proveedor
-- [ ] Editar proveedor existente
+- [X] Crear nuevo proveedor
+- [X] Editar proveedor existente
 - [ ] Ver cuenta corriente del proveedor
 - [ ] Registrar pago a proveedor
 - [ ] Verificar saldo actualizado

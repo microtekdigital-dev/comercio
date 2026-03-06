@@ -1,3 +1,4 @@
+
 -- Fix: Create trigger to handle new user registration
 -- This trigger creates the company and profile when a new user signs up
 

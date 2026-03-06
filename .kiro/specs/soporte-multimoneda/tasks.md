@@ -13,7 +13,7 @@ Este plan implementa el soporte multimoneda en el ERP SaaS siguiendo un enfoque 
   - _Requirements: 13.1, 13.2, 13.3, 12.2, 12.3_
 
 - [ ] 2. Implementar utilidad de formateo de moneda
-  - [ ] 2.1 Crear archivo lib/utils/currency.ts con constantes y funciones
+  - [x] 2.1 Crear archivo lib/utils/currency.ts con constantes y funciones
     - Definir SUPPORTED_CURRENCIES con las 9 monedas
     - Implementar formatCurrency() con soporte para posición before/after
     - Implementar formatCompanyCurrency() que usa settings de empresa
