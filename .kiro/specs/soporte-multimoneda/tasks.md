@@ -47,8 +47,8 @@ Este plan implementa el soporte multimoneda en el ERP SaaS siguiendo un enfoque 
     - **Property 9: Currency data completeness**
     - **Validates: Requirements 2.2, 2.3**
 
-- [ ] 3. Actualizar server actions para configuración de moneda
-  - [ ] 3.1 Actualizar lib/actions/company-settings.ts
+- [x] 3. Actualizar server actions para configuración de moneda
+  - [x] 3.1 Actualizar lib/actions/company-settings.ts
     - Agregar validación de currency_code contra SUPPORTED_CURRENCIES
     - Agregar validación de currency_position (before/after)
     - Actualizar función updateCompanySettings para aceptar campos de moneda
@@ -75,8 +75,8 @@ Este plan implementa el soporte multimoneda en el ERP SaaS siguiendo un enfoque 
 - [ ] 4. Checkpoint - Verificar infraestructura base
   - Asegurar que todos los tests pasan, preguntar al usuario si surgen dudas.
 
-- [ ] 5. Crear componente selector de moneda
-  - [ ] 5.1 Crear components/dashboard/currency-selector.tsx
+- [x] 5. Crear componente selector de moneda
+  - [x] 5.1 Crear components/dashboard/currency-selector.tsx
     - Implementar selector con lista de SUPPORTED_CURRENCIES
     - Mostrar código, nombre y símbolo de cada moneda
     - Callback onChange con code, symbol y position
@@ -91,7 +91,7 @@ Este plan implementa el soporte multimoneda en el ERP SaaS siguiendo un enfoque 
     - **Property 1: Currency selection autocomplete**
     - **Validates: Requirements 1.2**
 
-- [ ] 6. Actualizar UI de configuración de empresa
+- [x] 6. Actualizar UI de configuración de empresa
   - Actualizar components/dashboard/company-settings-advanced.tsx
   - Agregar sección "Configuración de Moneda" en pestaña Facturación
   - Integrar CurrencySelector
