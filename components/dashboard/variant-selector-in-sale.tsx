@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import type { ProductVariant } from "@/lib/types/erp";
 
 interface VariantSelectorInSaleProps {
@@ -16,6 +17,9 @@ interface VariantSelectorInSaleProps {
   variants: ProductVariant[];
   onSelect: (variant: ProductVariant) => void;
   selectedVariantId?: string;
+  productPrice: number;
+  currencySymbol: string;
+  currencyPosition: 'before' | 'after';
 }
 
 export function VariantSelectorInSale({
@@ -23,6 +27,9 @@ export function VariantSelectorInSale({
   variants,
   onSelect,
   selectedVariantId,
+  productPrice,
+  currencySymbol,
+  currencyPosition,
 }: VariantSelectorInSaleProps) {
   // Filtrar solo variantes con stock disponible
   const availableVariants = variants.filter(
@@ -34,6 +41,13 @@ export function VariantSelectorInSale({
     if (variant) {
       onSelect(variant);
     }
+  };
+
+  const formatPrice = (amount: number) => {
+    return formatCompanyCurrency(amount, {
+      currency_symbol: currencySymbol,
+      currency_position: currencyPosition,
+    });
   };
 
   if (availableVariants.length === 0) {
@@ -76,6 +90,9 @@ export function VariantSelectorInSale({
           </Badge>
           <span className="text-muted-foreground">
             Stock: {variants.find((v) => v.id === selectedVariantId)?.stock_quantity || 0} unidades
+          </span>
+          <span className="font-semibold">
+            {formatPrice(productPrice)}
           </span>
         </div>
       )}

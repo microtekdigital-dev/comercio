@@ -39,13 +39,17 @@ interface VariantStockTableProps {
   onChange: (variants: ProductVariantFormData[]) => void
   variantType: VariantType
   readOnly?: boolean
+  currencySymbol?: string
+  currencyPosition?: 'before' | 'after'
 }
 
 export const VariantStockTable = memo(function VariantStockTable({
   variants,
   onChange,
   variantType,
-  readOnly = false
+  readOnly = false,
+  currencySymbol = '$',
+  currencyPosition = 'before'
 }: VariantStockTableProps) {
   const [localVariants, setLocalVariants] = useState<ProductVariantFormData[]>(variants)
   const [errors, setErrors] = useState<string[]>([])

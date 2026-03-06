@@ -99,14 +99,14 @@ Este plan implementa el soporte multimoneda en el ERP SaaS siguiendo un enfoque 
   - Actualizar formData para incluir currency_code, currency_symbol, currency_position
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 7. Actualizar módulo de Productos
-  - [ ] 7.1 Actualizar componentes de lista y detalle de productos
+- [x] 7. Actualizar módulo de Productos
+  - [x] 7.1 Actualizar componentes de lista y detalle de productos
     - Importar formatCompanyCurrency en componentes de productos
     - Aplicar formato a price y cost en tablas y cards
     - Aplicar formato en formularios de edición
     - _Requirements: 4.1, 4.2, 4.3_
   
-  - [ ] 7.2 Actualizar componentes de variantes
+  - [x] 7.2 Actualizar componentes de variantes
     - Aplicar formato a precios de variantes en variant-stock-table.tsx
     - Aplicar formato en variant-selector-in-sale.tsx
     - _Requirements: 4.4_

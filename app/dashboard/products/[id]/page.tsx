@@ -8,6 +8,8 @@ import { getSuppliers } from "@/lib/actions/suppliers";
 import { getProductStockHistory } from "@/lib/actions/stock-movements";
 import { getProductPriceHistory } from "@/lib/actions/price-changes";
 import { getUserPermissions } from "@/lib/utils/permissions";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +59,8 @@ export default function ProductDetailPage() {
   const [canDelete, setCanDelete] = useState(false);
   const [variantType, setVariantType] = useState<VariantType>('none');
   const [variants, setVariants] = useState<ProductVariantFormData[]>([]);
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [currencyPosition, setCurrencyPosition] = useState<'before' | 'after'>('before');
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
@@ -81,7 +85,16 @@ export default function ProductDetailPage() {
   useEffect(() => {
     loadData();
     checkPermissions();
+    loadCurrencySettings();
   }, []);
+
+  const loadCurrencySettings = async () => {
+    const settings = await getCompanySettings();
+    if (settings) {
+      setCurrencySymbol(settings.currency_symbol);
+      setCurrencyPosition(settings.currency_position);
+    }
+  };
 
   const checkPermissions = async () => {
     const permissions = await getUserPermissions();
@@ -531,33 +544,55 @@ export default function ProductDetailPage() {
                 <Label htmlFor="price">
                   Precio de Venta <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  disabled={!canEdit}
-                  value={formData.price}
-                  onChange={(e) =>
-                    setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
-                  }
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    {currencySymbol}
+                  </span>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    disabled={!canEdit}
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                    }
+                    className={currencyPosition === 'before' ? 'pl-8' : 'pr-8'}
+                  />
+                  {currencyPosition === 'after' && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      {currencySymbol}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="cost">Costo</Label>
-                <Input
-                  id="cost"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  disabled={!canEdit}
-                  value={formData.cost}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })
-                  }
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    {currencySymbol}
+                  </span>
+                  <Input
+                    id="cost"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    disabled={!canEdit}
+                    value={formData.cost}
+                    onChange={(e) =>
+                      setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })
+                    }
+                    className={currencyPosition === 'before' ? 'pl-8' : 'pr-8'}
+                  />
+                  {currencyPosition === 'after' && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      {currencySymbol}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

@@ -6,6 +6,8 @@ import { getCategories } from "@/lib/actions/categories";
 import { getUserPermissions } from "@/lib/utils/permissions";
 import { canExportToExcel } from "@/lib/utils/plan-limits";
 import { createClient } from "@/lib/supabase/client";
+import { getCompanySettings } from "@/lib/actions/company-settings";
+import { formatCompanyCurrency } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,13 +51,24 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [currencyPosition, setCurrencyPosition] = useState<'before' | 'after'>('before');
 
   useEffect(() => {
     loadCategories();
     loadProducts();
     checkPermissions();
     checkExportPermissions();
+    loadCurrencySettings();
   }, []);
+
+  const loadCurrencySettings = async () => {
+    const settings = await getCompanySettings();
+    if (settings) {
+      setCurrencySymbol(settings.currency_symbol);
+      setCurrencyPosition(settings.currency_position);
+    }
+  };
 
   const checkPermissions = async () => {
     const permissions = await getUserPermissions();
@@ -111,11 +124,11 @@ export default function ProductsPage() {
 
   const hasActiveFilters = search || categoryFilter || typeFilter || lowStockFilter || activeFilter !== undefined;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-    }).format(amount);
+  const formatPrice = (amount: number) => {
+    return formatCompanyCurrency(amount, {
+      currency_symbol: currencySymbol,
+      currency_position: currencyPosition,
+    });
   };
 
   const isLowStock = (product: Product) => {
@@ -456,7 +469,7 @@ export default function ProductsPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <p className="text-lg md:text-xl font-bold">
-                            {formatCurrency(product.price)}
+                            {formatPrice(product.price)}
                           </p>
                           <Badge variant={product.type === "product" ? "default" : "secondary"}>
                             {product.type === "product" ? "Producto" : "Servicio"}
