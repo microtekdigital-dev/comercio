@@ -203,14 +203,14 @@ export async function updateCurrencySettings(data: {
 
     // Actualizar configuración de moneda
     const { error: updateError } = await supabase
-      .from("company_settings")
+      .from("companies")
       .update({
         currency_code: data.currency_code,
         currency_symbol: data.currency_symbol,
         currency_position: data.currency_position,
         updated_at: new Date().toISOString(),
       })
-      .eq("company_id", profile.company_id);
+      .eq("id", profile.company_id);
 
     if (updateError) throw updateError;
 
@@ -261,12 +261,12 @@ export async function updateCompanySettings(data: Partial<CompanySettings>): Pro
 
     // Actualizar configuración
     const { error: updateError } = await supabase
-      .from("company_settings")
+      .from("companies")
       .update({
         ...data,
         updated_at: new Date().toISOString(),
       })
-      .eq("company_id", profile.company_id);
+      .eq("id", profile.company_id);
 
     if (updateError) throw updateError;
 

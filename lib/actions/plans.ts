@@ -297,13 +297,14 @@ export async function getCompanySubscription(companyId: string): Promise<Subscri
       await ensureCompanyUserMembership(supabase, user.id, companyId, null);
     }
 
-    // CRITICAL FIX: Include ALL subscription statuses (active, pending, cancelled)
-    // This allows SubscriptionGuard to properly block access when subscription is cancelled
+    // CRITICAL FIX: Only fetch active or pending subscriptions
+    // This prevents cancelled subscriptions from blocking access
     // Use admin client to bypass RLS
     const { data, error } = await adminClient
       .from("subscriptions")
       .select("*, plan:plans(*)")
       .eq("company_id", companyId)
+      .in("status", ["active", "pending"])
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
