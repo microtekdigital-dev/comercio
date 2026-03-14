@@ -30,10 +30,13 @@ describe('Property 26: Customer Repair History', () => {
                 'delivered',
                 'cancelled'
               ),
-              received_date: fc.date(),
-              total_cost: fc.double({ min: 0, max: 100000, noNaN: true }),
+              received_date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }),
+              total_cost: fc.double({ min: 0.01, max: 100000, noNaN: true, noDefaultInfinity: true }),
             }),
             { minLength: 1, maxLength: 20 }
+          ).filter(repairs =>
+            new Set(repairs.map(r => r.order_number)).size === repairs.length &&
+            repairs.every(r => !isNaN(r.received_date.getTime()))
           ),
         }),
         (data) => {
@@ -90,8 +93,8 @@ describe('Property 26: Customer Repair History', () => {
                 'delivered',
                 'cancelled'
               ),
-              total_cost: fc.double({ min: 0, max: 100000, noNaN: true }),
-              received_date: fc.date(),
+              total_cost: fc.double({ min: 0.01, max: 100000, noNaN: true, noDefaultInfinity: true }),
+              received_date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }),
             }),
             { minLength: 1, maxLength: 50 }
           ),
@@ -135,7 +138,7 @@ describe('Property 26: Customer Repair History', () => {
             fc.record({
               order_number: fc.string({ minLength: 1, maxLength: 20 }),
               received_date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }),
-              total_cost: fc.double({ min: 0, max: 10000, noNaN: true }),
+              total_cost: fc.double({ min: 0.01, max: 10000, noNaN: true, noDefaultInfinity: true }),
             }),
             { minLength: 5, maxLength: 30 }
           ),

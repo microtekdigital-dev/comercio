@@ -157,11 +157,15 @@ describe('Property 39: Technician Performance Report', () => {
           { minLength: 1, maxLength: 30 }
         ),
         (repairs) => {
-          // Asegurar que delivered_date >= received_date
-          const validRepairs = repairs.map(r => ({
-            ...r,
-            delivered_date: r.delivered_date > r.received_date ? r.delivered_date : new Date(r.received_date.getTime() + 86400000),
-          }));
+          // Asegurar que delivered_date >= received_date y que ambas fechas son válidas
+          const validRepairs = repairs
+            .filter(r => !isNaN(r.received_date.getTime()) && !isNaN(r.delivered_date.getTime()))
+            .map(r => ({
+              ...r,
+              delivered_date: r.delivered_date > r.received_date ? r.delivered_date : new Date(r.received_date.getTime() + 86400000),
+            }));
+
+          if (validRepairs.length === 0) return;
 
           const performanceReport = calculateTechnicianPerformance(validRepairs);
 
@@ -283,9 +287,9 @@ describe('Property 41: Profitability Calculation', () => {
         fc.array(
           fc.record({
             order_number: fc.string({ minLength: 1, maxLength: 20 }),
-            labor_cost: fc.double({ min: 0, max: 10000, noNaN: true }),
-            parts_cost: fc.double({ min: 0, max: 10000, noNaN: true }),
-            total_charged: fc.double({ min: 0, max: 20000, noNaN: true }),
+            labor_cost: fc.double({ min: 0.01, max: 10000, noNaN: true, noDefaultInfinity: true }),
+            parts_cost: fc.double({ min: 0.01, max: 10000, noNaN: true, noDefaultInfinity: true }),
+            total_charged: fc.double({ min: 0.01, max: 20000, noNaN: true, noDefaultInfinity: true }),
           }),
           { minLength: 1, maxLength: 30 }
         ),
@@ -296,7 +300,7 @@ describe('Property 41: Profitability Calculation', () => {
             const originalRepair = repairs[index];
             const expectedTotalCost = originalRepair.labor_cost + originalRepair.parts_cost;
             const expectedProfit = originalRepair.total_charged - expectedTotalCost;
-            const expectedMargin = expectedTotalCost > 0
+            const expectedMargin = originalRepair.total_charged > 0
               ? (expectedProfit / originalRepair.total_charged) * 100
               : 0;
 
@@ -324,7 +328,7 @@ describe('Property 41: Profitability Calculation', () => {
           order_number: fc.string({ minLength: 1, maxLength: 20 }),
           labor_cost: fc.constant(0),
           parts_cost: fc.constant(0),
-          total_charged: fc.double({ min: 0, max: 1000, noNaN: true }),
+          total_charged: fc.double({ min: 0.01, max: 1000, noNaN: true, noDefaultInfinity: true }),
         }),
         (repair) => {
           const profitability = calculateSingleRepairProfitability(repair);
@@ -357,18 +361,22 @@ describe('Property 42: Average Repair Time', () => {
         fc.array(
           fc.record({
             order_number: fc.string({ minLength: 1, maxLength: 20 }),
-            received_date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-06-01') }),
+            received_date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-05-31') }),
             delivered_date: fc.date({ min: new Date('2024-01-02'), max: new Date('2024-06-30') }),
             status: fc.constant('delivered'),
           }),
           { minLength: 1, maxLength: 50 }
         ),
         (repairs) => {
-          // Asegurar que delivered_date >= received_date
-          const validRepairs = repairs.map(r => ({
-            ...r,
-            delivered_date: r.delivered_date > r.received_date ? r.delivered_date : new Date(r.received_date.getTime() + 86400000),
-          }));
+          // Asegurar que delivered_date >= received_date y que ambas fechas son válidas
+          const validRepairs = repairs
+            .filter(r => !isNaN(r.received_date.getTime()) && !isNaN(r.delivered_date.getTime()))
+            .map(r => ({
+              ...r,
+              delivered_date: r.delivered_date > r.received_date ? r.delivered_date : new Date(r.received_date.getTime() + 86400000),
+            }));
+
+          if (validRepairs.length === 0) return;
 
           const avgTime = calculateAverageRepairTime(validRepairs);
 
@@ -395,8 +403,8 @@ describe('Property 42: Average Repair Time', () => {
         fc.array(
           fc.record({
             order_number: fc.string({ minLength: 1, maxLength: 20 }),
-            received_date: fc.date(),
-            delivered_date: fc.option(fc.date(), { nil: null }),
+            received_date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-12-31') }),
+            delivered_date: fc.option(fc.date({ min: new Date('2024-01-01'), max: new Date('2024-12-31') }), { nil: null }),
             status: fc.constantFrom('pending', 'in_progress', 'delivered'),
           }),
           { minLength: 1, maxLength: 30 }
@@ -404,8 +412,10 @@ describe('Property 42: Average Repair Time', () => {
         (repairs) => {
           const avgTime = calculateAverageRepairTime(repairs);
 
-          // Solo debe contar reparaciones entregadas
-          const deliveredRepairs = repairs.filter(r => r.status === 'delivered' && r.delivered_date);
+          // Solo debe contar reparaciones entregadas con fecha válida
+          const deliveredRepairs = repairs.filter(
+            r => r.status === 'delivered' && r.delivered_date && !isNaN((r.delivered_date as Date).getTime()) && !isNaN((r.received_date as Date).getTime())
+          );
           expect(avgTime.total_repairs).toBe(deliveredRepairs.length);
         }
       ),

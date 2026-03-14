@@ -1,6 +1,22 @@
 import { CompanySettings } from '@/lib/types/erp';
 
 /**
+ * Configuración de moneda para formateo
+ */
+export interface CurrencySettings {
+  currency_symbol: string;
+  currency_position: 'before' | 'after';
+  currency_code?: string;
+}
+
+/** Configuración de moneda por defecto */
+const DEFAULT_CURRENCY_SETTINGS: CurrencySettings = {
+  currency_symbol: '$',
+  currency_position: 'before',
+  currency_code: 'ARS',
+};
+
+/**
  * Monedas soportadas por el sistema
  */
 export const SUPPORTED_CURRENCIES = {
@@ -32,65 +48,94 @@ export interface FormatCurrencyOptions {
 }
 
 /**
- * Formatea un monto numérico con el símbolo de moneda configurado
- * 
+ * Formatea un monto numérico con el símbolo de moneda configurado.
+ * Acepta CurrencySettings (nueva API) o FormatCurrencyOptions (API legacy).
+ *
  * @param amount - Monto a formatear
- * @param options - Configuración de formato de moneda
+ * @param settings - Configuración de moneda (opcional, usa '$' antes por defecto)
  * @returns String formateado con símbolo de moneda
+ *
+ * @example
+ * formatCurrency(1234.5)                                          // "$1.234,50"
+ * formatCurrency(1234.5, { currency_symbol: '€', currency_position: 'after' }) // "1.234,50€"
  */
 export function formatCurrency(
   amount: number | null | undefined,
-  options: FormatCurrencyOptions
+  settings?: CurrencySettings | FormatCurrencyOptions
 ): string {
-  // Manejar valores nulos o indefinidos
   const safeAmount = amount ?? 0;
-  
-  // Formatear número con separadores de miles y decimales
-  const decimals = options.decimals ?? 2;
-  const locale = options.locale ?? 'es-AR';
-  
+
+  // Normalizar a FormatCurrencyOptions independientemente del tipo recibido
+  let symbol: string;
+  let position: 'before' | 'after';
+  let decimals: number;
+  let locale: string;
+
+  if (!settings) {
+    symbol = DEFAULT_CURRENCY_SETTINGS.currency_symbol;
+    position = DEFAULT_CURRENCY_SETTINGS.currency_position;
+    decimals = 2;
+    locale = 'es-AR';
+  } else if ('currency_symbol' in settings) {
+    // CurrencySettings
+    symbol = settings.currency_symbol;
+    position = settings.currency_position;
+    decimals = 2;
+    locale = 'es-AR';
+  } else {
+    // FormatCurrencyOptions (legacy)
+    symbol = settings.currencySymbol;
+    position = settings.currencyPosition;
+    decimals = settings.decimals ?? 2;
+    locale = settings.locale ?? 'es-AR';
+  }
+
   const formattedNumber = new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(safeAmount);
-  
-  // Aplicar símbolo según posición configurada
-  if (options.currencyPosition === 'before') {
-    return `${options.currencySymbol}${formattedNumber}`;
-  } else {
-    return `${formattedNumber}${options.currencySymbol}`;
-  }
+
+  return position === 'before'
+    ? `${symbol}${formattedNumber}`
+    : `${formattedNumber}${symbol}`;
+}
+
+/**
+ * Convierte CompanySettings a CurrencySettings
+ */
+export function toCurrencySettings(
+  settings: Pick<CompanySettings, 'currency_symbol' | 'currency_position' | 'currency_code'>
+): CurrencySettings {
+  return {
+    currency_symbol: settings.currency_symbol,
+    currency_position: settings.currency_position,
+    currency_code: settings.currency_code,
+  };
 }
 
 /**
  * Formatea un monto usando la configuración de la empresa
- * 
- * @param amount - Monto a formatear
- * @param settings - Configuración de la empresa
- * @returns String formateado con símbolo de moneda
  */
 export function formatCompanyCurrency(
   amount: number | null | undefined,
   settings: Pick<CompanySettings, 'currency_symbol' | 'currency_position'>
 ): string {
   return formatCurrency(amount, {
-    currencySymbol: settings.currency_symbol,
-    currencyPosition: settings.currency_position,
+    currency_symbol: settings.currency_symbol,
+    currency_position: settings.currency_position,
   });
 }
 
 /**
  * Obtiene la configuración de moneda desde los settings de la empresa
- * 
- * @param settings - Configuración completa de la empresa
- * @returns Objeto con configuración de moneda
  */
 export function getCurrencyConfig(
   settings: CompanySettings
-): FormatCurrencyOptions {
+): CurrencySettings {
   return {
-    currencySymbol: settings.currency_symbol,
-    currencyPosition: settings.currency_position,
+    currency_symbol: settings.currency_symbol,
+    currency_position: settings.currency_position,
+    currency_code: settings.currency_code,
   };
 }
 

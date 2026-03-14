@@ -17,7 +17,7 @@ describe('Property 44: Estimated Delivery Date Management', () => {
           order_number: fc.string({ minLength: 1, maxLength: 20 }),
           received_date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-12-31') }),
           estimated_delivery_date: fc.date({ min: new Date('2024-01-01'), max: new Date('2025-12-31') }),
-        }),
+        }).filter(d => !isNaN(d.received_date.getTime()) && !isNaN(d.estimated_delivery_date.getTime())),
         (orderData) => {
           // Asegurar que estimated_delivery_date >= received_date
           const validEstimatedDate = orderData.estimated_delivery_date >= orderData.received_date

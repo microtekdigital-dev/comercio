@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getSale, updateSale, addSalePayment, deleteSale } from "@/lib/actions/sales";
+import { getSale, updateSale, addSalePayment, deleteSale, hasElectronicInvoice, getElectronicInvoiceForSale } from "@/lib/actions/sales";
 import { getCompanyInfo } from "@/lib/actions/company";
 import { getCompanySettings } from "@/lib/actions/company-settings";
 import { sendInvoiceEmail } from "@/lib/actions/email";
@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Calendar, User, FileText, Save, Printer, Mail, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, User, FileText, Save, Printer, Mail, Trash2, Receipt, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -62,6 +62,8 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const [canEdit, setCanEdit] = useState(false);
   const [currencySymbol, setCurrencySymbol] = useState("$");
   const [currencyPosition, setCurrencyPosition] = useState<"before" | "after">("before");
+  const [electronicInvoice, setElectronicInvoice] = useState<any>(null);
+  const [hasEInvoice, setHasEInvoice] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -76,6 +78,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
       loadCompanyInfo();
       checkPermissions();
       loadCurrencySettings();
+      loadElectronicInvoice(resolvedParams.id);
     });
   }, []);
 
@@ -117,6 +120,18 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
         currencySymbol: settings?.currency_symbol || "$",
         currencyPosition: settings?.currency_position || "before",
       });
+    }
+  };
+
+  const loadElectronicInvoice = async (id: string) => {
+    const hasInvoiceResult = await hasElectronicInvoice(id);
+    if (hasInvoiceResult.success && hasInvoiceResult.hasInvoice) {
+      setHasEInvoice(true);
+      
+      const invoiceResult = await getElectronicInvoiceForSale(id);
+      if (invoiceResult.success && invoiceResult.invoice) {
+        setElectronicInvoice(invoiceResult.invoice);
+      }
     }
   };
 
@@ -465,6 +480,88 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           </CardContent>
         </Card>
       </div>
+
+      {/* Electronic Invoice Card */}
+      {hasEInvoice && electronicInvoice && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                <CardTitle>Factura Electrónica</CardTitle>
+              </div>
+              <Link href={`/dashboard/arca/invoices/${electronicInvoice.id}`}>
+                <Button variant="outline" size="sm">
+                  Ver Detalle
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Tipo de Comprobante</p>
+                <p className="font-medium">{electronicInvoice.invoice_type.replace(/_/g, ' ')}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Número</p>
+                <p className="font-medium">
+                  {String(electronicInvoice.point_of_sale).padStart(5, '0')}-{String(electronicInvoice.invoice_number).padStart(8, '0')}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Estado</p>
+                <Badge variant={
+                  electronicInvoice.status === 'AUTHORIZED' ? 'default' :
+                  electronicInvoice.status === 'PENDING' ? 'secondary' :
+                  electronicInvoice.status === 'REJECTED' ? 'destructive' :
+                  'outline'
+                }>
+                  {electronicInvoice.status}
+                </Badge>
+              </div>
+            </div>
+
+            {electronicInvoice.cae && (
+              <div className="pt-4 border-t">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground">CAE</p>
+                    <p className="font-mono text-sm">{electronicInvoice.cae}</p>
+                  </div>
+                  {electronicInvoice.cae_expiration_date && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Vencimiento CAE</p>
+                      <p className="text-sm">{formatDate(electronicInvoice.cae_expiration_date)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Generate Electronic Invoice Button */}
+      {!hasEInvoice && sale.status === 'completed' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Facturación Electrónica</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Esta venta no tiene una factura electrónica asociada. Puede generar una factura electrónica para cumplir con las obligaciones fiscales.
+            </p>
+            <Link href={`/dashboard/arca/invoices/new?saleId=${sale.id}`}>
+              <Button>
+                <Receipt className="mr-2 h-4 w-4" />
+                Generar Factura Electrónica
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

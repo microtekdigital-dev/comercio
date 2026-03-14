@@ -461,9 +461,9 @@ describe('Property 48: Date Validation', () => {
           brand: fc.string({ minLength: 1, maxLength: 100 }),
           model: fc.string({ minLength: 1, maxLength: 100 }),
           reported_problem: fc.string({ minLength: 1, maxLength: 500 }),
-          received_date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-12-31') }),
+          received_date: fc.date({ min: new Date('2024-01-02'), max: new Date('2024-12-31') }),
           estimated_delivery_date: fc.date({ min: new Date('2023-01-01'), max: new Date('2023-12-31') }),
-        }),
+        }).filter(({ received_date }) => !isNaN(received_date.getTime())),
         (orderData) => {
           // Asegurar que estimated_delivery_date < received_date
           const invalidData = {

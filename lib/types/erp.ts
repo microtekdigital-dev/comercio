@@ -190,6 +190,9 @@ export interface CustomerFormData {
   phone?: string;
   document_type?: string;
   document_number?: string;
+  cuit_cuil?: string; // CUIT/CUIL para facturación electrónica
+  fiscal_condition?: string; // Condición fiscal (RESPONSABLE_INSCRIPTO, CONSUMIDOR_FINAL, etc.)
+  fiscal_address?: string; // Domicilio fiscal
   address?: string;
   city?: string;
   state?: string;

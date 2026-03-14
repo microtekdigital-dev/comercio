@@ -18,6 +18,70 @@ export interface AccountMovement {
   balance: number;
 }
 
+/**
+ * Valida el formato de CUIT/CUIL (debe tener exactamente 11 dígitos)
+ */
+export async function validateCUIT(cuit: string): Promise<{ valid: boolean; error?: string }> {
+  if (!cuit) {
+    return { valid: false, error: 'CUIT/CUIL es requerido' }
+  }
+
+  // Remover guiones y espacios
+  const cleanCuit = cuit.replace(/[-\s]/g, '')
+
+  // Validar que tenga exactamente 11 dígitos
+  if (!/^\d{11}$/.test(cleanCuit)) {
+    return { 
+      valid: false, 
+      error: 'CUIT/CUIL debe tener exactamente 11 dígitos numéricos' 
+    }
+  }
+
+  return { valid: true }
+}
+
+/**
+ * Valida que los datos fiscales del cliente estén completos
+ */
+export async function validateFiscalData(formData: CustomerFormData): Promise<{ valid: boolean; error?: string }> {
+  // Si tiene CUIT/CUIL, validar formato
+  if (formData.cuit_cuil) {
+    const cuitValidation = await validateCUIT(formData.cuit_cuil)
+    if (!cuitValidation.valid) {
+      return cuitValidation
+    }
+  }
+
+  // Validar que tenga tipo de documento
+  if (!formData.document_type) {
+    return { valid: false, error: 'Tipo de documento es requerido' }
+  }
+
+  // Validar que tenga número de documento
+  if (!formData.document_number) {
+    return { valid: false, error: 'Número de documento es requerido' }
+  }
+
+  // Validar condición fiscal si está presente
+  if (formData.fiscal_condition) {
+    const validConditions = [
+      'RESPONSABLE_INSCRIPTO',
+      'CONSUMIDOR_FINAL',
+      'MONOTRIBUTISTA',
+      'EXENTO'
+    ]
+    if (!validConditions.includes(formData.fiscal_condition)) {
+      return { 
+        valid: false, 
+        error: 'Condición fiscal no válida' 
+      }
+    }
+  }
+
+  return { valid: true }
+}
+
+
 // Get all customers for a company with filters
 export async function getCustomers(filters?: {
   search?: string;
@@ -102,6 +166,12 @@ export async function createCustomer(formData: CustomerFormData) {
     // Verificar permisos
     await requirePermission("canCreateCustomers");
 
+    // Validar datos fiscales
+    const fiscalValidation = validateFiscalData(formData)
+    if (!fiscalValidation.valid) {
+      return { error: fiscalValidation.error }
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "No autenticado" };
 
@@ -142,6 +212,12 @@ export async function updateCustomer(id: string, formData: CustomerFormData) {
   try {
     // Verificar permisos
     await requirePermission("canEditCustomers");
+
+    // Validar datos fiscales
+    const fiscalValidation = validateFiscalData(formData)
+    if (!fiscalValidation.valid) {
+      return { error: fiscalValidation.error }
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "No autenticado" };

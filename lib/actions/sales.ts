@@ -526,3 +526,120 @@ export async function addSalePayment(
     return { error: "Error al registrar el pago" };
   }
 }
+
+// ============================================================================
+// Electronic Invoice Integration
+// ============================================================================
+
+/**
+ * Checks if a sale has an electronic invoice
+ * 
+ * @param saleId - Sale ID
+ * @returns True if sale has electronic invoice
+ */
+export async function hasElectronicInvoice(
+  saleId: string
+): Promise<{ success: boolean; hasInvoice?: boolean; error?: string }> {
+  const supabase = await createClient();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "No autenticado" };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return { success: false, error: "No se encontró la empresa" };
+    }
+
+    const { data, error } = await supabase
+      .from("electronic_invoices")
+      .select("id")
+      .eq("sale_id", saleId)
+      .eq("company_id", profile.company_id)
+      .limit(1);
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      hasInvoice: data && data.length > 0
+    };
+  } catch (error) {
+    console.error("Error checking electronic invoice:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido"
+    };
+  }
+}
+
+/**
+ * Gets the electronic invoice for a sale
+ * 
+ * @param saleId - Sale ID
+ * @returns Electronic invoice data
+ */
+export async function getElectronicInvoiceForSale(
+  saleId: string
+): Promise<{
+  success: boolean;
+  invoice?: any;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "No autenticado" };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return { success: false, error: "No se encontró la empresa" };
+    }
+
+    const { data, error } = await supabase
+      .from("electronic_invoices")
+      .select(`
+        *,
+        items:electronic_invoice_items(*),
+        vat_breakdown:electronic_invoice_vat_breakdown(*)
+      `)
+      .eq("sale_id", saleId)
+      .eq("company_id", profile.company_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      // If no invoice found, return success with no invoice
+      if (error.code === 'PGRST116') {
+        return {
+          success: true,
+          invoice: null
+        };
+      }
+      throw error;
+    }
+
+    return {
+      success: true,
+      invoice: data
+    };
+  } catch (error) {
+    console.error("Error fetching electronic invoice:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido"
+    };
+  }
+}

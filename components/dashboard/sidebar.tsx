@@ -44,6 +44,7 @@ import {
   Lock,
   Wrench,
   FileBarChart,
+  Monitor,
 } from "lucide-react"
 
 interface Profile {
@@ -198,6 +199,7 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
           title: "VENTAS",
           items: [
             { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+            { href: "/dashboard/pos", label: "Punto de Venta", icon: Monitor },
             { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
             { href: "/dashboard/customers", label: "Clientes", icon: Users },
           ],
@@ -257,6 +259,7 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
           title: "VENTAS",
           items: [
             { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
+            { href: "/dashboard/pos", label: "Punto de Venta", icon: Monitor },
             { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
             { href: "/dashboard/customers", label: "Clientes", icon: Users },
           ],

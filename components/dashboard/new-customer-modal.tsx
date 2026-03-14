@@ -41,6 +41,9 @@ export function NewCustomerModal({ open, onOpenChange, onCustomerCreated }: NewC
     phone: '',
     document_type: 'DNI',
     document_number: '',
+    cuit_cuil: '',
+    fiscal_condition: '',
+    fiscal_address: '',
     address: '',
     city: '',
     state: '',
@@ -86,6 +89,9 @@ export function NewCustomerModal({ open, onOpenChange, onCustomerCreated }: NewC
           phone: '',
           document_type: 'DNI',
           document_number: '',
+          cuit_cuil: '',
+          fiscal_condition: '',
+          fiscal_address: '',
           address: '',
           city: '',
           state: '',
@@ -205,6 +211,55 @@ export function NewCustomerModal({ open, onOpenChange, onCustomerCreated }: NewC
                     onChange={(e) =>
                       setFormData({ ...formData, document_number: e.target.value })
                     }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Datos Fiscales */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Datos Fiscales (para Facturación Electrónica)</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cuit_cuil">CUIT/CUIL</Label>
+                  <Input
+                    id="cuit_cuil"
+                    placeholder="20-12345678-9"
+                    value={formData.cuit_cuil}
+                    onChange={(e) => setFormData({ ...formData, cuit_cuil: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Debe tener 11 dígitos (puede incluir guiones)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fiscal_condition">Condición Fiscal</Label>
+                  <Select
+                    value={formData.fiscal_condition}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, fiscal_condition: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar condición" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RESPONSABLE_INSCRIPTO">Responsable Inscripto</SelectItem>
+                      <SelectItem value="CONSUMIDOR_FINAL">Consumidor Final</SelectItem>
+                      <SelectItem value="MONOTRIBUTISTA">Monotributista</SelectItem>
+                      <SelectItem value="EXENTO">Exento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="fiscal_address">Domicilio Fiscal</Label>
+                  <Input
+                    id="fiscal_address"
+                    placeholder="Av. Corrientes 1234, CABA"
+                    value={formData.fiscal_address}
+                    onChange={(e) => setFormData({ ...formData, fiscal_address: e.target.value })}
                   />
                 </div>
               </div>
