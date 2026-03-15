@@ -22,6 +22,7 @@ function createPublicClient() {
 export async function getCatalogoPublico(
   slug: string
 ): Promise<CatalogoPublicoData | null> {
+  console.log("[v0] getCatalogoPublico called with slug:", slug);
   try {
   const supabase = createPublicClient();
 
