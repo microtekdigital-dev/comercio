@@ -1,6 +1,12 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
-import { getCatalogoPublico } from "@/lib/actions/catalogo-publico";
+import { getCatalogoPublico as _getCatalogoPublico } from "@/lib/actions/catalogo-publico";
 import { CatalogoPublico } from "@/components/catalogo/catalogo-publico";
+
+export const revalidate = 0;
+
+// Cache per request to avoid double-fetching (page + generateMetadata)
+const getCatalogoPublico = cache(_getCatalogoPublico);
 
 interface Props {
   params: Promise<{ slug: string }>;

@@ -118,6 +118,15 @@ export async function getCatalogoPublico(
   const planName = (subscription.plans as any)?.name ?? "";
   const planTier = getPlanTier(planName);
 
+  console.log("[catalogo-publico] Returning data:", {
+    slug,
+    companyId: company.id,
+    productsCount: products.length,
+    planName,
+    planTier,
+    isActive: settings.is_active,
+  });
+
   return {
     company: {
       id: company.id,
