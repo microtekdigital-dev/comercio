@@ -93,7 +93,7 @@ export async function getCatalogoPublico(
       currency,
       image_url,
       stock_quantity,
-      product_variants(id, variant_name, price, stock_quantity, is_active)
+      product_variants(id, variant_name, stock_quantity, is_active)
     `)
     .eq("company_id", company.id)
     .eq("published", true)
@@ -108,7 +108,7 @@ export async function getCatalogoPublico(
       .map((v: any) => ({
         id: v.id,
         variant_name: v.variant_name,
-        price: v.price ?? null,
+        price: null, // price column may not exist in product_variants
         stock_quantity: v.stock_quantity ?? 0,
       }));
 
