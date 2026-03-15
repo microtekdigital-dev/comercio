@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Package } from 'lucide-react';
+import { Search, Package, ScanBarcode } from 'lucide-react';
 import { searchPOSProducts, getPOSProductsByCategory } from '@/lib/actions/pos';
 import type { POSProductSearchResult } from '@/lib/types/pos';
 import type { ProductVariant, Category } from '@/lib/types/erp';
 import { VariantSelectorModal } from './variant-selector-modal';
+import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
+import { toast } from 'sonner';
 
 interface ProductGridProps {
   onProductSelect: (product: POSProductSearchResult, variant?: ProductVariant) => void;
@@ -22,6 +24,8 @@ export function ProductGrid({ onProductSelect, categories = [] }: ProductGridPro
   const [products, setProducts] = useState<POSProductSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [variantProduct, setVariantProduct] = useState<POSProductSearchResult | null>(null);
+  const [scanFeedback, setScanFeedback] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load products by category
   const loadByCategory = useCallback(async (categoryId: string | null) => {
@@ -39,7 +43,7 @@ export function ProductGrid({ onProductSelect, categories = [] }: ProductGridPro
     loadByCategory(null);
   }, [loadByCategory]);
 
-  // Debounced search
+  // Debounced search (for manual typing)
   useEffect(() => {
     if (!searchQuery.trim()) {
       loadByCategory(selectedCategoryId);
@@ -72,10 +76,54 @@ export function ProductGrid({ onProductSelect, categories = [] }: ProductGridPro
     }
   };
 
-  const handleVariantSelect = (product: POSProductSearchResult, variant: ProductVariant) => {
-    onProductSelect(product, variant);
-    setVariantProduct(null);
+  // Immediately search and add product by barcode/query
+  const handleImmediateSearch = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    try {
+      const results = await searchPOSProducts(trimmed);
+      if (results.length === 0) {
+        toast.error(`No se encontró producto: "${trimmed}"`);
+        setScanFeedback(null);
+        return;
+      }
+      const product = results[0];
+      const activeVariants = product.variants?.filter((v) => v.is_active) ?? [];
+      if (product.has_variants && activeVariants.length > 0) {
+        // Show variant selector
+        setVariantProduct(product);
+        setProducts(results);
+      } else {
+        onProductSelect(product);
+        setScanFeedback(product.name);
+        setTimeout(() => setScanFeedback(null), 1500);
+      }
+      setSearchQuery('');
+    } catch {
+      toast.error('Error al buscar producto');
+    }
+  }, [onProductSelect]);
+
+  // Handle Enter key in the search input
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleImmediateSearch(searchQuery);
+    }
   };
+
+  // Global barcode scanner hook — fires when input is NOT focused
+  useBarcodeScanner({
+    onScan: (barcode) => {
+      // If search input is focused, let the input handle it via keydown
+      if (document.activeElement === searchInputRef.current) return;
+      // Otherwise handle globally (scanner fired while focus was elsewhere)
+      setScanFeedback(`Escaneando: ${barcode}`);
+      handleImmediateSearch(barcode);
+    },
+    enabled: true,
+  });
 
   const getStockBadge = (product: POSProductSearchResult) => {
     if (!product.track_inventory) return null;
@@ -95,12 +143,23 @@ export function ProductGrid({ onProductSelect, categories = [] }: ProductGridPro
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nombre, código..."
+          ref={searchInputRef}
+          placeholder="Buscar por nombre, código... (Enter para agregar)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 min-h-[44px]"
+          onKeyDown={handleSearchKeyDown}
+          className="pl-9 pr-9 min-h-[44px]"
         />
+        <ScanBarcode className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       </div>
+
+      {/* Scan feedback */}
+      {scanFeedback && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 border border-green-200 text-green-800 text-sm">
+          <ScanBarcode className="h-4 w-4 shrink-0" />
+          <span className="truncate">{scanFeedback}</span>
+        </div>
+      )}
 
       {/* Category filter */}
       {categories.length > 0 && (
@@ -193,4 +252,9 @@ export function ProductGrid({ onProductSelect, categories = [] }: ProductGridPro
       />
     </div>
   );
+
+  function handleVariantSelect(product: POSProductSearchResult, variant: ProductVariant) {
+    onProductSelect(product, variant);
+    setVariantProduct(null);
+  }
 }
