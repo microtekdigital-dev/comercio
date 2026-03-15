@@ -128,6 +128,13 @@ export default function CashRegisterClosureDetailPage() {
           closureId={closureId}
           closureDate={closure.closure_date}
           reportRef={reportRef}
+          closure={closure}
+          opening={opening}
+          sales={sales}
+          cashMovements={cashMovements}
+          supplierPayments={supplierPayments}
+          companyInfo={companyInfo}
+          settings={settings}
         />
       </div>
 

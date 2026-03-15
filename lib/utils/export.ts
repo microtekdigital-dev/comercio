@@ -882,3 +882,179 @@ export function printRepairsReport(repairs: any[], companyName: string = "Mi Emp
   printWindow.document.write(html);
   printWindow.document.close();
 }
+
+// PDF Export for Cash Closure Report
+export function exportCashClosureToPDF(data: {
+  closure: any;
+  opening: any;
+  sales: any[];
+  cashMovements: any[];
+  supplierPayments: any[];
+  companyInfo: { name: string; address?: string; phone?: string; email?: string; taxId?: string };
+  formatCurrency: (amount: number) => string;
+}) {
+  const { closure, opening, sales, cashMovements, supplierPayments, companyInfo, formatCurrency } = data;
+  const doc = new jsPDF();
+  let y = 14;
+
+  const addText = (text: string, x: number, size = 10, style: "normal" | "bold" = "normal") => {
+    doc.setFontSize(size);
+    doc.setFont("helvetica", style);
+    doc.text(text, x, y);
+  };
+
+  const nextLine = (gap = 6) => { y += gap; };
+
+  // Header
+  addText(companyInfo.name, 14, 16, "bold");
+  nextLine(6);
+  if (companyInfo.address) { addText(companyInfo.address, 14, 9); nextLine(5); }
+  if (companyInfo.phone) { addText(`Tel: ${companyInfo.phone}`, 14, 9); nextLine(5); }
+  if (companyInfo.taxId) { addText(`CUIT: ${companyInfo.taxId}`, 14, 9); nextLine(5); }
+
+  // Title right side
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("CIERRE DE CAJA", 196, 14, { align: "right" });
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Fecha: ${new Date(closure.closure_date).toLocaleDateString("es-AR")}`, 196, 21, { align: "right" });
+  doc.text(`Cerrado por: ${closure.closed_by_name}`, 196, 27, { align: "right" });
+  if (closure.shift) doc.text(`Turno: ${closure.shift}`, 196, 33, { align: "right" });
+
+  // Separator
+  y = Math.max(y, 40);
+  doc.setDrawColor(180);
+  doc.line(14, y, 196, y);
+  nextLine(8);
+
+  // Opening info
+  if (opening) {
+    addText("APERTURA", 14, 10, "bold");
+    nextLine(6);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Abierto por: ${opening.opened_by_name}`, 14, y);
+    doc.text(`Monto inicial: ${formatCurrency(opening.initial_cash_amount)}`, 110, y);
+    nextLine(8);
+  }
+
+  // Sales summary
+  addText("RESUMEN DE VENTAS", 14, 10, "bold");
+  nextLine(6);
+  autoTable(doc, {
+    startY: y,
+    head: [["Concepto", "Monto"]],
+    body: [
+      ["Total Ventas", formatCurrency(closure.total_sales_amount)],
+      ["Efectivo", formatCurrency(closure.cash_sales)],
+      ["Tarjeta", formatCurrency(closure.card_sales)],
+      ["Transferencia", formatCurrency(closure.transfer_sales)],
+      ...(closure.other_sales > 0 ? [["Otros", formatCurrency(closure.other_sales)]] : []),
+    ],
+    theme: "grid",
+    headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+    styles: { fontSize: 8 },
+    columnStyles: { 1: { halign: "right" } },
+    margin: { left: 14, right: 14 },
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  // Supplier payments
+  if (closure.supplier_payments_total > 0) {
+    addText("PAGOS A PROVEEDORES", 14, 10, "bold");
+    nextLine(6);
+    autoTable(doc, {
+      startY: y,
+      head: [["Concepto", "Monto"]],
+      body: [
+        ["Total Pagos", formatCurrency(closure.supplier_payments_total)],
+        ["Efectivo", formatCurrency(closure.supplier_payments_cash)],
+        ["Tarjeta", formatCurrency(closure.supplier_payments_card || 0)],
+        ["Transferencia", formatCurrency(closure.supplier_payments_transfer || 0)],
+      ],
+      theme: "grid",
+      headStyles: { fillColor: [100, 116, 139], fontSize: 8 },
+      styles: { fontSize: 8 },
+      columnStyles: { 1: { halign: "right" } },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  // Sales detail
+  if (sales.length > 0) {
+    addText("DETALLE DE VENTAS", 14, 10, "bold");
+    nextLine(6);
+    autoTable(doc, {
+      startY: y,
+      head: [["Nº Venta", "Cliente", "Monto", "Método"]],
+      body: sales.map(s => [
+        s.sale_number,
+        s.customer?.name || "Cliente General",
+        formatCurrency(s.total),
+        s.payment_method || "N/A",
+      ]),
+      theme: "grid",
+      headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+      styles: { fontSize: 7 },
+      columnStyles: { 2: { halign: "right" } },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  // Cash movements
+  if (cashMovements.length > 0) {
+    addText("MOVIMIENTOS DE CAJA", 14, 10, "bold");
+    nextLine(6);
+    autoTable(doc, {
+      startY: y,
+      head: [["Tipo", "Descripción", "Monto"]],
+      body: cashMovements.map(m => [
+        m.movement_type === "income" ? "Ingreso" : "Retiro",
+        m.description,
+        formatCurrency(m.amount),
+      ]),
+      theme: "grid",
+      headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+      styles: { fontSize: 7 },
+      columnStyles: { 2: { halign: "right" } },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  // Cash reconciliation
+  const initialCash = opening?.initial_cash_amount || 0;
+  const cashMovementsIncome = cashMovements.filter(m => m.movement_type === "income").reduce((s: number, m: any) => s + m.amount, 0);
+  const cashMovementsWithdrawals = cashMovements.filter(m => m.movement_type === "withdrawal").reduce((s: number, m: any) => s + m.amount, 0);
+  const expectedCash = initialCash + closure.cash_sales - closure.supplier_payments_cash + cashMovementsIncome - cashMovementsWithdrawals;
+
+  addText("RECONCILIACIÓN DE EFECTIVO", 14, 10, "bold");
+  nextLine(6);
+  const reconcRows: any[] = [
+    ["Monto inicial", formatCurrency(initialCash)],
+    ["+ Ventas efectivo", formatCurrency(closure.cash_sales)],
+    ["- Pagos proveedores", formatCurrency(closure.supplier_payments_cash)],
+    ...(cashMovementsIncome > 0 ? [["+ Ingresos caja", formatCurrency(cashMovementsIncome)]] : []),
+    ...(cashMovementsWithdrawals > 0 ? [["- Retiros caja", formatCurrency(cashMovementsWithdrawals)]] : []),
+    ["Efectivo esperado", formatCurrency(expectedCash)],
+  ];
+  if (closure.cash_counted !== null) {
+    reconcRows.push(["Efectivo contado", formatCurrency(closure.cash_counted)]);
+    const diff = closure.cash_counted - expectedCash;
+    reconcRows.push([`Diferencia${diff < 0 ? " (Faltante)" : diff > 0 ? " (Sobrante)" : ""}`, formatCurrency(diff)]);
+  }
+  autoTable(doc, {
+    startY: y,
+    body: reconcRows,
+    theme: "plain",
+    styles: { fontSize: 8 },
+    columnStyles: { 1: { halign: "right", fontStyle: "bold" } },
+    margin: { left: 14, right: 14 },
+  });
+
+  const dateStr = new Date().toISOString().split("T")[0];
+  doc.save(`cierre-caja-${dateStr}.pdf`);
+}
