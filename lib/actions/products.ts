@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { Product, ProductFormData } from "@/lib/types/erp";
 import { requirePermission } from "@/lib/utils/permissions";
 import { canAddProduct } from "@/lib/utils/plan-limits";
+import { logAuditEvent } from "@/lib/actions/audit-log";
 
 // Get all products for a company with filters
 export async function getProducts(filters?: {
@@ -234,6 +235,15 @@ export async function createProduct(formData: ProductFormData) {
     }
 
     revalidatePath("/dashboard/products");
+
+    void logAuditEvent({
+      module: "productos",
+      action: "crear",
+      entityType: "product",
+      entityId: data.id,
+      metadata: { name: formData.name, sku: formData.sku || null },
+    });
+
     return { data };
   } catch (error: any) {
     console.error("Error creating product:", error);
@@ -416,6 +426,15 @@ export async function updateProduct(id: string, formData: ProductFormData) {
 
     revalidatePath("/dashboard/products");
     revalidatePath(`/dashboard/products/${id}`);
+
+    void logAuditEvent({
+      module: "productos",
+      action: "modificar",
+      entityType: "product",
+      entityId: id,
+      metadata: { name: formData.name },
+    });
+
     return { data };
   } catch (error: any) {
     console.error("Error updating product:", error);

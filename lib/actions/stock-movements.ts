@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { StockMovement, StockMovementFormData } from "@/lib/types/erp"
+import { logAuditEvent } from "@/lib/actions/audit-log"
 
 /**
  * Obtiene los movimientos de stock con filtros opcionales
@@ -204,6 +205,8 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
       return { error: "No se encontró la empresa asociada al usuario" }
     }
 
+    const createdByName = profile.full_name?.trim() || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || "Usuario"
+
     // Validate employee exists
     const { data: employee, error: employeeError } = await supabase
       .from("profiles")
@@ -283,7 +286,7 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
         stock_before: stockBefore,
         stock_after: stockAfter,
         created_by: user.id,
-        created_by_name: profile.full_name || profile.email,
+        created_by_name: createdByName,
         notes: formData.notes || `Ajuste manual de inventario${variantName ? ` - ${variantName}` : ''}`,
       })
       .select()
@@ -319,6 +322,15 @@ export async function createStockAdjustment(formData: StockMovementFormData) {
 
     revalidatePath("/dashboard/products")
     revalidatePath(`/dashboard/products/${formData.product_id}`)
+
+    void logAuditEvent({
+      module: "stock",
+      action: "movimiento",
+      entityType: "stock_movement",
+      entityId: movement.id,
+      metadata: { quantity: formData.quantity, type: formData.movement_type, product_id: formData.product_id, variant_id: formData.variant_id || null },
+    });
+
     return { data: movement }
   } catch (error: any) {
     console.error("Error creating stock adjustment:", error)
@@ -363,6 +375,8 @@ export async function logSaleStockMovement(
 
     if (!profile?.company_id) return
 
+    const createdByName = profile.full_name?.trim() || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || "Usuario"
+
     await supabase
       .from("stock_movements")
       .insert({
@@ -375,7 +389,7 @@ export async function logSaleStockMovement(
         stock_after: stockAfter,
         sale_id: saleId,
         created_by: user.id,
-        created_by_name: profile.full_name || profile.email,
+        created_by_name: createdByName,
         notes: `Venta registrada`,
       })
   } catch (error) {
@@ -420,6 +434,8 @@ export async function logPurchaseStockMovement(
 
     if (!profile?.company_id) return
 
+    const createdByName = profile.full_name?.trim() || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || "Usuario"
+
     await supabase
       .from("stock_movements")
       .insert({
@@ -432,7 +448,7 @@ export async function logPurchaseStockMovement(
         stock_after: stockAfter,
         purchase_order_id: purchaseOrderId,
         created_by: user.id,
-        created_by_name: profile.full_name || profile.email,
+        created_by_name: createdByName,
         notes: `Recepción de orden de compra`,
       })
   } catch (error) {
@@ -586,6 +602,8 @@ export async function createStockCorrection(
       return { error: "No se encontró la empresa asociada al usuario" }
     }
 
+    const createdByName = profile.full_name?.trim() || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || "Usuario"
+
     // Get original movement
     const { data: originalMovement, error: movementError } = await supabase
       .from("stock_movements")
@@ -641,7 +659,7 @@ export async function createStockCorrection(
         stock_before: stockBefore,
         stock_after: stockAfter,
         created_by: user.id,
-        created_by_name: profile.full_name || profile.email,
+        created_by_name: createdByName,
         notes: `CORRECCIÓN: Revierte movimiento ${originalMovement.movement_type} del ${new Date(originalMovement.created_at).toLocaleDateString()}. Razón: ${reason}`,
       })
       .select()

@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { useReactToPrint } from "react-to-print";
 import { InvoicePrint } from "@/components/dashboard/invoice-print";
 import { PaymentManager } from "@/components/dashboard/payment-manager";
+import { SaleReturnsSection } from "@/components/dashboard/sale-returns-section";
 import type { Sale } from "@/lib/types/erp";
 
 export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -638,6 +639,9 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           );
         }}
       />
+
+      {/* Returns Section */}
+      <SaleReturnsSection saleId={saleId} saleStatus={sale.status} salePaymentStatus={sale.payment_status} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/utils/permissions";
 import type { Customer, CustomerFormData } from "@/lib/types/erp";
 import { calculateBalance } from "@/lib/actions/accounts-settlement";
+import { logAuditEvent } from "@/lib/actions/audit-log";
 
 // Tipo para movimientos de cuenta corriente
 export interface AccountMovement {
@@ -197,6 +198,14 @@ export async function createCustomer(formData: CustomerFormData) {
 
     if (error) throw error;
 
+    void logAuditEvent({
+      module: "clientes",
+      action: "crear",
+      entityType: "customer",
+      entityId: data.id,
+      metadata: { name: formData.name },
+    });
+
     revalidatePath("/dashboard/customers");
     return { data };
   } catch (error: any) {
@@ -241,6 +250,14 @@ export async function updateCustomer(id: string, formData: CustomerFormData) {
       .single();
 
     if (error) throw error;
+
+    void logAuditEvent({
+      module: "clientes",
+      action: "modificar",
+      entityType: "customer",
+      entityId: id,
+      metadata: { name: formData.name },
+    });
 
     revalidatePath("/dashboard/customers");
     return { data };

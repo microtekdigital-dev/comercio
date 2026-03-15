@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Quote, QuoteFormData } from "@/lib/types/erp"
+import { logAuditEvent } from "@/lib/actions/audit-log"
 
 export async function getQuotes() {
   const supabase = await createClient()
@@ -108,6 +109,14 @@ export async function createQuote(formData: QuoteFormData) {
 
   if (itemsError) throw itemsError
 
+  void logAuditEvent({
+    module: "presupuestos",
+    action: "crear",
+    entityType: "quote",
+    entityId: quote.id,
+    metadata: { quote_number: quote.quote_number, customer_id: formData.customer_id || null, total },
+  });
+
   revalidatePath("/dashboard/quotes")
   return quote
 }
@@ -168,6 +177,14 @@ export async function updateQuote(id: string, formData: QuoteFormData) {
     .insert(quoteItems)
 
   if (itemsError) throw itemsError
+
+  void logAuditEvent({
+    module: "presupuestos",
+    action: "modificar",
+    entityType: "quote",
+    entityId: id,
+    metadata: { total },
+  });
 
   revalidatePath("/dashboard/quotes")
   revalidatePath(`/dashboard/quotes/${id}`)

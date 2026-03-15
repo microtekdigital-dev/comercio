@@ -4,6 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Sale, SaleFormData, SalePayment } from "@/lib/types/erp";
 import { requirePermission } from "@/lib/utils/permissions";
+import {
+  calculateSaleTotals,
+  calculateItemTotals,
+  validateItemDiscount,
+  validateGlobalDiscount,
+} from "@/lib/utils/discount-calculator";
+import { logAuditEvent } from "@/lib/actions/audit-log";
 
 // Get all sales for a company with filters
 export async function getSales(filters?: {
@@ -132,29 +139,56 @@ export async function createSale(formData: SaleFormData) {
       return { error: "No se encontró la empresa" };
     }
 
-    // Calculate totals
-    let subtotal = 0;
-    let taxAmount = 0;
-    
+    // Validate item discounts before any DB operation
+    for (const item of formData.items) {
+      const discountType = item.discount_type ?? 'percentage';
+      const discountValue = discountType === 'fixed'
+        ? (item.discount_fixed ?? 0)
+        : (item.discount_percent ?? 0);
+      const validation = validateItemDiscount(item.unit_price, item.quantity, discountType, discountValue);
+      if (!validation.valid) {
+        return { error: validation.error ?? 'Descuento de ítem inválido' };
+      }
+    }
+
+    // Validate global discount
+    const globalDiscountType = formData.global_discount_type ?? 'percentage';
+    const globalDiscountValue = formData.global_discount_value ?? 0;
+
+    // Calculate totals using pure utility
+    let saleTotals;
+    try {
+      saleTotals = calculateSaleTotals(formData.items, globalDiscountType, globalDiscountValue);
+    } catch (e: any) {
+      return { error: e.message ?? 'Error al calcular los totales' };
+    }
+
+    // Validate global discount against computed subtotal
+    const globalValidation = validateGlobalDiscount(saleTotals.subtotal, globalDiscountType, globalDiscountValue);
+    if (!globalValidation.valid) {
+      return { error: globalValidation.error ?? 'Descuento global inválido' };
+    }
+
+    const { subtotal, tax_amount: taxAmount, discount_amount: discountAmount, total } = saleTotals;
+
+    // Build items with computed totals
     const items = formData.items.map(item => {
-      const itemSubtotal = item.quantity * item.unit_price;
-      const discount = itemSubtotal * (item.discount_percent / 100);
-      const subtotalAfterDiscount = itemSubtotal - discount;
-      const itemTax = subtotalAfterDiscount * (item.tax_rate / 100);
-      const itemTotal = subtotalAfterDiscount + itemTax;
-      
-      subtotal += subtotalAfterDiscount;
-      taxAmount += itemTax;
-      
+      const itemTotals = calculateItemTotals(item);
+      // Convert fixed discount to equivalent percent for persistence
+      const discountType = item.discount_type ?? 'percentage';
+      let discountPercent = item.discount_percent ?? 0;
+      if (discountType === 'fixed') {
+        const itemSubtotal = item.unit_price * item.quantity;
+        discountPercent = itemSubtotal > 0 ? (itemTotals.discount_amount / itemSubtotal) * 100 : 0;
+      }
       return {
         ...item,
-        subtotal: itemSubtotal,
-        tax_amount: itemTax,
-        total: itemTotal,
+        discount_percent: discountPercent,
+        subtotal: itemTotals.subtotal,
+        tax_amount: itemTotals.tax_amount,
+        total: itemTotals.total,
       };
     });
-
-    const total = subtotal + taxAmount;
 
     // Create sale
     const { data: sale, error: saleError } = await supabase
@@ -167,7 +201,7 @@ export async function createSale(formData: SaleFormData) {
         due_date: formData.due_date || null,
         subtotal,
         tax_amount: taxAmount,
-        discount_amount: 0,
+        discount_amount: discountAmount,
         total,
         currency: "ARS",
         payment_status: "pending",
@@ -295,6 +329,14 @@ export async function createSale(formData: SaleFormData) {
       console.error("Error creating notification:", notifError);
     }
 
+    void logAuditEvent({
+      module: "ventas",
+      action: "crear",
+      entityType: "sale",
+      entityId: sale.id,
+      metadata: { total, customer_id: formData.customer_id || null, items_count: items.length },
+    });
+
     revalidatePath("/dashboard/sales");
     revalidatePath("/dashboard/products");
     return { data: sale };
@@ -337,6 +379,14 @@ export async function updateSale(id: string, formData: Partial<SaleFormData>) {
       .single();
 
     if (error) throw error;
+
+    void logAuditEvent({
+      module: "ventas",
+      action: "modificar",
+      entityType: "sale",
+      entityId: id,
+      metadata: { status: formData.status, notes: formData.notes },
+    });
 
     revalidatePath("/dashboard/sales");
     return { data };
@@ -497,6 +547,14 @@ export async function addSalePayment(
       .from("sales")
       .update({ payment_status: paymentStatus })
       .eq("id", saleId);
+
+    void logAuditEvent({
+      module: "pagos",
+      action: "pagar",
+      entityType: "sale_payment",
+      entityId: payment.id,
+      metadata: { amount, method: paymentMethod, entity_type: "sale", sale_id: saleId, payment_status: paymentStatus },
+    });
 
     // Create notification for payment received
     try {

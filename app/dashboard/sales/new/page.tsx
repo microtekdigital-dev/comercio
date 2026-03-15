@@ -23,7 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Customer, Product, SaleItemFormData, Sale } from "@/lib/types/erp";
+import type { Customer, Product, SaleItemFormData, Sale, DiscountType } from "@/lib/types/erp";
+import { calculateItemTotals, calculateSaleTotals, validateGlobalDiscount } from "@/lib/utils/discount-calculator";
 import { QuickPaymentModal } from "@/components/dashboard/quick-payment-modal";
 import { VariantSelectorInSale } from "@/components/dashboard/variant-selector-in-sale";
 import { getProductVariants } from "@/lib/actions/product-variants";
@@ -45,6 +46,8 @@ export default function NewSalePage() {
     payment_method: "",
     notes: "",
     items: [] as SaleItemFormData[],
+    global_discount_type: "percentage" as DiscountType,
+    global_discount_value: 0,
   });
 
   useEffect(() => {
@@ -82,6 +85,8 @@ export default function NewSalePage() {
           unit_price: 0,
           tax_rate: 21,
           discount_percent: 0,
+          discount_type: "percentage" as DiscountType,
+          discount_fixed: 0,
         },
       ],
     });
@@ -136,32 +141,29 @@ export default function NewSalePage() {
   };
 
   const calculateItemTotal = (item: SaleItemFormData) => {
-    const subtotal = item.quantity * item.unit_price;
-    const discount = subtotal * (item.discount_percent / 100);
-    const subtotalAfterDiscount = subtotal - discount;
-    const tax = subtotalAfterDiscount * (item.tax_rate / 100);
-    return subtotalAfterDiscount + tax;
+    return calculateItemTotals(item).total;
   };
 
   const calculateTotals = () => {
-    let subtotal = 0;
-    let taxAmount = 0;
-
-    formData.items.forEach((item) => {
-      const itemSubtotal = item.quantity * item.unit_price;
-      const discount = itemSubtotal * (item.discount_percent / 100);
-      const subtotalAfterDiscount = itemSubtotal - discount;
-      const itemTax = subtotalAfterDiscount * (item.tax_rate / 100);
-
-      subtotal += subtotalAfterDiscount;
-      taxAmount += itemTax;
-    });
-
-    return {
-      subtotal,
-      taxAmount,
-      total: subtotal + taxAmount,
-    };
+    if (formData.items.length === 0) return { subtotal: 0, taxAmount: 0, discountAmount: 0, total: 0 };
+    try {
+      const totals = calculateSaleTotals(
+        formData.items,
+        formData.global_discount_type,
+        formData.global_discount_value
+      );
+      return {
+        subtotal: totals.subtotal,
+        taxAmount: totals.tax_amount,
+        discountAmount: totals.discount_amount,
+        total: totals.total,
+      };
+    } catch {
+      // total <= 0 case
+      const subtotal = formData.items.reduce((s, item) => s + calculateItemTotals(item).subtotal_net, 0);
+      const taxAmount = formData.items.reduce((s, item) => s + calculateItemTotals(item).tax_amount, 0);
+      return { subtotal, taxAmount, discountAmount: 0, total: subtotal + taxAmount };
+    }
   };
 
   const totals = calculateTotals();
@@ -203,7 +205,11 @@ export default function NewSalePage() {
     setLoading(true);
 
     try {
-      const result = await createSale(formData);
+      const result = await createSale({
+        ...formData,
+        global_discount_type: formData.global_discount_type,
+        global_discount_value: formData.global_discount_value,
+      });
 
       if (result.error) {
         toast.error(result.error);
@@ -413,11 +419,14 @@ export default function NewSalePage() {
                           const product = products.find((p) => p.id === item.product_id);
                           return product?.has_variants && product.variants ? (
                             <div className="md:col-span-2 space-y-2">
-                              <VariantSelectorInSale
+                            <VariantSelectorInSale
                                 productId={product.id}
                                 variants={product.variants}
                                 onSelect={(variant) => handleVariantSelect(index, variant)}
                                 selectedVariantId={item.variant_id}
+                                productPrice={item.unit_price}
+                                currencySymbol={currencySymbol}
+                                currencyPosition={currencyPosition}
                               />
                             </div>
                           ) : null;
@@ -458,21 +467,38 @@ export default function NewSalePage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Desc. %</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={item.discount_percent}
-                            onChange={(e) =>
-                              updateItem(
-                                index,
-                                "discount_percent",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                          />
+                          <Label>Descuento</Label>
+                          <div className="flex gap-1">
+                            <Select
+                              value={item.discount_type ?? "percentage"}
+                              onValueChange={(value) =>
+                                updateItem(index, "discount_type", value as DiscountType)
+                              }
+                            >
+                              <SelectTrigger className="w-16">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="percentage">%</SelectItem>
+                                <SelectItem value="fixed">$</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              min="0"
+                              max={item.discount_type === "percentage" ? "100" : undefined}
+                              step="0.01"
+                              value={item.discount_type === "fixed" ? (item.discount_fixed ?? 0) : (item.discount_percent ?? 0)}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                if (item.discount_type === "fixed") {
+                                  updateItem(index, "discount_fixed", val);
+                                } else {
+                                  updateItem(index, "discount_percent", val);
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -490,22 +516,65 @@ export default function NewSalePage() {
               )}
 
               {formData.items.length > 0 && (
-                <div className="mt-6 pt-6 border-t space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal:</span>
-                    <span className="font-semibold">
-                      {formatPrice(totals.subtotal)}
-                    </span>
+                <div className="mt-6 pt-6 border-t space-y-4">
+                  {/* Descuento global */}
+                  <div className="space-y-2">
+                    <Label>Descuento global</Label>
+                    <div className="flex gap-2 items-center">
+                      <Select
+                        value={formData.global_discount_type}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, global_discount_type: value as DiscountType })
+                        }
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">%</SelectItem>
+                          <SelectItem value="fixed">$</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={formData.global_discount_type === "percentage" ? "100" : undefined}
+                        step="0.01"
+                        value={formData.global_discount_value}
+                        onChange={(e) =>
+                          setFormData({ ...formData, global_discount_value: parseFloat(e.target.value) || 0 })
+                        }
+                        className="w-32"
+                      />
+                      {formData.global_discount_value > 0 && (() => {
+                        const validation = validateGlobalDiscount(totals.subtotal, formData.global_discount_type, formData.global_discount_value);
+                        return !validation.valid ? (
+                          <span className="text-sm text-destructive">{validation.error}</span>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Impuestos:</span>
-                    <span className="font-semibold">
-                      {formatPrice(totals.taxAmount)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                    <span>Total:</span>
-                    <span>{formatPrice(totals.total)}</span>
+
+                  {/* Desglose */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="font-semibold">{formatPrice(totals.subtotal)}</span>
+                    </div>
+                    {totals.discountAmount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Descuento global:</span>
+                        <span>-{formatPrice(totals.discountAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Impuestos:</span>
+                      <span className="font-semibold">{formatPrice(totals.taxAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                      <span>Total:</span>
+                      <span>{formatPrice(totals.total)}</span>
+                    </div>
                   </div>
                 </div>
               )}

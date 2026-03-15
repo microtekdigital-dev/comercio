@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export type NotificationType = 'low_stock' | 'pending_payment' | 'new_sale' | 'payment_received' | 'system' | 'subscription_expiry' | 'subscription_expired';
+export type NotificationType = 'low_stock' | 'pending_payment' | 'new_sale' | 'payment_received' | 'system' | 'subscription_expiry' | 'subscription_expired' | 'sale_return' | 'repair_status_change';
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export interface Notification {
@@ -30,6 +30,8 @@ export interface NotificationPreferences {
   new_sale_enabled: boolean;
   payment_received_enabled: boolean;
   system_enabled: boolean;
+  sale_return_enabled: boolean;
+  repair_status_change_enabled: boolean;
   email_notifications: boolean;
 }
 
@@ -246,6 +248,8 @@ export async function getNotificationPreferences() {
         new_sale_enabled: true,
         payment_received_enabled: true,
         system_enabled: true,
+        sale_return_enabled: true,
+        repair_status_change_enabled: true,
         email_notifications: false,
       };
     }

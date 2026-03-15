@@ -13,7 +13,7 @@ import {
   type NotificationPreferences,
 } from "@/lib/actions/notifications";
 import { toast } from "sonner";
-import { Bell, Mail, Package, DollarSign, ShoppingCart, CheckCircle, Settings as SettingsIcon, RefreshCw } from "lucide-react";
+import { Bell, Mail, Package, DollarSign, ShoppingCart, CheckCircle, Settings as SettingsIcon, RefreshCw, RotateCcw, Wrench } from "lucide-react";
 
 export function NotificationSettings() {
   const [preferences, setPreferences] = useState<Partial<NotificationPreferences>>({
@@ -22,6 +22,8 @@ export function NotificationSettings() {
     new_sale_enabled: true,
     payment_received_enabled: true,
     system_enabled: true,
+    sale_return_enabled: true,
+    repair_status_change_enabled: true,
     email_notifications: false,
   });
   const [loading, setLoading] = useState(true);
@@ -221,6 +223,48 @@ export function NotificationSettings() {
                   id="system"
                   checked={preferences.system_enabled}
                   onCheckedChange={() => handleToggle('system_enabled')}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <Label htmlFor="sale_return" className="cursor-pointer">
+                      Devoluciones
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Cuando se registra una devolución de venta
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="sale_return"
+                  checked={preferences.sale_return_enabled}
+                  onCheckedChange={() => handleToggle('sale_return_enabled')}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <Label htmlFor="repair_status_change" className="cursor-pointer">
+                      Cambios en Reparaciones
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Cuando cambia el estado de una orden de reparación
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="repair_status_change"
+                  checked={preferences.repair_status_change_enabled}
+                  onCheckedChange={() => handleToggle('repair_status_change_enabled')}
                 />
               </div>
             </div>

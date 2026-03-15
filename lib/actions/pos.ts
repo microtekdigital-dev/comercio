@@ -224,12 +224,34 @@ export async function validatePOSCart(
     errors.push("El descuento no puede ser mayor al subtotal de la venta");
   }
 
-  // Requirement 12.4: quantities must be positive
+  // Validate global discount
+  const globalDiscountValidation = validateGlobalDiscount(
+    cart.subtotal,
+    cart.discount_type,
+    cart.discount_value
+  );
+  if (!globalDiscountValidation.valid && globalDiscountValidation.error) {
+    errors.push(globalDiscountValidation.error);
+  }
+
+  // Requirement 12.4: quantities must be positive + validate item discounts
   for (const item of cart.items) {
     if (item.quantity <= 0) {
       errors.push(
         `La cantidad de "${item.product_name}" debe ser mayor a cero`
       );
+    }
+    // Validate item-level discount
+    if (item.discount_percent !== 0) {
+      const itemDiscountValidation = validateItemDiscount(
+        item.unit_price,
+        item.quantity,
+        'percentage',
+        item.discount_percent
+      );
+      if (!itemDiscountValidation.valid && itemDiscountValidation.error) {
+        errors.push(`${item.product_name}: ${itemDiscountValidation.error}`);
+      }
     }
   }
 
@@ -471,6 +493,8 @@ export async function validateCustomerBelongsToCompany(
 
 import { revalidatePath } from "next/cache";
 import { logSaleStockMovement } from "@/lib/actions/stock-movements";
+import { calculateSaleTotals, validateGlobalDiscount, validateItemDiscount } from "@/lib/utils/discount-calculator";
+import type { SaleItemFormData } from "@/lib/types/erp";
 import type { POSSaleRequest } from "@/lib/types/pos";
 
 /**
@@ -508,25 +532,33 @@ export async function createPOSSale(
       };
     }
 
-    // Calculate cart totals from items
-    const itemsSubtotal = saleRequest.items.reduce(
-      (sum, item) => sum + item.subtotal,
-      0
-    );
-    const itemsTax = saleRequest.items.reduce(
-      (sum, item) => sum + item.tax_amount,
-      0
-    );
+    // Calculate cart totals using calculateSaleTotals
+    const saleItemsForCalc: SaleItemFormData[] = saleRequest.items.map((item) => ({
+      product_id: item.product_id,
+      product_name: item.product_name,
+      product_sku: item.product_sku ?? undefined,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      tax_rate: item.tax_rate,
+      discount_percent: item.discount_percent,
+      discount_type: 'percentage' as const,
+      variant_id: item.variant_id ?? undefined,
+      variant_name: item.variant_name ?? undefined,
+    }));
 
-    // Calculate discount amount
-    let discountAmount = 0;
-    if (saleRequest.discount_type === "percentage") {
-      discountAmount = itemsSubtotal * (saleRequest.discount_value / 100);
-    } else {
-      discountAmount = Math.min(saleRequest.discount_value, itemsSubtotal);
+    let saleTotals;
+    try {
+      saleTotals = calculateSaleTotals(
+        saleItemsForCalc,
+        saleRequest.discount_type,
+        saleRequest.discount_value
+      );
+    } catch (calcError: unknown) {
+      const msg = calcError instanceof Error ? calcError.message : "Error al calcular totales";
+      return { success: false, error: msg };
     }
 
-    const saleTotal = itemsSubtotal - discountAmount + itemsTax;
+    const { subtotal: itemsSubtotal, tax_amount: itemsTax, discount_amount: discountAmount, total: saleTotal } = saleTotals;
 
     // Requirement 12.1: total must be greater than zero
     if (saleTotal <= 0) {
@@ -610,7 +642,6 @@ export async function createPOSSale(
       tax_amount: item.tax_amount,
       total: item.total,
     }));
-
     const { error: itemsError } = await supabase
       .from("sale_items")
       .insert(saleItems);

@@ -11,6 +11,7 @@ import type {
   Sale,
   CashMovement
 } from "@/lib/types/erp"
+import { logAuditEvent } from "@/lib/actions/audit-log"
 
 // =====================================================
 // Cash Register Openings (Aperturas de Caja)
@@ -142,6 +143,14 @@ export async function createCashRegisterOpening(formData: CashRegisterOpeningFor
       .single()
 
     if (openingError) throw openingError
+
+    void logAuditEvent({
+      module: "caja",
+      action: "abrir",
+      entityType: "cash_register_opening",
+      entityId: opening.id,
+      metadata: { initial_amount: formData.initial_cash_amount, shift: formData.shift },
+    });
 
     revalidatePath("/dashboard/cash-register")
     revalidatePath("/dashboard") // Refresh financial stats on main dashboard
@@ -376,7 +385,7 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
 
     let salesQuery = supabase
       .from("sales")
-      .select("total, payment_method, created_at, payments:sale_payments(amount, payment_method)")
+      .select("total, payment_method, created_at, discount_amount, payments:sale_payments(amount, payment_method)")
       .eq("company_id", profile.company_id)
       .eq("status", "completed")
       .gte("sale_date", startOfDay.toISOString())
@@ -496,6 +505,39 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
       }
     }
 
+    // Calculate total discounts from sales in this period
+    let totalDiscounts = 0;
+    if (sales) {
+      for (const sale of sales as Array<{ discount_amount?: number }>) {
+        totalDiscounts += Number(sale.discount_amount ?? 0);
+      }
+    }
+
+    // Get returns (cash/transfer refunds) for this period
+    let returnsQuery = supabase
+      .from("sale_returns")
+      .select("total_amount, refund_method, created_at")
+      .eq("company_id", profile.company_id)
+      .eq("status", "completed")
+      .in("refund_method", ["cash", "transfer"])
+      .gte("return_date", startOfDay.toISOString())
+      .lte("return_date", endOfDay.toISOString())
+
+    if (lastClosureTime) {
+      returnsQuery = returnsQuery.gt("created_at", lastClosureTime)
+    }
+
+    const { data: returns } = await returnsQuery
+
+    let totalReturnsCash = 0
+    let totalReturnsTransfer = 0
+    if (returns) {
+      for (const ret of returns) {
+        if (ret.refund_method === "cash") totalReturnsCash += Number(ret.total_amount)
+        else if (ret.refund_method === "transfer") totalReturnsTransfer += Number(ret.total_amount)
+      }
+    }
+
     // Create closure
     const { data: closure, error: closureError } = await supabase
       .from("cash_register_closures")
@@ -516,16 +558,27 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
         supplier_payments_card: supplierPaymentsCard,
         supplier_payments_transfer: supplierPaymentsTransfer,
         supplier_payments_other: supplierPaymentsOther,
+        total_returns_cash: totalReturnsCash,
+        total_returns_transfer: totalReturnsTransfer,
         cash_counted: formData.cash_counted || null,
         cash_difference: cashDifference,
         notes: formData.notes || null,
         currency: "ARS",
         opening_id: opening?.id || null,
+        total_discounts: totalDiscounts,
       })
       .select()
       .single()
 
     if (closureError) throw closureError
+
+    void logAuditEvent({
+      module: "caja",
+      action: "cerrar",
+      entityType: "cash_register_closure",
+      entityId: closure.id,
+      metadata: { total_sales: totalSalesAmount, total_cash: cashSales, shift: formData.shift || null },
+    });
 
     revalidatePath("/dashboard/cash-register")
     revalidatePath("/dashboard") // Refresh financial stats on main dashboard

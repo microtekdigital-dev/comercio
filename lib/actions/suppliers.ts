@@ -6,6 +6,7 @@ import { requirePermission } from "@/lib/utils/permissions";
 import type { Supplier, SupplierFormData } from "@/lib/types/erp";
 import { canAccessSuppliers } from "@/lib/utils/plan-limits";
 import { calculateBalance } from "@/lib/actions/accounts-settlement";
+import { logAuditEvent } from "@/lib/actions/audit-log";
 
 // Tipo para movimientos de cuenta corriente
 export interface AccountMovement {
@@ -139,6 +140,14 @@ export async function createSupplier(formData: SupplierFormData) {
 
     if (error) throw error;
 
+    void logAuditEvent({
+      module: "proveedores",
+      action: "crear",
+      entityType: "supplier",
+      entityId: data.id,
+      metadata: { name: formData.name },
+    });
+
     revalidatePath("/dashboard/suppliers");
     return { data };
   } catch (error: any) {
@@ -177,6 +186,14 @@ export async function updateSupplier(id: string, formData: Partial<SupplierFormD
       .single();
 
     if (error) throw error;
+
+    void logAuditEvent({
+      module: "proveedores",
+      action: "modificar",
+      entityType: "supplier",
+      entityId: id,
+      metadata: { name: formData.name },
+    });
 
     revalidatePath("/dashboard/suppliers");
     revalidatePath(`/dashboard/suppliers/${id}`);

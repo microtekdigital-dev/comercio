@@ -27,7 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users } from "lucide-react";
+import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users, Upload } from "lucide-react";
+import { CsvImportModal } from "@/components/dashboard/csv-import-modal";
 import Link from "next/link";
 import { exportProductsToExcel, exportProductsToCSV, exportProductsReportToPDF } from "@/lib/utils/export";
 import { ProductImage } from "@/components/dashboard/product-image";
@@ -51,6 +52,7 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
+  const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [currencySymbol, setCurrencySymbol] = useState('$');
   const [currencyPosition, setCurrencyPosition] = useState<'before' | 'after'>('before');
 
@@ -256,6 +258,16 @@ export default function ProductsPage() {
                 Nuevo Producto
               </Button>
             </Link>
+          )}
+          {canCreate && (
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setShowCsvImportModal(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Importar CSV
+            </Button>
           )}
         </div>
       </div>
@@ -546,6 +558,13 @@ export default function ProductsPage() {
         onOpenChange={setShowBulkAssignDialog}
         selectedProductIds={selectedProducts}
         onSuccess={handleBulkAssignSuccess}
+      />
+
+      {/* CSV Import Modal */}
+      <CsvImportModal
+        open={showCsvImportModal}
+        onOpenChange={setShowCsvImportModal}
+        onImportComplete={loadProducts}
       />
     </div>
   );

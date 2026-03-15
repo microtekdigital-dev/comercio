@@ -22,6 +22,11 @@ export function SubscriptionGuard({ subscriptionStatus, userRole, children }: Su
     setMounted(true);
   }, []);
 
+  // Mostrar contenido solo después de montar en el cliente
+  if (!mounted) {
+    return <>{children}</>;
+  }
+
   // Permitir acceso a la página de billing siempre
   const isBillingPage = pathname === "/dashboard/billing";
 
@@ -31,11 +36,6 @@ export function SubscriptionGuard({ subscriptionStatus, userRole, children }: Su
   }
 
   const isEmployee = userRole === "employee";
-
-  // Mostrar contenido solo después de montar en el cliente
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   // Si la suscripción está cancelada, mostrar mensaje y bloquear acceso
   if (subscriptionStatus === "cancelled") {

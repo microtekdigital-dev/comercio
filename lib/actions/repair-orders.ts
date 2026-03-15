@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sendRepairReadyNotification } from './repair-notifications'
 import { canAccessRepairs } from '@/lib/utils/plan-limits'
 import { getCurrentUser } from './users'
+import { logAuditEvent } from '@/lib/actions/audit-log'
 import type { 
   RepairOrder, 
   RepairOrderWithDetails,
@@ -321,6 +322,14 @@ export async function createRepairOrder(
     throw new Error('Error al crear orden de reparación')
   }
 
+  void logAuditEvent({
+    module: "reparaciones",
+    action: "crear",
+    entityType: "repair_order",
+    entityId: data.id,
+    metadata: { order_number: data.order_number, customer_id: input.customer_id, device_type: input.device_type, brand: input.brand, model: input.model },
+  });
+
   return data
 }
 
@@ -456,6 +465,14 @@ export async function updateRepairOrder(
     throw new Error('Error al actualizar orden de reparación')
   }
 
+  void logAuditEvent({
+    module: "reparaciones",
+    action: "modificar",
+    entityType: "repair_order",
+    entityId: id,
+    metadata: { updated_fields: Object.keys(input) },
+  });
+
   return data
 }
 
@@ -532,6 +549,13 @@ export async function updateRepairStatus(
 
   // Send notification automatically when status changes to "repaired"
   if (status === 'repaired') {
+    void logAuditEvent({
+      module: "reparaciones",
+      action: "cerrar",
+      entityType: "repair_order",
+      entityId: id,
+      metadata: { new_status: status, notes },
+    });
     try {
       // Get company info for notification
       const { data: companySettings } = await supabase

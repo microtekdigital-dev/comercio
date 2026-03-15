@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { PurchaseOrder, PurchaseOrderFormData } from "@/lib/types/erp";
 import { canAccessPurchaseOrders } from "@/lib/utils/plan-limits";
 import { handleServerError } from "@/lib/utils/error-handler";
+import { logAuditEvent } from "@/lib/actions/audit-log";
 
 // Get all purchase orders
 export async function getPurchaseOrders(filters?: {
@@ -299,6 +300,14 @@ export async function createPurchaseOrder(formData: PurchaseOrderFormData) {
 
     if (itemsError) throw itemsError;
 
+    void logAuditEvent({
+      module: "compras",
+      action: "crear",
+      entityType: "purchase_order",
+      entityId: order.id,
+      metadata: { order_number: order.order_number, supplier_id: formData.supplier_id, total, items_count: items.length },
+    });
+
     revalidatePath("/dashboard/purchase-orders");
     revalidatePath("/dashboard/suppliers");
     return { data: order };
@@ -343,6 +352,14 @@ export async function updatePurchaseOrderStatus(
       .single();
 
     if (error) throw error;
+
+    void logAuditEvent({
+      module: "compras",
+      action: status === "cancelled" ? "cancelar" : status === "received" ? "recibir" : "modificar",
+      entityType: "purchase_order",
+      entityId: id,
+      metadata: { new_status: status },
+    });
 
     revalidatePath("/dashboard/purchase-orders");
     revalidatePath(`/dashboard/purchase-orders/${id}`);
@@ -585,6 +602,14 @@ export async function addSupplierPayment(
       .from("purchase_orders")
       .update({ payment_status: paymentStatus })
       .eq("id", purchaseOrderId);
+
+    void logAuditEvent({
+      module: "pagos",
+      action: "pagar",
+      entityType: "supplier_payment",
+      entityId: payment.id,
+      metadata: { amount, method: paymentMethod, entity_type: "purchase_order", purchase_order_id: purchaseOrderId },
+    });
 
     revalidatePath("/dashboard/purchase-orders");
     revalidatePath(`/dashboard/purchase-orders/${purchaseOrderId}`);

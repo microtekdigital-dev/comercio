@@ -24,7 +24,7 @@ Este plan desglosa la implementación del modal de registro rápido de pagos en 
   - Verificar que todos los campos contienen los datos correctos de la venta
   - Configurar 100 iteraciones mínimo
 
-- [ ] 2. Implementar validación de formulario en QuickPaymentModal
+- [x] 2. Implementar validación de formulario en QuickPaymentModal
   - Agregar estado local para el formulario (amount, paymentMethod, referenceNumber, notes)
   - Implementar validación: monto debe ser mayor a 0
   - Implementar validación: método de pago debe estar seleccionado
@@ -33,14 +33,14 @@ Este plan desglosa la implementación del modal de registro rápido de pagos en 
   - Mostrar mensajes de error usando toast de sonner
   - _Requisitos: 9.1, 9.2, 9.3_
 
-- [ ] 2.1 Escribir unit tests para validación de formulario
+- [x] 2.1 Escribir unit tests para validación de formulario
   - Test: monto cero muestra error y previene envío
   - Test: monto negativo muestra error y previene envío
   - Test: sin método de pago deshabilita botón
   - Test: monto mayor al total muestra advertencia pero permite envío
   - _Requisitos: 9.1, 9.2, 9.3_
 
-- [ ] 3. Implementar lógica de registro de pago en QuickPaymentModal
+- [x] 3. Implementar lógica de registro de pago en QuickPaymentModal
   - Importar server action `addSalePayment` desde `lib/actions/sales`
   - Implementar función handleSubmit que llama a addSalePayment con los datos del formulario
   - Agregar estado de carga (loading) durante el registro
@@ -49,7 +49,7 @@ Este plan desglosa la implementación del modal de registro rápido de pagos en 
   - Deshabilitar botones y mostrar "Registrando..." durante la carga
   - _Requisitos: 3.1, 3.2, 3.4, 3.5_
 
-- [ ] 3.1 Escribir property test para persistencia de pago
+- [x] 3.1 Escribir property test para persistencia de pago
   - **Property 3: Persistencia de pago en base de datos**
   - **Valida: Requisitos 3.2, 12.1, 12.2, 12.3**
   - Generar pagos aleatorios con fast-check
@@ -58,7 +58,7 @@ Este plan desglosa la implementación del modal de registro rápido de pagos en 
   - Verificar que el pago existe en la base de datos con todos los campos correctos
   - Configurar 100 iteraciones mínimo
 
-- [ ] 3.2 Escribir property test para cálculo de estado de pago
+- [x] 3.2 Escribir property test para cálculo de estado de pago
   - **Property 4: Cálculo correcto de estado de pago**
   - **Valida: Requisitos 3.3, 7.1, 7.2, 7.3, 7.4**
   - Generar combinaciones aleatorias de total de venta y monto de pago
@@ -67,13 +67,13 @@ Este plan desglosa la implementación del modal de registro rápido de pagos en 
   - Verificar que el estado de pago es correcto (pending/partial/paid) según la lógica
   - Configurar 100 iteraciones mínimo
 
-- [ ] 4. Implementar botón "Registrar después" en QuickPaymentModal
+- [x] 4. Implementar botón "Registrar después" en QuickPaymentModal
   - Agregar handler para el botón que llama a onOpenChange(false)
   - Verificar que no se llama a addSalePayment al cerrar
   - Asegurar que el modal se cierra sin registrar ningún pago
   - _Requisitos: 5.1, 5.2, 5.3_
 
-- [ ] 4.1 Escribir property test para cerrar sin crear pagos
+- [x] 4.1 Escribir property test para cerrar sin crear pagos
   - **Property 7: Cerrar modal sin crear pagos**
   - **Valida: Requisitos 5.2**
   - Generar ventas aleatorias
@@ -82,7 +82,7 @@ Este plan desglosa la implementación del modal de registro rápido de pagos en 
   - Verificar que no se creó ningún registro en sale_payments
   - Configurar 100 iteraciones mínimo
 
-- [ ] 4.2 Escribir property test para estado pendiente al cerrar
+- [x] 4.2 Escribir property test para estado pendiente al cerrar
   - **Property 8: Estado pendiente al cerrar modal**
   - **Valida: Requisitos 1.4, 5.3**
   - Generar ventas aleatorias con estado "pending"

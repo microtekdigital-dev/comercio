@@ -97,6 +97,8 @@ export function NotificationsPopover() {
       case 'new_sale': return '🛒';
       case 'payment_received': return '✅';
       case 'system': return '⚙️';
+      case 'sale_return': return '↩️';
+      case 'repair_status_change': return '🔧';
       default: return '🔔';
     }
   };

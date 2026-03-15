@@ -45,6 +45,8 @@ import {
   Wrench,
   FileBarChart,
   Monitor,
+  RotateCcw,
+  ShieldCheck,
 } from "lucide-react"
 
 interface Profile {
@@ -201,6 +203,7 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
             { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
             { href: "/dashboard/pos", label: "Punto de Venta", icon: Monitor },
             { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+            { href: "/dashboard/returns", label: "Devoluciones", icon: RotateCcw },
             { href: "/dashboard/customers", label: "Clientes", icon: Users },
           ],
         },
@@ -249,6 +252,7 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
           items: [
             { href: "/dashboard/billing", label: "Planes", icon: CreditCard },
             { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+            { href: "/dashboard/audit-log", label: "Log de Auditoría", icon: ShieldCheck },
           ],
         },
       ]
@@ -261,6 +265,7 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
             { href: "/dashboard/sales", label: "Ventas", icon: ShoppingCart },
             { href: "/dashboard/pos", label: "Punto de Venta", icon: Monitor },
             { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
+            { href: "/dashboard/returns", label: "Devoluciones", icon: RotateCcw },
             { href: "/dashboard/customers", label: "Clientes", icon: Users },
           ],
         },

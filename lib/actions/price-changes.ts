@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { PriceChange, PriceChangeFilters, PriceChangeFormData } from "@/lib/types/erp"
+import { logAuditEvent } from "@/lib/actions/audit-log"
 
 /**
  * Obtiene los cambios de precio con filtros opcionales
@@ -226,6 +227,14 @@ export async function updateProductPrice(
     revalidatePath("/dashboard/products")
     revalidatePath(`/dashboard/products/${productId}`)
     revalidatePath("/dashboard/price-history")
+
+    void logAuditEvent({
+      module: "productos",
+      action: "cambio_precio",
+      entityType: "product",
+      entityId: productId,
+      metadata: { previous_price: currentValue, new_price: formData.new_value, price_type: formData.price_type, product_name: product.name },
+    });
     
     return { data: updatedProduct }
   } catch (error: any) {

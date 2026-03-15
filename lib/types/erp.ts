@@ -251,6 +251,8 @@ export interface SaleFormData {
   payment_method?: string;
   notes?: string;
   items: SaleItemFormData[];
+  global_discount_type?: DiscountType;
+  global_discount_value?: number;
 }
 
 export interface SaleItemFormData {
@@ -263,6 +265,8 @@ export interface SaleItemFormData {
   unit_price: number;
   tax_rate: number;
   discount_percent: number;
+  discount_type?: DiscountType;
+  discount_fixed?: number;
 }
 
 // Analytics types
@@ -543,6 +547,9 @@ export interface CashRegisterClosure {
   notes: string | null;
   currency: string;
   opening_id: string | null;
+  total_discounts: number;
+  total_returns_cash: number;
+  total_returns_transfer: number;
   created_at: string;
   updated_at: string;
 }
@@ -987,4 +994,111 @@ export interface RecentRepair {
   device_model: string;
   delivered_date: string;
   total_amount: number;
+}
+
+// =====================================================
+// Discount Types (Descuentos en Ventas)
+// =====================================================
+
+export type DiscountType = 'percentage' | 'fixed';
+
+export interface ItemTotals {
+  subtotal: number;        // precio_unitario × cantidad (sin descuento)
+  discount_amount: number; // monto de descuento aplicado
+  subtotal_net: number;    // subtotal − discount_amount
+  tax_amount: number;      // subtotal_net × tax_rate
+  total: number;           // subtotal_net + tax_amount
+}
+
+export interface SaleTotals {
+  subtotal: number;        // Σ subtotal_net de ítems
+  discount_amount: number; // descuento global aplicado
+  tax_amount: number;      // Σ tax_amount de ítems
+  total: number;           // subtotal − discount_amount + tax_amount
+}
+
+// =====================================================
+// Sale Returns Types (Devoluciones)
+// =====================================================
+
+export interface SaleReturn {
+  id: string;
+  company_id: string;
+  sale_id: string;
+  return_number: string;
+  return_date: string;
+  total_amount: number;
+  refund_method: 'cash' | 'transfer' | 'customer_credit';
+  reason: 'defective_product' | 'wrong_product' | 'customer_changed_mind' | 'damaged_in_transit' | 'other';
+  reason_notes: string | null;
+  status: 'completed' | 'cancelled';
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  sale?: Sale;
+  items?: SaleReturnItem[];
+  credit_note?: CreditNote;
+}
+
+export interface SaleReturnItem {
+  id: string;
+  return_id: string;
+  sale_item_id: string;
+  product_id: string | null;
+  variant_id: string | null;
+  product_name: string;
+  variant_name: string | null;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;
+  discount_percent: number;
+  subtotal: number;
+  tax_amount: number;
+  total: number;
+  created_at: string;
+}
+
+export interface CreditNote {
+  id: string;
+  company_id: string;
+  return_id: string;
+  sale_id: string;
+  customer_id: string | null;
+  note_number: string;
+  amount: number;
+  status: 'pending' | 'applied';
+  applied_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerCredit {
+  id: string;
+  company_id: string;
+  customer_id: string;
+  credit_note_id: string | null;
+  amount: number;
+  description: string | null;
+  created_at: string;
+}
+
+export interface CreateReturnInput {
+  sale_id: string;
+  items: CreateReturnItemInput[];
+  refund_method: 'cash' | 'transfer' | 'customer_credit';
+  reason: 'defective_product' | 'wrong_product' | 'customer_changed_mind' | 'damaged_in_transit' | 'other';
+  reason_notes?: string;
+}
+
+export interface CreateReturnItemInput {
+  sale_item_id: string;
+  quantity: number;
+}
+
+export interface ReturnFilters {
+  saleId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  reason?: string;
+  refundMethod?: string;
 }
