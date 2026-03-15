@@ -136,23 +136,19 @@ export async function getCustomer(id: string): Promise<Customer | null> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
+    // Fetch profile and customer in parallel
+    const [profileResult, customerResult] = await Promise.all([
+      supabase.from("profiles").select("company_id").eq("id", user.id).single(),
+      supabase.from("customers").select("*").eq("id", id).single(),
+    ]);
 
-    if (!profile?.company_id) return null;
+    if (!profileResult.data?.company_id) return null;
+    if (customerResult.error || !customerResult.data) return null;
 
-    const { data, error } = await supabase
-      .from("customers")
-      .select("*")
-      .eq("id", id)
-      .eq("company_id", profile.company_id)
-      .single();
+    // Security check: ensure customer belongs to user's company
+    if (customerResult.data.company_id !== profileResult.data.company_id) return null;
 
-    if (error) throw error;
-    return data;
+    return customerResult.data;
   } catch (error) {
     console.error("Error fetching customer:", error);
     return null;
@@ -168,7 +164,7 @@ export async function createCustomer(formData: CustomerFormData) {
     await requirePermission("canCreateCustomers");
 
     // Validar datos fiscales
-    const fiscalValidation = validateFiscalData(formData)
+    const fiscalValidation = await validateFiscalData(formData)
     if (!fiscalValidation.valid) {
       return { error: fiscalValidation.error }
     }
@@ -223,7 +219,7 @@ export async function updateCustomer(id: string, formData: CustomerFormData) {
     await requirePermission("canEditCustomers");
 
     // Validar datos fiscales
-    const fiscalValidation = validateFiscalData(formData)
+    const fiscalValidation = await validateFiscalData(formData)
     if (!fiscalValidation.valid) {
       return { error: fiscalValidation.error }
     }
@@ -513,5 +509,113 @@ export async function addGeneralCustomerPayment(
   } catch (error: any) {
     console.error("Error adding customer payment:", error);
     return { error: error.message || "Error al registrar el pago" };
+  }
+}
+
+// Get customer sales history
+export async function getCustomerSales(customerId: string) {
+  const supabase = await createClient();
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { sales: [], stats: { total: 0, count: 0, lastDate: null } };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) return { sales: [], stats: { total: 0, count: 0, lastDate: null } };
+
+    const { data: sales, error } = await supabase
+      .from("sales")
+      .select(`
+        id, sale_number, sale_date, total, payment_status, status,
+        items:sale_items(quantity, unit_price, product_name),
+        payments:sale_payments(amount)
+      `)
+      .eq("customer_id", customerId)
+      .eq("company_id", profile.company_id)
+      .order("sale_date", { ascending: false });
+
+    if (error) throw error;
+
+    const list = sales || [];
+    const totalAmount = list.reduce((s, x) => s + (x.total || 0), 0);
+    const lastDate = list.length > 0 ? list[0].sale_date : null;
+
+    return {
+      sales: list,
+      stats: { total: totalAmount, count: list.length, lastDate },
+    };
+  } catch (error) {
+    console.error("Error fetching customer sales:", error);
+    return { sales: [], stats: { total: 0, count: 0, lastDate: null } };
+  }
+}
+
+// Get customer quotes history
+export async function getCustomerQuotes(customerId: string) {
+  const supabase = await createClient();
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) return [];
+
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("id, quote_number, created_at, total, status, valid_until")
+      .eq("customer_id", customerId)
+      .eq("company_id", profile.company_id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching customer quotes:", error);
+    return [];
+  }
+}
+
+// Get customer returns history
+export async function getCustomerReturns(customerId: string) {
+  const supabase = await createClient();
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.company_id) return [];
+
+    const { data, error } = await supabase
+      .from("sale_returns")
+      .select(`
+        id, return_number, return_date, total_refund, reason, status,
+        original_sale:sales(sale_number)
+      `)
+      .eq("customer_id", customerId)
+      .eq("company_id", profile.company_id)
+      .order("return_date", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching customer returns:", error);
+    return [];
   }
 }
