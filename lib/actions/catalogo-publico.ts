@@ -69,6 +69,19 @@ export async function getCatalogoPublico(
   }
 
   // 4. Obtener productos publicados con variantes
+  // Primero verificamos todos los productos de esta empresa
+  const { data: allProducts, error: allProductsError } = await supabase
+    .from("products")
+    .select("id, name, published, is_active")
+    .eq("company_id", company.id);
+  
+  console.log("[v0] All products for company:", { 
+    company_id: company.id, 
+    count: allProducts?.length ?? 0, 
+    products: allProducts?.map(p => ({ name: p.name, published: p.published, is_active: p.is_active })),
+    error: allProductsError?.message ?? null 
+  });
+
   const { data: rawProducts, error: rawProductsError } = await supabase
     .from("products")
     .select(`
@@ -86,7 +99,7 @@ export async function getCatalogoPublico(
     .eq("is_active", true)
     .order("name");
 
-  console.log("[catalogo-publico] products query:", { count: rawProducts?.length ?? 0, error: rawProductsError?.message ?? null });
+  console.log("[v0] Filtered products query:", { count: rawProducts?.length ?? 0, error: rawProductsError?.message ?? null });
 
   const products: CatalogoProduct[] = (rawProducts ?? []).map((p: any) => {
     const activeVariants: CatalogoVariant[] = (p.product_variants ?? [])
