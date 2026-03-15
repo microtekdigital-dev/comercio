@@ -47,6 +47,7 @@ import {
   Monitor,
   RotateCcw,
   ShieldCheck,
+  Globe,
 } from "lucide-react"
 
 interface Profile {
@@ -205,6 +206,7 @@ export function DashboardSidebar({ user, permissions }: SidebarProps) {
             { href: "/dashboard/quotes", label: "Presupuestos", icon: FileText },
             { href: "/dashboard/returns", label: "Devoluciones", icon: RotateCcw },
             { href: "/dashboard/customers", label: "Clientes", icon: Users },
+            { href: "/dashboard/catalogo", label: "Catálogo Online", icon: Globe },
           ],
         },
         {
