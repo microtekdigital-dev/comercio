@@ -268,7 +268,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
     <div className="flex-1 space-y-6 p-8 pt-6">
       {/* Hidden invoice for printing */}
       <div className="hidden">
-        {sale && <InvoicePrint ref={invoiceRef} sale={sale} companyInfo={companyInfo} />}
+        {sale && companyInfo && <InvoicePrint ref={invoiceRef} sale={sale} companyInfo={companyInfo} />}
       </div>
 
       <div className="flex items-center justify-between">
@@ -288,7 +288,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handlePrint}>
+          <Button variant="outline" onClick={handlePrint} disabled={!companyInfo}>
             <Printer className="mr-2 h-4 w-4" />
             Imprimir
           </Button>
