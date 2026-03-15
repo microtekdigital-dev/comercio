@@ -26,7 +26,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Empresa no encontrada", slug, companyError, keyUsed });
   }
 
-  // Productos
+  // Suscripción (igual que la acción)
+  const { data: subscription, error: subError } = await supabase
+    .from("subscriptions")
+    .select("status, plans(name)")
+    .eq("company_id", company.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Catálogo settings
+  const { data: settings, error: settingsError } = await supabase
+    .from("catalog_settings")
+    .select("*")
+    .eq("company_id", company.id)
+    .maybeSingle();
+
+  // Productos con variantes (igual que la acción)
+  const { data: productsWithVariants, error: productsWithVariantsError } = await supabase
+    .from("products")
+    .select(`id, name, published, is_active, product_variants(id, variant_name, is_active)`)
+    .eq("company_id", company.id)
+    .eq("published", true)
+    .eq("is_active", true)
+    .order("name");
+
+  // Productos sin join (control)
   const { data: products, error: productsError } = await supabase
     .from("products")
     .select("id, name, published, is_active")
@@ -34,19 +60,18 @@ export async function GET(request: Request) {
     .eq("published", true)
     .eq("is_active", true);
 
-  // Todos los productos (sin filtro published)
-  const { data: allProducts, error: allError } = await supabase
-    .from("products")
-    .select("id, name, published, is_active")
-    .eq("company_id", company.id);
-
   return NextResponse.json({
     keyUsed,
     company,
-    publishedProducts: products ?? [],
+    subscription: subscription ?? null,
+    subscriptionError: subError?.message ?? null,
+    planName: (subscription?.plans as any)?.name ?? null,
+    settings: settings ? { id: settings.id, is_active: settings.is_active } : null,
+    settingsError: settingsError?.message ?? null,
+    productsWithVariantsCount: productsWithVariants?.length ?? 0,
+    productsWithVariantsError: productsWithVariantsError?.message ?? null,
+    productsWithVariantsSample: productsWithVariants?.slice(0, 2) ?? [],
     publishedCount: products?.length ?? 0,
-    allProducts: allProducts ?? [],
-    allCount: allProducts?.length ?? 0,
-    errors: { productsError, allError },
+    errors: { productsError: productsError?.message ?? null },
   });
 }
