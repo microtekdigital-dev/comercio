@@ -8,6 +8,7 @@ import { FinancialStatsPanel } from "@/components/dashboard/financial-stats-pane
 import { RepairMetricsPanel } from "@/components/dashboard/repair-metrics-panel"
 import { InitialCashSetupWrapper } from "@/components/dashboard/initial-cash-setup-wrapper"
 import { PlanUsageServer } from "@/components/dashboard/plan-usage-server"
+import { SalesChartWidget } from "@/components/dashboard/sales-chart-widget"
 import { canAccessRepairs } from "@/lib/utils/plan-limits"
 // import { TutorialBanner } from "@/components/dashboard/tutorial-banner"
 import { Suspense } from "react"
@@ -56,6 +57,9 @@ export default async function DashboardPage() {
           <RepairMetricsPanel companyId={user.companies.id} />
         </Suspense>
       )}
+
+      {/* Sales Chart Widget */}
+      <SalesChartWidget />
 
       {/* ERP Statistics */}
       <Suspense fallback={<StatsLoading />}>
