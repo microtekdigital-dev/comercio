@@ -5,7 +5,9 @@ import type { CatalogoPublicoData, CatalogoProduct, CatalogoVariant } from "@/li
 // Cliente con service role (bypasa RLS) o anon como fallback
 function createPublicClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = serviceKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  console.log("[catalogo-publico] createPublicClient keyUsed:", serviceKey ? "service_role" : "anon");
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
@@ -45,6 +47,8 @@ export async function getCatalogoPublico(
     .limit(1)
     .maybeSingle();
 
+  console.log("[catalogo-publico] subscription check:", { found: !!subscription, error: subError?.message ?? null });
+
   if (!subscription) {
     console.error("[catalogo-publico] Sin suscripción activa para company_id:", company.id, subError?.message);
     return null;
@@ -57,13 +61,15 @@ export async function getCatalogoPublico(
     .eq("company_id", company.id)
     .maybeSingle();
 
+  console.log("[catalogo-publico] settings check:", { found: !!settings, is_active: settings?.is_active, error: settingsError?.message ?? null });
+
   if (!settings?.is_active) {
     console.error("[catalogo-publico] Catálogo inactivo o sin configuración para company_id:", company.id, settingsError?.message);
     return null;
   }
 
   // 4. Obtener productos publicados con variantes
-  const { data: rawProducts } = await supabase
+  const { data: rawProducts, error: rawProductsError } = await supabase
     .from("products")
     .select(`
       id,
@@ -79,6 +85,8 @@ export async function getCatalogoPublico(
     .eq("published", true)
     .eq("is_active", true)
     .order("name");
+
+  console.log("[catalogo-publico] products query:", { count: rawProducts?.length ?? 0, error: rawProductsError?.message ?? null });
 
   const products: CatalogoProduct[] = (rawProducts ?? []).map((p: any) => {
     const activeVariants: CatalogoVariant[] = (p.product_variants ?? [])
