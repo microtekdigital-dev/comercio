@@ -109,19 +109,17 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const loadCompanyInfo = async () => {
     const data = await getCompanyInfo();
     const settings = await getCompanySettings();
-    if (data) {
-      setCompanyInfo({
-        name: data.name,
-        address: data.address,
-        phone: data.phone,
-        email: data.email,
-        taxId: data.tax_id,
-        logoUrl: data.logo_url,
-        termsAndConditions: data.terms_and_conditions,
-        currencySymbol: settings?.currency_symbol || "$",
-        currencyPosition: settings?.currency_position || "before",
-      });
-    }
+    setCompanyInfo({
+      name: data?.name || "Mi Empresa",
+      address: data?.address || undefined,
+      phone: data?.phone || undefined,
+      email: data?.email || undefined,
+      taxId: data?.tax_id || undefined,
+      logoUrl: data?.logo_url || undefined,
+      termsAndConditions: data?.terms_and_conditions || undefined,
+      currencySymbol: settings?.currency_symbol || "$",
+      currencyPosition: settings?.currency_position || "before",
+    });
   };
 
   const loadElectronicInvoice = async (id: string) => {
