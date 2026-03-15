@@ -6,6 +6,7 @@ import { DashboardSidebarServer } from "@/components/dashboard/sidebar-server"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { SubscriptionGuard } from "@/components/dashboard/subscription-guard"
 import { SupportChatButton } from "@/components/dashboard/support-chat-button"
+import { TutorialWrapper } from "@/components/dashboard/tutorial-wrapper"
 import { getUnreadMessageCount } from "@/lib/actions/support"
 import { Toaster } from "sonner"
 import { createClient } from "@/lib/supabase/server"
@@ -86,6 +87,7 @@ export default async function DashboardLayout({
         </div>
         <Toaster position="top-right" richColors />
         <SupportChatButton unreadCount={unreadCount} />
+        <TutorialWrapper />
       </div>
     </SubscriptionGuard>
   )
