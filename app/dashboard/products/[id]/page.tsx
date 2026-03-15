@@ -64,6 +64,7 @@ export default function ProductDetailPage() {
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
+    barcode: "",
     description: "",
     type: "product" as "product" | "service",
     category_id: "",
@@ -137,6 +138,7 @@ export default function ProductDetailPage() {
       setFormData({
         name: productData.name,
         sku: productData.sku || "",
+        barcode: productData.barcode || "",
         description: productData.description || "",
         type: productData.type,
         category_id: productData.category_id || "",
@@ -335,6 +337,19 @@ export default function ProductDetailPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, sku: e.target.value })
                     }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="barcode">Código de Barras</Label>
+                  <Input
+                    id="barcode"
+                    disabled={!canEdit}
+                    value={formData.barcode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, barcode: e.target.value })
+                    }
+                    placeholder="7790001234567"
                   />
                 </div>
 

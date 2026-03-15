@@ -106,6 +106,7 @@ export interface Product {
   category_id: string | null;
   supplier_id: string | null; // Proveedor asociado al producto
   sku: string | null;
+  barcode: string | null;
   name: string;
   description: string | null;
   type: 'product' | 'service';
@@ -206,6 +207,7 @@ export interface ProductFormData {
   category_id?: string;
   supplier_id?: string; // Proveedor del producto (opcional)
   sku?: string;
+  barcode?: string;
   name: string;
   description?: string;
   type: 'product' | 'service';

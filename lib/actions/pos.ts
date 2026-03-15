@@ -133,7 +133,7 @@ export async function searchPOSProducts(
 
   if (query.trim()) {
     productsQuery = productsQuery.or(
-      `name.ilike.%${query}%,sku.ilike.%${query}%,description.ilike.%${query}%`
+      `name.ilike.%${query}%,sku.ilike.%${query}%,barcode.ilike.%${query}%,description.ilike.%${query}%`
     );
   }
 

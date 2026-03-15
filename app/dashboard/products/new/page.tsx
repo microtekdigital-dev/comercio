@@ -40,6 +40,7 @@ export default function NewProductPage() {
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
+    barcode: "",
     description: "",
     type: "product" as "product" | "service",
     category_id: "",
@@ -199,6 +200,18 @@ export default function NewProductPage() {
                       setFormData({ ...formData, sku: e.target.value })
                     }
                     placeholder="PROD-001"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="barcode">Código de Barras</Label>
+                  <Input
+                    id="barcode"
+                    value={formData.barcode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, barcode: e.target.value })
+                    }
+                    placeholder="7790001234567"
                   />
                 </div>
 

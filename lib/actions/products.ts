@@ -36,7 +36,7 @@ export async function getProducts(filters?: {
 
     // Apply filters
     if (filters?.search) {
-      query = query.or(`name.ilike.%${filters.search}%,sku.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+      query = query.or(`name.ilike.%${filters.search}%,sku.ilike.%${filters.search}%,barcode.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
     }
 
     if (filters?.categoryId) {
@@ -520,7 +520,7 @@ export async function searchProducts(query: string): Promise<Product[]> {
       .from("products")
       .select("*, category:categories(*), supplier:suppliers(*)")
       .eq("company_id", profile.company_id)
-      .or(`name.ilike.%${query}%,sku.ilike.%${query}%,description.ilike.%${query}%`)
+      .or(`name.ilike.%${query}%,sku.ilike.%${query}%,barcode.ilike.%${query}%,description.ilike.%${query}%`)
       .order("created_at", { ascending: false })
       .limit(20);
 
