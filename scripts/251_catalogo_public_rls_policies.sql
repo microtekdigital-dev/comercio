@@ -4,7 +4,7 @@
 -- para mostrar el catálogo sin requerir service role key.
 -- =====================================================
 
--- Lectura pública de companies (solo slug y nombre, para el catálogo)
+-- Lectura pública de companies
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -13,13 +13,11 @@ BEGIN
   ) THEN
     CREATE POLICY "companies_public_catalog_read" ON companies
       FOR SELECT
-      USING (
-        id IN (SELECT company_id FROM catalog_settings WHERE is_active = true)
-      );
+      USING (id IN (SELECT company_id FROM catalog_settings WHERE is_active = true));
   END IF;
 END $$;
 
--- Lectura pública de subscriptions (solo para verificar que está activa)
+-- Lectura pública de subscriptions
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -35,20 +33,18 @@ BEGIN
   END IF;
 END $$;
 
--- Lectura pública de plans (para obtener el nombre del plan)
+-- Lectura pública de plans
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE tablename = 'plans' AND policyname = 'plans_public_read'
   ) THEN
-    CREATE POLICY "plans_public_read" ON plans
-      FOR SELECT
-      USING (true);
+    CREATE POLICY "plans_public_read" ON plans FOR SELECT USING (true);
   END IF;
 END $$;
 
--- Lectura pública de products (solo publicados y activos, de empresas con catálogo activo)
+-- Lectura pública de products (publicados y activos)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -65,7 +61,7 @@ BEGIN
   END IF;
 END $$;
 
--- Lectura pública de product_variants (de productos publicados)
+-- Lectura pública de product_variants
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -94,13 +90,11 @@ BEGIN
   ) THEN
     CREATE POLICY "online_orders_public_count_read" ON online_orders
       FOR SELECT
-      USING (
-        company_id IN (SELECT company_id FROM catalog_settings WHERE is_active = true)
-      );
+      USING (company_id IN (SELECT company_id FROM catalog_settings WHERE is_active = true));
   END IF;
 END $$;
 
--- Inserción pública de online_orders (para que los clientes puedan hacer pedidos)
+-- Inserción pública de online_orders (visitantes pueden hacer pedidos)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -108,20 +102,6 @@ BEGIN
     WHERE tablename = 'online_orders' AND policyname = 'online_orders_public_insert'
   ) THEN
     CREATE POLICY "online_orders_public_insert" ON online_orders
-      FOR INSERT
-      WITH CHECK (true);
-  END IF;
-END $$;
-
--- Inserción pública de online_order_items
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE tablename = 'online_order_items' AND policyname = 'online_order_items_public_insert'
-  ) THEN
-    CREATE POLICY "online_order_items_public_insert" ON online_order_items
-      FOR INSERT
-      WITH CHECK (true);
+      FOR INSERT WITH CHECK (true);
   END IF;
 END $$;
