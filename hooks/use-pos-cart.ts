@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import type { Product, ProductVariant } from '@/lib/types/erp';
 import { type POSCart, type POSCartItem, INITIAL_POS_CART } from '@/lib/types/pos';
 
 const CART_STORAGE_KEY = 'pos-cart';
+
+function getCartStorageKey(userId: string | null): string {
+  return userId ? `pos-cart-${userId}` : CART_STORAGE_KEY;
+}
 
 // =====================================================
 // Helper: Calculate item-level totals
@@ -19,7 +24,8 @@ function calculateItemTotals(
   const grossSubtotal = quantity * unitPrice;
   const itemDiscount = grossSubtotal * (discountPercent / 100);
   const subtotal = grossSubtotal - itemDiscount;
-  const tax_amount = subtotal * taxRate;
+  // taxRate is stored as a percentage (e.g. 21 = 21%), divide by 100
+  const tax_amount = subtotal * (taxRate / 100);
   const total = subtotal + tax_amount;
   return { subtotal, tax_amount, total };
 }
@@ -57,10 +63,10 @@ export function calculateCartTotals(
 // localStorage helpers (SSR-safe)
 // =====================================================
 
-function loadCartFromStorage(): POSCart {
+function loadCartFromStorage(key: string): POSCart {
   try {
     if (typeof window === 'undefined') return INITIAL_POS_CART;
-    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return INITIAL_POS_CART;
     return JSON.parse(raw) as POSCart;
   } catch {
@@ -68,19 +74,19 @@ function loadCartFromStorage(): POSCart {
   }
 }
 
-function saveCartToStorage(cart: POSCart): void {
+function saveCartToStorage(key: string, cart: POSCart): void {
   try {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    localStorage.setItem(key, JSON.stringify(cart));
   } catch {
     // Ignore storage errors (e.g. private browsing quota)
   }
 }
 
-function clearCartFromStorage(): void {
+function clearCartFromStorage(key: string): void {
   try {
     if (typeof window === 'undefined') return;
-    localStorage.removeItem(CART_STORAGE_KEY);
+    localStorage.removeItem(key);
   } catch {
     // Ignore
   }
@@ -92,16 +98,32 @@ function clearCartFromStorage(): void {
 
 export function usePOSCart() {
   const [cart, setCart] = useState<POSCart>(INITIAL_POS_CART);
+  // undefined = not yet resolved, null = resolved but no user, string = user id
+  const [userId, setUserId] = useState<string | null | undefined>(undefined);
+  const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate from localStorage on mount (client-only)
+  // Resolve userId from Supabase session (client-only)
   useEffect(() => {
-    setCart(loadCartFromStorage());
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+    });
   }, []);
 
-  // Persist to localStorage on every cart change
+  // Hydrate from localStorage once userId is resolved (wait for auth, not before)
   useEffect(() => {
-    saveCartToStorage(cart);
-  }, [cart]);
+    if (hydrated || userId === undefined) return;
+    const key = getCartStorageKey(userId);
+    setCart(loadCartFromStorage(key));
+    setHydrated(true);
+  }, [userId, hydrated]);
+
+  // Persist to localStorage on every cart change (after hydration)
+  useEffect(() => {
+    if (!hydrated || userId === undefined) return;
+    const key = getCartStorageKey(userId);
+    saveCartToStorage(key, cart);
+  }, [cart, userId, hydrated]);
 
   // --------------------------------------------------
   // addItem
@@ -252,7 +274,7 @@ export function usePOSCart() {
   // clearCart
   // --------------------------------------------------
   function clearCart(): void {
-    clearCartFromStorage();
+    clearCartFromStorage(getCartStorageKey(userId ?? null));
     setCart(INITIAL_POS_CART);
   }
 
