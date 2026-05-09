@@ -1,91 +1,163 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createQuote } from "@/lib/actions/quotes"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import type { Customer, Product, QuoteItemFormData } from "@/lib/types/erp"
-import { VariantSelectorForQuotes } from "@/components/dashboard/variant-selector-for-quotes"
+import { getProductVariants } from "@/lib/actions/product-variants"
+import type { ProductVariant } from "@/lib/types/erp"
 
-export default function QuoteForm({ customers, products: initialProducts }: { customers: Customer[], products: Product[] }) {
+// ─── Section fuera del componente para evitar remount en cada render ───────────
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+const f = "border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
+const fFull = f + " w-full"
+const l = "text-xs font-bold text-black block mb-0.5"
+
+export default function QuoteForm({
+  customers,
+  products,
+}: {
+  customers: Customer[]
+  products: Product[]
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [products, setProducts] = useState<Product[]>(initialProducts)
   const [customerId, setCustomerId] = useState("")
   const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split("T")[0])
   const [validUntil, setValidUntil] = useState(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   )
   const [notes, setNotes] = useState("")
-  const [terms, setTerms] = useState("Presupuesto válido por 30 días. Precios sujetos a cambios sin previo aviso.")
+  const [terms, setTerms] = useState(
+    "Presupuesto válido por 30 días. Precios sujetos a cambios sin previo aviso."
+  )
   const [items, setItems] = useState<QuoteItemFormData[]>([
     { product_name: "", quantity: 1, unit_price: 0, tax_rate: 21, discount_percent: 0 },
   ])
+  const [variants, setVariants] = useState<Record<string, ProductVariant[]>>({})
 
-  const addItem = () => {
-    setItems([...items, { product_name: "", quantity: 1, unit_price: 0, tax_rate: 21, discount_percent: 0 }])
-  }
-
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index))
-  }
-
-  const updateItem = (index: number, field: keyof QuoteItemFormData, value: any) => {
-    const newItems = [...items]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setItems(newItems)
-  }
-
-  const selectProduct = async (index: number, productId: string) => {
-    const product = products.find((p) => p.id === productId)
-    if (product) {
-      const newItems = [...items]
-      newItems[index] = {
-        ...newItems[index],
-        product_id: product.id,
-        product_name: product.name,
-        product_sku: product.sku || "",
-        unit_price: product.price,
-        tax_rate: product.tax_rate,
-        variant_id: undefined,
-        variant_name: undefined,
+  // Load variants when a product with has_variants is selected
+  useEffect(() => {
+    items.forEach((item) => {
+      if (item.product_id && !variants[item.product_id]) {
+        const prod = products.find((p) => p.id === item.product_id)
+        if (prod?.has_variants) {
+          getProductVariants(item.product_id).then((v) =>
+            setVariants((prev) => ({ ...prev, [item.product_id!]: v }))
+          )
+        }
       }
-      setItems(newItems)
-    }
+    })
+  }, [items, products])
+
+  // ─── Stable handlers ──────────────────────────────────────────────────────────
+  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNotes(e.target.value)
+  }, [])
+
+  const handleTermsChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setTerms(e.target.value)
+  }, [])
+
+  const handleCustomerChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCustomerId(e.target.value)
+  }, [])
+
+  const handleQuoteDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuoteDate(e.target.value)
+  }, [])
+
+  const handleValidUntilChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setValidUntil(e.target.value)
+  }, [])
+
+  const addItem = useCallback(() => {
+    setItems((prev) => [
+      ...prev,
+      { product_name: "", quantity: 1, unit_price: 0, tax_rate: 21, discount_percent: 0 },
+    ])
+  }, [])
+
+  const removeItem = useCallback((index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const updateItem = useCallback(
+    (index: number, field: keyof QuoteItemFormData, value: any) => {
+      setItems((prev) =>
+        prev.map((item, i) => {
+          if (i !== index) return item
+          const updated = { ...item, [field]: value }
+          if (field === "product_id" && value) {
+            const prod = products.find((p) => p.id === value)
+            if (prod) {
+              updated.product_name = prod.name
+              updated.product_sku = prod.sku || ""
+              updated.unit_price = prod.price
+              updated.tax_rate = prod.tax_rate
+              updated.variant_id = undefined
+              updated.variant_name = undefined
+            }
+          }
+          return updated
+        })
+      )
+    },
+    [products]
+  )
+
+  const handleVariantSelect = useCallback(
+    (index: number, variantId: string, variantName: string, price?: number) => {
+      setItems((prev) =>
+        prev.map((item, i) => {
+          if (i !== index) return item
+          return {
+            ...item,
+            variant_id: variantId,
+            variant_name: variantName,
+            unit_price: price !== undefined ? price : item.unit_price,
+          }
+        })
+      )
+    },
+    []
+  )
+
+  const calcItemTotal = (item: QuoteItemFormData) => {
+    const sub = item.quantity * item.unit_price
+    const disc = sub * (item.discount_percent / 100)
+    const taxable = sub - disc
+    return taxable + taxable * (item.tax_rate / 100)
   }
 
-  const handleVariantSelect = (index: number, variantId: string | undefined, variantName: string | undefined, price?: number) => {
-    const newItems = [...items]
-    newItems[index] = {
-      ...newItems[index],
-      variant_id: variantId,
-      variant_name: variantName,
-      unit_price: price !== undefined ? price : newItems[index].unit_price,
-    }
-    setItems(newItems)
-  }
+  const totals = items.reduce(
+    (acc, item) => {
+      const sub = item.quantity * item.unit_price * (1 - item.discount_percent / 100)
+      const tax = sub * (item.tax_rate / 100)
+      return { subtotal: acc.subtotal + sub, tax: acc.tax + tax, total: acc.total + sub + tax }
+    },
+    { subtotal: 0, tax: 0, total: 0 }
+  )
 
-  const calculateTotal = () => {
-    return items.reduce((sum, item) => {
-      const subtotal = item.quantity * item.unit_price
-      const discount = subtotal * (item.discount_percent / 100)
-      const taxable = subtotal - discount
-      const tax = taxable * (item.tax_rate / 100)
-      return sum + taxable + tax
-    }, 0)
-  }
+  const fmt = (n: number) =>
+    n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (items.length === 0) { toast.error("Agregá al menos un producto"); return }
     setLoading(true)
-
     try {
       await createQuote({
         customer_id: customerId || undefined,
@@ -98,7 +170,7 @@ export default function QuoteForm({ customers, products: initialProducts }: { cu
       })
       toast.success("Presupuesto creado")
       router.push("/dashboard/quotes")
-    } catch (error) {
+    } catch {
       toast.error("Error al crear presupuesto")
     } finally {
       setLoading(false)
@@ -106,129 +178,237 @@ export default function QuoteForm({ customers, products: initialProducts }: { cu
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card className="p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label>Cliente</Label>
-            <Select value={customerId} onValueChange={setCustomerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {/* ── Información General ── */}
+      <Section title="Información General">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 sm:col-span-1">
+            <label className={l}>Cliente</label>
+            <select value={customerId} onChange={handleCustomerChange} className={fFull}>
+              <option value="">Sin cliente / Consumidor Final</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
           <div>
-            <Label>Fecha</Label>
-            <Input type="date" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} />
+            <label className={l}>Fecha</label>
+            <input type="date" value={quoteDate} onChange={handleQuoteDateChange} className={fFull} />
           </div>
           <div>
-            <Label>Válido hasta</Label>
-            <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+            <label className={l}>Válido hasta</label>
+            <input type="date" value={validUntil} onChange={handleValidUntilChange} className={fFull} />
           </div>
         </div>
-      </Card>
+      </Section>
 
-      <Card className="p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <h3 className="font-semibold">Productos</h3>
-          <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar
-          </Button>
+      {/* ── Productos ── */}
+      <Section title="Productos">
+        <div className="flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={addItem}
+            className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1"
+          >
+            <Plus className="h-3 w-3" /> Agregar Producto
+          </button>
         </div>
-        {items.map((item, index) => (
-          <div key={index} className="space-y-2 p-4 border rounded-lg">
-            <div className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-4">
-                <Label>Producto</Label>
-                <Select value={item.product_id} onValueChange={(v) => selectProduct(index, v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2">
-                <Label>Cantidad</Label>
-                <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, "quantity", Number(e.target.value))} />
-              </div>
-              <div className="col-span-2">
-                <Label>Precio</Label>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  value={item.unit_price} 
-                  onChange={(e) => updateItem(index, "unit_price", Number(e.target.value))} 
-                />
-              </div>
-              <div className="col-span-2">
-                <Label>IVA %</Label>
-                <Input type="number" value={item.tax_rate} onChange={(e) => updateItem(index, "tax_rate", Number(e.target.value))} />
-              </div>
-              <div className="col-span-1">
-                <Label>Desc %</Label>
-                <Input type="number" value={item.discount_percent} onChange={(e) => updateItem(index, "discount_percent", Number(e.target.value))} />
-              </div>
-              <div className="col-span-1">
-                <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            {/* Show variant selector if product has variants */}
-            {item.product_id && (() => {
-              const product = products.find((p) => p.id === item.product_id)
-              if (!product?.has_variants) return null
-              
+
+        {items.length === 0 ? (
+          <div className="text-center py-6 text-xs text-gray-500">
+            Sin productos — hacé click en "Agregar Producto"
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {items.map((item, idx) => {
+              const prod = products.find((p) => p.id === item.product_id)
+              const vars = item.product_id ? (variants[item.product_id] || []).filter((v) => v.is_active) : []
+
               return (
-                <div className="mt-2">
-                  <VariantSelectorForQuotes
-                    productId={product.id}
-                    selectedVariantId={item.variant_id}
-                    onVariantChange={(variantId, variantName, price) => {
-                      handleVariantSelect(index, variantId, variantName, price)
-                    }}
-                  />
+                <div key={idx} className="border border-[#808080] bg-[#f5f5f5] p-2 space-y-2">
+                  {/* Row 1: producto, cant, precio, iva, desc, eliminar */}
+                  <div className="grid grid-cols-12 gap-1 items-end">
+                    <div className="col-span-4">
+                      <label className={l}>Producto</label>
+                      <select
+                        value={item.product_id || ""}
+                        onChange={(e) => updateItem(idx, "product_id", e.target.value)}
+                        className={fFull}
+                      >
+                        <option value="">Manual</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                      {!item.product_id && (
+                        <input
+                          placeholder="Nombre del producto"
+                          value={item.product_name}
+                          onChange={(e) => updateItem(idx, "product_name", e.target.value)}
+                          className={fFull + " mt-1"}
+                        />
+                      )}
+                    </div>
+                    <div className="col-span-2">
+                      <label className={l}>Cantidad</label>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(idx, "quantity", parseFloat(e.target.value) || 0)}
+                        className={fFull}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className={l}>Precio</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.unit_price}
+                        onChange={(e) => updateItem(idx, "unit_price", parseFloat(e.target.value) || 0)}
+                        className={fFull}
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className={l}>IVA%</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={item.tax_rate}
+                        onChange={(e) => updateItem(idx, "tax_rate", parseFloat(e.target.value) || 0)}
+                        className={fFull}
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className={l}>Desc%</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={item.discount_percent}
+                        onChange={(e) => updateItem(idx, "discount_percent", parseFloat(e.target.value) || 0)}
+                        className={fFull}
+                      />
+                    </div>
+                    <div className="col-span-1 text-right">
+                      <label className={l}>Total</label>
+                      <div className="text-xs font-mono font-bold py-0.5">${fmt(calcItemTotal(item))}</div>
+                    </div>
+                    <div className="col-span-1 flex items-end justify-center pb-0.5">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Variantes */}
+                  {prod?.has_variants && vars.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={l}>Variante</label>
+                        <select
+                          value={item.variant_id || ""}
+                          onChange={(e) => {
+                            const v = vars.find((v) => v.id === e.target.value)
+                            if (v) handleVariantSelect(idx, v.id, v.variant_name, v.price || undefined)
+                          }}
+                          className={fFull}
+                        >
+                          <option value="">Seleccionar variante...</option>
+                          {vars.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.variant_name}{v.price ? ` - $${v.price.toFixed(2)}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {item.variant_id && (() => {
+                        const v = vars.find((v) => v.id === item.variant_id)
+                        return v ? (
+                          <div className="flex items-end">
+                            <span className="text-xs text-gray-600">
+                              Stock: {v.stock_quantity} u.
+                            </span>
+                          </div>
+                        ) : null
+                      })()}
+                    </div>
+                  )}
                 </div>
               )
-            })()}
+            })}
           </div>
-        ))}
-      </Card>
+        )}
+      </Section>
 
-      <Card className="p-6 space-y-4">
-        <div>
-          <Label>Notas</Label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+      {/* ── Totales ── */}
+      <Section title="Totales">
+        <div className="space-y-1 text-sm max-w-xs ml-auto">
+          <div className="flex justify-between text-xs">
+            <span>Subtotal:</span>
+            <span className="font-mono">${fmt(totals.subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span>IVA:</span>
+            <span className="font-mono">${fmt(totals.tax)}</span>
+          </div>
+          <div className="flex justify-between font-bold border-t border-[#808080] pt-1">
+            <span>Total:</span>
+            <span className="font-mono">${fmt(totals.total)}</span>
+          </div>
         </div>
-        <div>
-          <Label>Términos y Condiciones</Label>
-          <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} />
-        </div>
-      </Card>
+      </Section>
 
-      <div className="flex justify-between items-center">
-        <div className="text-2xl font-bold">
-          Total: ${calculateTotal().toLocaleString()}
+      {/* ── Notas y Términos ── */}
+      <Section title="Notas y Términos">
+        <div>
+          <label className={l}>Notas</label>
+          <textarea
+            value={notes}
+            onChange={handleNotesChange}
+            rows={2}
+            placeholder="Notas adicionales..."
+            className={fFull + " resize-none"}
+          />
         </div>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => router.back()}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Guardando..." : "Crear Presupuesto"}
-          </Button>
+        <div>
+          <label className={l}>Términos y Condiciones</label>
+          <textarea
+            value={terms}
+            onChange={handleTermsChange}
+            rows={3}
+            className={fFull + " resize-none"}
+          />
         </div>
+      </Section>
+
+      {/* ── Botones ── */}
+      <div className="flex justify-end gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1"
+        >
+          {loading ? (
+            <><Loader2 className="h-3 w-3 animate-spin" /> Guardando...</>
+          ) : (
+            "✔ Crear Presupuesto"
+          )}
+        </button>
       </div>
     </form>
   )
