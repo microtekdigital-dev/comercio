@@ -1,61 +1,44 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { getSupplier, updateSupplier, deleteSupplier, getSupplierStats } from "@/lib/actions/suppliers";
 import { getUserPermissions } from "@/lib/utils/permissions";
 import type { Supplier, SupplierFormData } from "@/lib/types/erp";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Trash2, TrendingUp, ShoppingCart, DollarSign, AlertCircle } from "lucide-react";
+import { Save, Trash2, Loader2, ShoppingCart, TrendingUp, DollarSign, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+
+// ── Section fuera del componente ──────────────────────────────────────────────
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full disabled:bg-[#e0e0e0] disabled:text-gray-500";
+const l = "text-xs font-bold text-black block mb-0.5";
 
 export default function SupplierDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
   const [formData, setFormData] = useState<SupplierFormData>({
-    name: "",
-    contact_name: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    country: "Argentina",
-    postal_code: "",
-    tax_id: "",
-    website: "",
-    notes: "",
-    status: "active",
-    payment_terms: "",
+    name: "", contact_name: "", email: "", phone: "", address: "", city: "",
+    state: "", country: "Argentina", postal_code: "", tax_id: "", website: "",
+    notes: "", status: "active", payment_terms: "",
   });
 
   useEffect(() => {
@@ -75,20 +58,13 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
     if (data) {
       setSupplier(data);
       setFormData({
-        name: data.name,
-        contact_name: data.contact_name || "",
-        email: data.email || "",
-        phone: data.phone || "",
-        address: data.address || "",
-        city: data.city || "",
-        state: data.state || "",
-        country: data.country,
-        postal_code: data.postal_code || "",
-        tax_id: data.tax_id || "",
-        website: data.website || "",
-        notes: data.notes || "",
-        status: data.status,
-        payment_terms: data.payment_terms || "",
+        name: data.name, contact_name: data.contact_name || "",
+        email: data.email || "", phone: data.phone || "",
+        address: data.address || "", city: data.city || "",
+        state: data.state || "", country: data.country,
+        postal_code: data.postal_code || "", tax_id: data.tax_id || "",
+        website: data.website || "", notes: data.notes || "",
+        status: data.status, payment_terms: data.payment_terms || "",
       });
     }
     setLoading(false);
@@ -99,382 +75,196 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
     setStats(data);
   };
 
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    },
+    []
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-
     const result = await updateSupplier(id, formData);
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Proveedor actualizado exitosamente");
-      loadSupplier();
-    }
+    if (result.error) { toast.error(result.error); }
+    else { toast.success("Proveedor actualizado"); loadSupplier(); }
     setSaving(false);
   };
 
   const handleDelete = async () => {
+    setDeleting(true);
     const result = await deleteSupplier(id);
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Proveedor eliminado exitosamente");
-      router.push("/dashboard/suppliers");
-    }
+    if (result.error) { toast.error(result.error); setDeleting(false); setConfirmDelete(false); }
+    else { toast.success("Proveedor eliminado"); router.push("/dashboard/suppliers"); }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0 }).format(n);
 
   if (loading) {
     return (
-      <div className="flex-1 p-8">
-        <p>Cargando proveedor...</p>
+      <div className="flex items-center justify-center py-16 text-black">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Cargando proveedor...
       </div>
     );
   }
 
   if (!supplier) {
     return (
-      <div className="flex-1 p-8">
-        <p>Proveedor no encontrado</p>
+      <div className="text-center py-16 text-black">
+        <p className="font-bold">Proveedor no encontrado</p>
+        <Link href="/dashboard/suppliers" className="text-blue-700 underline text-xs">← Volver</Link>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/suppliers">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">{supplier.name}</h2>
-            <p className="text-muted-foreground">
-              {canEdit ? "Edita la información del proveedor" : "Información del proveedor"}
-            </p>
+    <div className="space-y-3 text-black select-none">
+      {/* Confirm delete dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-80">
+            <div className="bg-[#000080] px-3 py-1">
+              <span className="text-white text-sm font-bold">⚠ Confirmar eliminación</span>
+            </div>
+            <div className="bg-[#d4d0c8] p-4 space-y-3">
+              <p className="text-xs">¿Estás seguro que querés eliminar <strong>{supplier.name}</strong>? Esta acción no se puede deshacer.</p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setConfirmDelete(false)} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+                  Cancelar
+                </button>
+                <button onClick={handleDelete} disabled={deleting} className="border border-[#808080] bg-[#ffcccc] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#ffaaaa] disabled:opacity-50 flex items-center gap-1">
+                  {deleting ? <><Loader2 className="h-3 w-3 animate-spin" /> Eliminando...</> : "🗑 Eliminar"}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-        {canDelete && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminará permanentemente el
-                  proveedor y toda su información asociada.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>
-                  Eliminar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
-
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Órdenes
-              </CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalOrders}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.pendingOrders} pendientes
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Comprado
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(stats.totalPurchased)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Pagado
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(stats.totalPaid)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Saldo Pendiente
-              </CardTitle>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${stats.balance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                {formatCurrency(stats.balance)}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información General</CardTitle>
-              <CardDescription>Datos básicos del proveedor</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Nombre de la Empresa <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    disabled={!canEdit}
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contact_name">Nombre del Contacto</Label>
-                  <Input
-                    id="contact_name"
-                    name="contact_name"
-                    disabled={!canEdit}
-                    value={formData.contact_name}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    disabled={!canEdit}
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    disabled={!canEdit}
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tax_id">CUIT/RUT</Label>
-                  <Input
-                    id="tax_id"
-                    name="tax_id"
-                    disabled={!canEdit}
-                    value={formData.tax_id}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="website">Sitio Web</Label>
-                  <Input
-                    id="website"
-                    name="website"
-                    type="url"
-                    disabled={!canEdit}
-                    value={formData.website}
-                    onChange={handleChange}
-                    placeholder="https://"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="payment_terms">Términos de Pago</Label>
-                  <Input
-                    id="payment_terms"
-                    name="payment_terms"
-                    disabled={!canEdit}
-                    value={formData.payment_terms}
-                    onChange={handleChange}
-                    placeholder="ej: 30 días, Contado"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="status">Estado</Label>
-                  <Select
-                    disabled={!canEdit}
-                    value={formData.status}
-                    onValueChange={(value: "active" | "inactive") =>
-                      setFormData((prev) => ({ ...prev, status: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Activo</SelectItem>
-                      <SelectItem value="inactive">Inactivo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Dirección</CardTitle>
-              <CardDescription>Ubicación del proveedor</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="address">Dirección</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  disabled={!canEdit}
-                  value={formData.address}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="city">Ciudad</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    disabled={!canEdit}
-                    value={formData.city}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="state">Provincia/Estado</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    disabled={!canEdit}
-                    value={formData.state}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="country">País</Label>
-                  <Input
-                    id="country"
-                    name="country"
-                    disabled={!canEdit}
-                    value={formData.country}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="postal_code">Código Postal</Label>
-                  <Input
-                    id="postal_code"
-                    name="postal_code"
-                    disabled={!canEdit}
-                    value={formData.postal_code}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Notas</CardTitle>
-              <CardDescription>Información adicional</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                id="notes"
-                name="notes"
-                disabled={!canEdit}
-                value={formData.notes}
-                onChange={handleChange}
-                rows={4}
-                placeholder="Notas adicionales sobre el proveedor..."
-              />
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end gap-4">
-            <Link href="/dashboard/suppliers">
-              <Button type="button" variant="outline">
-                {canEdit ? "Cancelar" : "Volver"}
-              </Button>
-            </Link>
-            {canEdit && (
-              <Button type="submit" disabled={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                {saving ? "Guardando..." : "Guardar Cambios"}
-              </Button>
-            )}
-          </div>
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        {/* Title bar */}
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <span className="text-white text-sm font-bold">🏭 {supplier.name}</span>
+          <Link href="/dashboard/suppliers" className="text-blue-200 text-xs hover:text-white">← Volver</Link>
         </div>
-      </form>
+
+        <div className="bg-[#d4d0c8] p-4 space-y-3">
+
+          {/* Stats */}
+          {stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { icon: <ShoppingCart className="h-4 w-4" />, label: "Total Órdenes", value: stats.totalOrders, sub: `${stats.pendingOrders} pendientes` },
+                { icon: <TrendingUp className="h-4 w-4" />, label: "Total Comprado", value: fmt(stats.totalPurchased) },
+                { icon: <DollarSign className="h-4 w-4" />, label: "Total Pagado", value: fmt(stats.totalPaid) },
+                { icon: <AlertCircle className="h-4 w-4" />, label: "Saldo Pendiente", value: fmt(stats.balance), color: stats.balance > 0 ? "text-orange-700" : "text-green-700" },
+              ].map((s, i) => (
+                <div key={i} className="border-2 border-[#808080] bg-white p-2 shadow-[inset_1px_1px_2px_#808080]">
+                  <div className="flex items-center gap-1 text-gray-500 mb-1">{s.icon}<span className="text-[10px]">{s.label}</span></div>
+                  <div className={`text-base font-bold font-mono ${s.color || ""}`}>{s.value}</div>
+                  {s.sub && <div className="text-[10px] text-gray-500">{s.sub}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <Section title="Información General">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 sm:col-span-1">
+                  <label className={l}>Nombre de la Empresa *</label>
+                  <input required name="name" disabled={!canEdit} value={formData.name} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>Contacto</label>
+                  <input name="contact_name" disabled={!canEdit} value={formData.contact_name} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>Email</label>
+                  <input type="email" name="email" disabled={!canEdit} value={formData.email} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>Teléfono</label>
+                  <input name="phone" disabled={!canEdit} value={formData.phone} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>CUIT/RUT</label>
+                  <input name="tax_id" disabled={!canEdit} value={formData.tax_id} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>Sitio Web</label>
+                  <input type="url" name="website" disabled={!canEdit} value={formData.website} onChange={handleChange} placeholder="https://" className={f} />
+                </div>
+                <div>
+                  <label className={l}>Términos de Pago</label>
+                  <input name="payment_terms" disabled={!canEdit} value={formData.payment_terms} onChange={handleChange} placeholder="30 días, Contado..." className={f} />
+                </div>
+                <div>
+                  <label className={l}>Estado</label>
+                  <select name="status" disabled={!canEdit} value={formData.status} onChange={handleChange} className={f}>
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo</option>
+                  </select>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Dirección">
+              <div>
+                <label className={l}>Dirección</label>
+                <input name="address" disabled={!canEdit} value={formData.address} onChange={handleChange} className={f} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={l}>Ciudad</label>
+                  <input name="city" disabled={!canEdit} value={formData.city} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>Provincia</label>
+                  <input name="state" disabled={!canEdit} value={formData.state} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>País</label>
+                  <input name="country" disabled={!canEdit} value={formData.country} onChange={handleChange} className={f} />
+                </div>
+                <div>
+                  <label className={l}>Código Postal</label>
+                  <input name="postal_code" disabled={!canEdit} value={formData.postal_code} onChange={handleChange} className={f} />
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Notas">
+              <textarea name="notes" disabled={!canEdit} value={formData.notes} onChange={handleChange} rows={3} placeholder="Notas adicionales..." className={f + " resize-none"} />
+            </Section>
+
+            <div className="flex justify-between items-center pt-1">
+              {canDelete ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="border border-[#808080] bg-[#ffcccc] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#ffaaaa] flex items-center gap-1"
+                >
+                  <Trash2 className="h-3 w-3" /> Eliminar
+                </button>
+              ) : <div />}
+
+              <div className="flex gap-2">
+                <Link href="/dashboard/suppliers" className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+                  {canEdit ? "Cancelar" : "Volver"}
+                </Link>
+                {canEdit && (
+                  <button type="submit" disabled={saving} className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+                    {saving ? <><Loader2 className="h-3 w-3 animate-spin" /> Guardando...</> : <><Save className="h-3 w-3" /> Guardar Cambios</>}
+                  </button>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
