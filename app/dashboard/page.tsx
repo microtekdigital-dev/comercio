@@ -1,8 +1,9 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { canAccessRepairs } from "@/lib/utils/plan-limits"
 
-const SECTIONS = [
+const BASE_SECTIONS = [
   { href: "/dashboard/sales",           icon: "🛒", label: "Ventas",             desc: "Historial y detalle de ventas" },
   { href: "/dashboard/customers",       icon: "👥", label: "Clientes",           desc: "Gestión de clientes y cuentas" },
   { href: "/dashboard/products",        icon: "📦", label: "Productos",          desc: "Catálogo, stock y precios" },
@@ -10,7 +11,6 @@ const SECTIONS = [
   { href: "/dashboard/suppliers",       icon: "🏭", label: "Proveedores",        desc: "Proveedores y cuenta corriente" },
   { href: "/dashboard/purchase-orders", icon: "📋", label: "Órdenes de Compra",  desc: "Compras y recepciones" },
   { href: "/dashboard/quotes",          icon: "📄", label: "Presupuestos",       desc: "Crear y gestionar presupuestos" },
-  { href: "/dashboard/repairs",         icon: "🔧", label: "Reparaciones",       desc: "Órdenes de servicio técnico" },
   { href: "/dashboard/cash-register",   icon: "💰", label: "Caja Registradora",  desc: "Aperturas, cierres y movimientos" },
   { href: "/dashboard/analytics",       icon: "📊", label: "Reportes",           desc: "Analítica y estadísticas" },
   { href: "/dashboard/stock-history",   icon: "📈", label: "Historial Stock",    desc: "Movimientos de inventario" },
@@ -27,12 +27,29 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, role")
+    .select("full_name, role, company_id")
     .eq("id", user.id)
     .single()
 
   const name = profile?.full_name?.split(" ")[0] ?? "Usuario"
   const isAdmin = profile?.role === "admin"
+
+  // Verificar acceso a reparaciones según plan
+  let repairsAllowed = false
+  if (profile?.company_id) {
+    const access = await canAccessRepairs(profile.company_id)
+    repairsAllowed = access.allowed
+  }
+
+  const sections = [
+    ...BASE_SECTIONS,
+    ...(repairsAllowed
+      ? [{ href: "/dashboard/repairs", icon: "🔧", label: "Reparaciones", desc: "Órdenes de servicio técnico" }]
+      : []),
+    ...(isAdmin
+      ? [{ href: "/dashboard/admin/support", icon: "🎫", label: "Soporte Admin", desc: "Tickets de soporte" }]
+      : []),
+  ]
 
   return (
     <div className="space-y-3 text-black select-none">
@@ -52,7 +69,7 @@ export default async function DashboardPage() {
 
       {/* Grid de secciones */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-        {SECTIONS.map((s) => (
+        {sections.map((s) => (
           <Link
             key={s.href}
             href={s.href}
@@ -63,18 +80,6 @@ export default async function DashboardPage() {
             <span className="text-[10px] text-gray-500 group-hover:text-blue-200 leading-tight">{s.desc}</span>
           </Link>
         ))}
-
-        {/* Soporte admin */}
-        {isAdmin && (
-          <Link
-            href="/dashboard/admin/support"
-            className="border-2 border-[#808080] bg-white shadow-[2px_2px_0px_#808080] hover:bg-[#000080] hover:text-white group p-3 flex flex-col gap-1 transition-none"
-          >
-            <span className="text-2xl leading-none">🎫</span>
-            <span className="text-xs font-bold mt-1">Soporte Admin</span>
-            <span className="text-[10px] text-gray-500 group-hover:text-blue-200 leading-tight">Tickets de soporte</span>
-          </Link>
-        )}
       </div>
     </div>
   )

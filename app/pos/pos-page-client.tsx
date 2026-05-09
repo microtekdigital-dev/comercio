@@ -35,6 +35,7 @@ interface POSPageClientProps {
   companyName?: string;
   planName?: string;
   daysLeft?: number | null;
+  repairsAllowed?: boolean;
 }
 
 function fmt(n: number, sym = "$") {
@@ -45,7 +46,7 @@ function todayStr() {
   return new Date().toLocaleDateString("es-AR");
 }
 
-export function POSPageClient({ currencySymbol, openingId, sellerName, financial, isAdmin = false, companyName = "", planName = "", daysLeft = null }: POSPageClientProps) {
+export function POSPageClient({ currencySymbol, openingId, sellerName, financial, isAdmin = false, companyName = "", planName = "", daysLeft = null, repairsAllowed = false }: POSPageClientProps) {
   const { cart, addItem, updateQuantity, removeItem, updateItemDiscount, recalculateTaxes, applyDiscount, clearCart } = usePOSCart();
 
   const [invoiceType, setInvoiceType] = useState<InvoiceType>("consumidor_final");
@@ -381,6 +382,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
                 { href: "/dashboard/team", icon: "👤", label: "Equipo" },
                 { href: "/dashboard/settings", icon: "⚙", label: "Configuración" },
                 { href: "/dashboard/billing", icon: "💳", label: "Planes" },
+                ...(repairsAllowed ? [{ href: "/dashboard/repairs", icon: "🔧", label: "Reparaciones" }] : []),
                 ...(isAdmin ? [{ href: "/dashboard/admin/support", icon: "🎫", label: "Soporte Admin" }] : []),
               ].map(item => (
                 <Link

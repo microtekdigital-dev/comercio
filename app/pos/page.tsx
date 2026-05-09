@@ -3,6 +3,7 @@ import { getCompanySettings } from "@/lib/actions/company-settings";
 import { getCurrentUser } from "@/lib/actions/users";
 import { getFinancialStats } from "@/lib/actions/financial-stats";
 import { getCompanySubscription } from "@/lib/actions/plans";
+import { canAccessRepairs } from "@/lib/utils/plan-limits";
 import { POSPageClient } from "./pos-page-client";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -46,8 +47,13 @@ export default async function POSPage() {
   // Get subscription info
   let planName = "";
   let daysLeft: number | null = null;
+  let repairsAllowed = false;
   if (user?.company_id) {
-    const subscription = await getCompanySubscription(user.company_id);
+    const [subscription, repairsAccess] = await Promise.all([
+      getCompanySubscription(user.company_id),
+      canAccessRepairs(user.company_id),
+    ]);
+    repairsAllowed = repairsAccess.allowed;
     if (subscription) {
       planName = (subscription as any).plan?.name ?? "";
       if (subscription.current_period_end) {
@@ -68,6 +74,7 @@ export default async function POSPage() {
       companyName={companyName}
       planName={planName}
       daysLeft={daysLeft}
+      repairsAllowed={repairsAllowed}
     />
   );
 }
