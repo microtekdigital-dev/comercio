@@ -14,6 +14,7 @@ import { PaymentModalRetro } from "@/components/dashboard/pos/payment-modal-retr
 import { Loader2, Printer, Search, Plus, Users, Package, BarChart2, X, UserPlus } from "lucide-react";
 import { ProductSearchModal } from "@/components/dashboard/pos/product-search-modal";
 import { NotificationsPopover } from "@/components/dashboard/notifications-popover";
+import { InternalNotesButton } from "@/components/dashboard/internal-notes-button";
 import { SupportChatWidget } from "@/components/dashboard/support-chat-widget";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -347,8 +348,10 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
         >
           🖥 Menú ▾
         </button>
-        {/* Notifications — right side */}
-        <div className="border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080]">
+        {/* Notifications + Notas internas — right side */}
+        <div className="flex items-center border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] [&_button]:text-black [&_button]:hover:bg-[#c0c0c0] [&_svg]:text-black">
+          <InternalNotesButton />
+          <div className="w-px h-6 bg-[#808080]" />
           <NotificationsPopover />
         </div>
       </div>
