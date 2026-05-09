@@ -239,6 +239,26 @@ export function usePOSCart() {
   }
 
   // --------------------------------------------------
+  // recalculateTaxes — apply or remove tax based on invoice type
+  // --------------------------------------------------
+  function recalculateTaxes(applyTax: boolean): void {
+    setCart((prev) => {
+      const updatedItems = prev.items.map((item) => {
+        const effectiveTaxRate = applyTax ? item.tax_rate : 0;
+        const totals = calculateItemTotals(
+          item.quantity,
+          item.unit_price,
+          effectiveTaxRate,
+          item.discount_percent
+        );
+        return { ...item, ...totals };
+      });
+      const cartTotals = calculateCartTotals(updatedItems, prev.discount_type, prev.discount_value);
+      return { ...prev, items: updatedItems, ...cartTotals };
+    });
+  }
+
+  // --------------------------------------------------
   // updateItemDiscount
   // --------------------------------------------------
   function updateItemDiscount(itemId: string, discountPercent: number): void {
@@ -300,6 +320,7 @@ export function usePOSCart() {
     updateQuantity,
     removeItem,
     updateItemDiscount,
+    recalculateTaxes,
     applyDiscount,
     setCustomer,
     clearCart,

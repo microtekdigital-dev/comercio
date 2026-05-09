@@ -46,7 +46,7 @@ function todayStr() {
 }
 
 export function POSPageClient({ currencySymbol, openingId, sellerName, financial, isAdmin = false, companyName = "", planName = "", daysLeft = null }: POSPageClientProps) {
-  const { cart, addItem, updateQuantity, removeItem, updateItemDiscount, applyDiscount, clearCart } = usePOSCart();
+  const { cart, addItem, updateQuantity, removeItem, updateItemDiscount, recalculateTaxes, applyDiscount, clearCart } = usePOSCart();
 
   const [invoiceType, setInvoiceType] = useState<InvoiceType>("consumidor_final");
   const [invoiceNumber, setInvoiceNumber] = useState("—");
@@ -226,7 +226,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
           setStockAlert(null);
         }
       }
-      addItem(product);
+      addItem(invoiceType === "factura_a" ? product : { ...product, tax_rate: 0 });
       setCodeInput("");
     } finally {
       setSearching(false);
@@ -466,7 +466,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
                   {["Código", "Descripción", "Precio", "Stock", ""].map((h, i) => <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>)}
                 </div>
                 {panelProducts.map((p, idx) => (
-                  <div key={p.id} onClick={() => { addItem(p); setActivePanel(null); codeRef.current?.focus(); }}
+                  <div key={p.id} onClick={() => { addItem(invoiceType === "factura_a" ? p : { ...p, tax_rate: 0 }); setActivePanel(null); codeRef.current?.focus(); }}
                     className={`grid grid-cols-[80px_1fr_100px_80px_60px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black cursor-pointer ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
                     <div className="px-2 py-1.5 text-xs font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{p.sku ?? "—"}</div>
                     <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate font-medium">{p.name}</div>
@@ -542,7 +542,11 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
         <div className="flex items-center gap-4 px-3 py-2 border-b border-[#808080] shrink-0">
           <select
             value={invoiceType}
-            onChange={(e) => setInvoiceType(e.target.value as InvoiceType)}
+            onChange={(e) => {
+              const newType = e.target.value as InvoiceType;
+              setInvoiceType(newType);
+              recalculateTaxes(newType === "factura_a");
+            }}
             className="border border-[#808080] bg-white text-sm px-1 py-0.5 font-bold shadow-[inset_1px_1px_2px_#808080] focus:outline-none"
           >
             <option value="consumidor_final">Consumidor Final</option>
@@ -825,7 +829,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
         open={productModalOpen}
         onClose={() => { setProductModalOpen(false); codeRef.current?.focus(); }}
         onSelect={(product) => {
-          addItem(product);
+          addItem(invoiceType === "factura_a" ? product : { ...product, tax_rate: 0 });
           if (product.track_inventory) {
             if (product.stock_quantity <= 0) setStockAlert(`${product.name.toUpperCase()} — Sin stock`);
             else if (product.stock_quantity <= product.min_stock_level) setStockAlert(`${product.name.toUpperCase()} Por debajo del Stock Mínimo - Actualmente hay ${product.stock_quantity}`);
