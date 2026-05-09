@@ -331,6 +331,10 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
           </button>
         ))}
         <div className="flex-1" />
+        <Link href="/dashboard"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-bold border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+          🖥 Dashboard
+        </Link>
         <Link href="/dashboard/cash-register/new"
           className="flex items-center gap-2 px-4 py-2 text-sm font-bold border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
           🏦 Cerrar Caja
