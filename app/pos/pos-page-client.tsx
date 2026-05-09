@@ -31,6 +31,9 @@ interface POSPageClientProps {
   sellerName: string;
   financial: FinancialStats | null;
   isAdmin?: boolean;
+  companyName?: string;
+  planName?: string;
+  daysLeft?: number | null;
 }
 
 function fmt(n: number, sym = "$") {
@@ -41,7 +44,7 @@ function todayStr() {
   return new Date().toLocaleDateString("es-AR");
 }
 
-export function POSPageClient({ currencySymbol, openingId, sellerName, financial, isAdmin = false }: POSPageClientProps) {
+export function POSPageClient({ currencySymbol, openingId, sellerName, financial, isAdmin = false, companyName = "", planName = "", daysLeft = null }: POSPageClientProps) {
   const { cart, addItem, updateQuantity, removeItem, updateItemDiscount, applyDiscount, clearCart } = usePOSCart();
 
   const [invoiceType, setInvoiceType] = useState<InvoiceType>("consumidor_final");
@@ -331,12 +334,29 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
 
       {/* Title bar */}
       <div className="flex items-center justify-between bg-[#000080] px-2 py-1 shrink-0">
-        <span className="text-white text-sm font-bold tracking-wide">🧾 Venta de Mercadería</span>
-        <button
-          onClick={handleSignOut}
-          className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0] leading-none"
-          title="Cerrar sesión"
-        >✕</button>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-white text-sm font-bold tracking-wide shrink-0">🧾</span>
+          {companyName && (
+            <span className="text-white text-sm font-bold truncate">{companyName}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {planName && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-blue-200 text-[10px] font-bold border border-blue-400 px-1.5 py-0.5">{planName}</span>
+              {daysLeft !== null && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 border ${daysLeft <= 5 ? "text-red-300 border-red-400" : daysLeft <= 15 ? "text-amber-300 border-amber-400" : "text-green-300 border-green-400"}`}>
+                  {daysLeft}d
+                </span>
+              )}
+            </div>
+          )}
+          <button
+            onClick={handleSignOut}
+            className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0] leading-none"
+            title="Cerrar sesión"
+          >✕</button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -781,34 +801,6 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
             <div>F2 — Buscar cliente</div>
           </div>
 
-          {/* Global discount */}
-          <div className="flex items-center gap-2 border border-[#808080] bg-[#f0f0f0] shadow-[inset_1px_1px_2px_#808080] px-2 py-1">
-            <span className="text-xs font-bold text-black">Desc. global:</span>
-            <select
-              value={cart.discount_type}
-              onChange={e => applyDiscount(e.target.value as 'percentage' | 'fixed', cart.discount_value)}
-              className="border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none"
-            >
-              <option value="percentage">%</option>
-              <option value="fixed">{currencySymbol}</option>
-            </select>
-            <input
-              type="number"
-              min={0}
-              step={cart.discount_type === 'percentage' ? 1 : 0.01}
-              max={cart.discount_type === 'percentage' ? 100 : undefined}
-              value={cart.discount_value || ""}
-              onChange={e => applyDiscount(cart.discount_type, parseFloat(e.target.value) || 0)}
-              placeholder="0"
-              className="w-16 border border-[#808080] bg-white text-xs px-1 py-0.5 text-right font-mono shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
-            />
-            {cart.discount_amount > 0 && (
-              <>
-                <span className="text-xs text-green-700 font-bold font-mono">-{fmt(cart.discount_amount, currencySymbol)}</span>
-                <button onClick={() => applyDiscount('percentage', 0)} className="text-red-600 text-xs font-bold hover:text-red-800" title="Quitar descuento">✕</button>
-              </>
-            )}
-          </div>
           <div className="flex items-center gap-2">
             {lastSale && (
               <button onClick={handlePrintTicket} disabled={printingTicket}

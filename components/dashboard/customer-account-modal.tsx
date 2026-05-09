@@ -6,35 +6,8 @@ import { getCompanySettings } from "@/lib/actions/company-settings";
 import { formatCompanyCurrency } from "@/lib/utils/currency";
 import type { AccountMovement } from "@/lib/actions/customers";
 import type { CompanySettings } from "@/lib/types/erp";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, X } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface CustomerAccountModalProps {
   customerId: string;
@@ -43,297 +16,145 @@ interface CustomerAccountModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CustomerAccountModal({
-  customerId,
-  customerName,
-  open,
-  onOpenChange,
-}: CustomerAccountModalProps) {
+export function CustomerAccountModal({ customerId, customerName, open, onOpenChange }: CustomerAccountModalProps) {
   const [movements, setMovements] = useState<AccountMovement[]>([]);
   const [balance, setBalance] = useState(0);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { toast } = useToast();
-
-  // Payment form state
-  const [paymentData, setPaymentData] = useState({
-    amount: "",
-    paymentMethod: "",
-    referenceNumber: "",
-    notes: "",
-  });
+  const [paymentData, setPaymentData] = useState({ amount: "", paymentMethod: "", referenceNumber: "", notes: "" });
 
   useEffect(() => {
-    if (open) {
-      loadSettings();
-      loadData();
-    }
+    if (open) { getCompanySettings().then(setSettings); loadData(); }
   }, [open, customerId]);
-
-  const loadSettings = async () => {
-    const data = await getCompanySettings();
-    setSettings(data);
-  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [movementsData, balanceData] = await Promise.all([
-        getCustomerAccountMovements(customerId),
-        getCustomerBalance(customerId),
-      ]);
-      setMovements(movementsData);
-      setBalance(balanceData);
-    } catch (error) {
-      console.error("Error loading customer account data:", error);
-    } finally {
-      setLoading(false);
-    }
+      const [m, b] = await Promise.all([getCustomerAccountMovements(customerId), getCustomerBalance(customerId)]);
+      setMovements(m); setBalance(b);
+    } finally { setLoading(false); }
   };
 
-  const formatCurrency = (amount: number) => {
-    if (!settings) {
-      return `$${amount.toFixed(2)}`;
-    }
-    return formatCompanyCurrency(amount, settings);
-  };
+  const fmt = (n: number) => settings ? formatCompanyCurrency(n, settings) : `$${n.toFixed(2)}`;
 
   const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!paymentData.amount || !paymentData.paymentMethod) {
-      toast({
-        title: "Error",
-        description: "Por favor completa los campos requeridos",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!paymentData.amount || !paymentData.paymentMethod) { toast.error("Completá los campos requeridos"); return; }
     setSubmitting(true);
     try {
-      const result = await addGeneralCustomerPayment(
-        customerId,
-        parseFloat(paymentData.amount),
-        paymentData.paymentMethod,
-        paymentData.referenceNumber || undefined,
-        paymentData.notes || undefined
-      );
-
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Éxito",
-          description: "Pago registrado correctamente",
-        });
-        
-        // Reset form and reload data
-        setPaymentData({
-          amount: "",
-          paymentMethod: "",
-          referenceNumber: "",
-          notes: "",
-        });
-        setShowPaymentForm(false);
-        await loadData();
-      }
-    } catch (error) {
-      console.error("Error submitting payment:", error);
-      toast({
-        title: "Error",
-        description: "Error al registrar el pago",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
+      const r = await addGeneralCustomerPayment(customerId, parseFloat(paymentData.amount), paymentData.paymentMethod, paymentData.referenceNumber || undefined, paymentData.notes || undefined);
+      if (r.error) { toast.error(r.error); }
+      else { toast.success("Pago registrado"); setPaymentData({ amount: "", paymentMethod: "", referenceNumber: "", notes: "" }); setShowPaymentForm(false); await loadData(); }
+    } catch { toast.error("Error al registrar el pago"); }
+    finally { setSubmitting(false); }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Cuenta Corriente - {customerName}</DialogTitle>
-          <DialogDescription>
-            Detalle de movimientos y saldo actual
-          </DialogDescription>
-        </DialogHeader>
+  if (!open) return null;
 
-        {/* Saldo destacado */}
-        <div className="rounded-lg border p-4 bg-muted/50">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Saldo Actual:</span>
-            <span className={`text-2xl font-bold ${balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : ''}`}>
-              {formatCurrency(balance)}
-            </span>
-          </div>
-          {balance > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              El cliente tiene saldo a favor
-            </p>
-          )}
-          {balance < 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              El cliente debe este monto
-            </p>
-          )}
-          
-          {/* Botón para registrar pago */}
-          <div className="mt-4">
-            {!showPaymentForm ? (
-              <Button
-                onClick={() => setShowPaymentForm(true)}
-                size="sm"
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Registrar Pago
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setShowPaymentForm(false)}
-                size="sm"
-                variant="outline"
-                className="w-full"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancelar
-              </Button>
-            )}
-          </div>
+  const f = "border border-[#808080] bg-white text-xs px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full";
+  const l = "text-[10px] font-bold text-black block mb-0.5";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-full max-w-3xl max-h-[85vh] flex flex-col text-black select-none">
+
+        {/* Title bar */}
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between shrink-0">
+          <span className="text-white text-sm font-bold">📋 Cuenta Corriente — {customerName}</span>
+          <button onClick={() => onOpenChange(false)} className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0]">✕</button>
         </div>
 
-        {/* Formulario de pago */}
+        {/* Balance */}
+        <div className="px-4 py-3 border-b-2 border-[#808080] bg-[#d4d0c8] shrink-0 flex items-center justify-between">
+          <div>
+            <div className="text-xs text-gray-600 font-bold">Saldo Actual</div>
+            <div className={`text-2xl font-bold font-mono ${balance > 0 ? "text-green-700" : balance < 0 ? "text-red-600" : "text-black"}`}>
+              {fmt(balance)}
+            </div>
+            <div className="text-[10px] text-gray-500">
+              {balance > 0 ? "El cliente tiene saldo a favor" : balance < 0 ? "El cliente debe este monto" : "Sin saldo pendiente"}
+            </div>
+          </div>
+          <button
+            onClick={() => setShowPaymentForm(!showPaymentForm)}
+            className={`border border-[#808080] px-3 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 ${showPaymentForm ? "bg-[#c0c0c0]" : "bg-[#d4d0c8]"}`}
+          >
+            {showPaymentForm ? <><X className="h-3 w-3" /> Cancelar</> : <><Plus className="h-3 w-3" /> Registrar Pago</>}
+          </button>
+        </div>
+
+        {/* Payment form */}
         {showPaymentForm && (
-          <form onSubmit={handleSubmitPayment} className="rounded-lg border p-4 space-y-4 bg-blue-50/50">
-            <h3 className="font-semibold text-sm">Nuevo Pago</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Monto *</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={paymentData.amount}
-                  onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
-                  required
-                />
+          <form onSubmit={handleSubmitPayment} className="px-4 py-3 border-b-2 border-[#808080] bg-[#f0f0f0] shrink-0 space-y-2">
+            <div className="text-xs font-bold text-[#000080] mb-2">Nuevo Pago</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={l}>Monto *</label>
+                <input type="number" step="0.01" required value={paymentData.amount} onChange={e => setPaymentData(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className={f} />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="paymentMethod">Método de Pago *</Label>
-                <Select
-                  value={paymentData.paymentMethod}
-                  onValueChange={(value) => setPaymentData({ ...paymentData, paymentMethod: value })}
-                  required
-                >
-                  <SelectTrigger id="paymentMethod">
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Efectivo</SelectItem>
-                    <SelectItem value="transfer">Transferencia</SelectItem>
-                    <SelectItem value="check">Cheque</SelectItem>
-                    <SelectItem value="card">Tarjeta</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div>
+                <label className={l}>Método de Pago *</label>
+                <select required value={paymentData.paymentMethod} onChange={e => setPaymentData(p => ({ ...p, paymentMethod: e.target.value }))} className={f}>
+                  <option value="">Seleccionar...</option>
+                  <option value="cash">Efectivo</option>
+                  <option value="transfer">Transferencia</option>
+                  <option value="check">Cheque</option>
+                  <option value="card">Tarjeta</option>
+                </select>
+              </div>
+              <div>
+                <label className={l}>N° Referencia</label>
+                <input type="text" value={paymentData.referenceNumber} onChange={e => setPaymentData(p => ({ ...p, referenceNumber: e.target.value }))} placeholder="Opcional" className={f} />
+              </div>
+              <div>
+                <label className={l}>Notas</label>
+                <input type="text" value={paymentData.notes} onChange={e => setPaymentData(p => ({ ...p, notes: e.target.value }))} placeholder="Opcional" className={f} />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="referenceNumber">Número de Referencia</Label>
-              <Input
-                id="referenceNumber"
-                type="text"
-                placeholder="Opcional"
-                value={paymentData.referenceNumber}
-                onChange={(e) => setPaymentData({ ...paymentData, referenceNumber: e.target.value })}
-              />
+            <div className="flex justify-end">
+              <button type="submit" disabled={submitting} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+                {submitting ? <><Loader2 className="h-3 w-3 animate-spin" /> Registrando...</> : "✔ Registrar Pago"}
+              </button>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
-              <Textarea
-                id="notes"
-                placeholder="Notas adicionales (opcional)"
-                value={paymentData.notes}
-                onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
-                rows={2}
-              />
-            </div>
-
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Registrando...
-                </>
-              ) : (
-                "Registrar Pago"
-              )}
-            </Button>
           </form>
         )}
 
-        {/* Tabla de movimientos */}
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : movements.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No hay movimientos registrados
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Referencia</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Debe</TableHead>
-                  <TableHead className="text-right">Haber</TableHead>
-                  <TableHead className="text-right">Saldo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {movements.map((movement) => (
-                  <TableRow key={`${movement.type}-${movement.id}`}>
-                    <TableCell>
-                      {movement.date.toLocaleDateString('es-AR')}
-                    </TableCell>
-                    <TableCell>{movement.reference}</TableCell>
-                    <TableCell>
-                      <Badge variant={movement.type === 'sale' ? 'default' : 'secondary'}>
-                        {movement.description}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {movement.debit > 0 ? formatCurrency(movement.debit) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {movement.credit > 0 ? formatCurrency(movement.credit) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(movement.balance)}
-                    </TableCell>
-                  </TableRow>
+        {/* Movements table */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-xs text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> Cargando...</div>
+          ) : movements.length === 0 ? (
+            <div className="text-center py-8 text-xs text-gray-500">Sin movimientos registrados</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-[90px_100px_1fr_100px_100px_100px] border-b-2 border-[#808080] bg-[#d4d0c8] sticky top-0">
+                {["Fecha", "Referencia", "Descripción", "Debe", "Haber", "Saldo"].map((h, i) => (
+                  <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              </div>
+              {movements.map((m, idx) => (
+                <div key={`${m.type}-${m.id}`} className={`grid grid-cols-[90px_100px_1fr_100px_100px_100px] border-b border-[#e0e0e0] ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                  <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">{m.date.toLocaleDateString("es-AR")}</div>
+                  <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] truncate">{m.reference}</div>
+                  <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">
+                    <span className={`font-bold ${m.type === "sale" ? "text-blue-700" : "text-green-700"}`}>{m.description}</span>
+                  </div>
+                  <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0] text-red-600">{m.debit > 0 ? fmt(m.debit) : "—"}</div>
+                  <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0] text-green-700">{m.credit > 0 ? fmt(m.credit) : "—"}</div>
+                  <div className="px-2 py-1.5 text-xs text-right font-mono font-bold">{fmt(m.balance)}</div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t-2 border-[#808080] px-3 py-1 bg-[#c0c0c0] shrink-0">
+          <span className="text-[10px] text-gray-600">{movements.length} movimiento(s)</span>
+        </div>
+      </div>
+    </div>
   );
 }

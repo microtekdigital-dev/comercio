@@ -1,30 +1,19 @@
 "use client";
 
-// Modal de pago rápido con calculadora de vuelto - v2
 import { useState } from "react";
 import { Sale } from "@/lib/types/erp";
 import { addSalePayment } from "@/lib/actions/sales";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Calculator } from "lucide-react";
+import { Loader2 } from "lucide-react";
+
+const PAYMENT_METHODS = [
+  { value: "efectivo", label: "Efectivo" },
+  { value: "transferencia", label: "Transferencia" },
+  { value: "tarjeta_debito", label: "Tarjeta de Débito" },
+  { value: "tarjeta_credito", label: "Tarjeta de Crédito" },
+  { value: "cheque", label: "Cheque" },
+  { value: "mercadopago", label: "MercadoPago" },
+];
 
 interface QuickPaymentModalProps {
   sale?: Sale;
@@ -37,304 +26,114 @@ interface QuickPaymentModalProps {
   onSuccess?: () => void;
 }
 
-interface PaymentFormState {
-  amount: number;
-  paymentMethod: string;
-  referenceNumber: string;
-  notes: string;
-  receivedAmount: number;
-}
-
-const PAYMENT_METHODS = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "transferencia", label: "Transferencia" },
-  { value: "tarjeta_debito", label: "Tarjeta de Débito" },
-  { value: "tarjeta_credito", label: "Tarjeta de Crédito" },
-  { value: "cheque", label: "Cheque" },
-  { value: "mercadopago", label: "MercadoPago" },
-];
-
-export function QuickPaymentModal({
-  sale,
-  entityId,
-  entityName,
-  entityType,
-  open,
-  onOpenChange,
-  onPaymentSuccess,
-  onSuccess,
-}: QuickPaymentModalProps) {
+export function QuickPaymentModal({ sale, entityId, entityName, entityType, open, onOpenChange, onPaymentSuccess, onSuccess }: QuickPaymentModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<PaymentFormState>({
-    amount: sale?.total || 0,
-    paymentMethod: "",
-    referenceNumber: "",
-    notes: "",
-    receivedAmount: 0,
-  });
+  const [amount, setAmount] = useState(sale?.total?.toString() || "");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [notes, setNotes] = useState("");
+  const [receivedAmount, setReceivedAmount] = useState("");
 
-  // Determinar si estamos trabajando con una venta o con un cliente/proveedor
   const isSale = !!sale;
-  const displayName = isSale ? `#${sale.sale_number}` : entityName;
-  const totalAmount = isSale ? sale.total : 0;
-  const currency = isSale ? sale.currency : "ARS";
-
-  // Calcular el vuelto
-  const change = formData.receivedAmount - formData.amount;
-  const showChange = formData.paymentMethod === "efectivo" && formData.receivedAmount > 0;
+  const change = paymentMethod === "efectivo" && receivedAmount ? parseFloat(receivedAmount) - parseFloat(amount || "0") : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validaciones
-    if (!formData.paymentMethod) {
-      toast.error("Debes seleccionar un método de pago");
-      return;
-    }
-
-    if (formData.amount <= 0) {
-      toast.error("El monto debe ser mayor a 0");
-      return;
-    }
-
-    // Si no es una venta, no podemos procesar el pago aquí
-    if (!isSale) {
-      toast.error("Este modal solo funciona para ventas. Usa el modal de cuenta corriente para clientes.");
-      return;
-    }
-
+    if (!paymentMethod) { toast.error("Seleccioná un método de pago"); return; }
+    if (!amount || parseFloat(amount) <= 0) { toast.error("El monto debe ser mayor a 0"); return; }
+    if (!isSale) { toast.error("Este modal solo funciona para ventas"); return; }
     setLoading(true);
-
     try {
-      const result = await addSalePayment(
-        sale.id,
-        formData.amount,
-        formData.paymentMethod,
-        formData.referenceNumber || undefined,
-        formData.notes || undefined
-      );
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Pago registrado exitosamente");
-        if (onPaymentSuccess) onPaymentSuccess();
-        if (onSuccess) onSuccess();
-      }
-    } catch (error) {
-      toast.error("Error al registrar el pago");
-    } finally {
-      setLoading(false);
-    }
+      const r = await addSalePayment(sale.id, parseFloat(amount), paymentMethod, referenceNumber || undefined, notes || undefined);
+      if (r.error) { toast.error(r.error); }
+      else { toast.success("Pago registrado"); if (onPaymentSuccess) onPaymentSuccess(); if (onSuccess) onSuccess(); }
+    } catch { toast.error("Error al registrar el pago"); }
+    finally { setLoading(false); }
   };
 
-  const handleAmountChange = (value: string) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue)) {
-      setFormData({ ...formData, amount: numValue });
-      
-      // Mostrar advertencia si excede el total (solo para ventas)
-      if (isSale && numValue > sale.total) {
-        toast.warning("El monto excede el total de la venta");
-      }
-    }
-  };
+  if (!open) return null;
 
-  const handleReceivedAmountChange = (value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setFormData({ ...formData, receivedAmount: numValue });
-  };
+  const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full";
+  const l = "text-xs font-bold text-black block mb-0.5";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-w-[95vw]">
-        <DialogHeader>
-          <DialogTitle>Registrar Pago</DialogTitle>
-          <DialogDescription>
-            {isSale 
-              ? `Registra el pago para la venta ${displayName}`
-              : `Registra el pago para ${entityType === 'customer' ? 'el cliente' : 'el proveedor'} ${displayName}`
-            }
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-full max-w-md text-black select-none">
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Información de la venta o entidad */}
-          {isSale ? (
-            <div className="rounded-lg border p-4 space-y-2 bg-muted/50">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Venta:</span>
-                <span className="text-sm font-medium">#{sale.sale_number}</span>
-              </div>
-              {sale.customer && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Cliente:</span>
-                  <span className="text-sm font-medium">{sale.customer.name}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Total:</span>
-                <span className="text-sm font-bold">
-                  ${sale.total.toFixed(2)} {sale.currency}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-lg border p-4 space-y-2 bg-muted/50">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {entityType === 'customer' ? 'Cliente:' : 'Proveedor:'}
-                </span>
-                <span className="text-sm font-medium">{displayName}</span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Este modal solo funciona para ventas. Por favor, usa el modal de cuenta corriente.
-              </div>
-            </div>
-          )}
+        {/* Title bar */}
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <span className="text-white text-sm font-bold">💳 Registrar Pago</span>
+          <button onClick={() => onOpenChange(false)} className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0]">✕</button>
+        </div>
 
-          {/* Formulario de pago */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="amount">
-                Monto del Pago <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.01"
-                value={formData.amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                required
-                aria-label="Monto del pago"
-                aria-required="true"
-                className="text-base"
-              />
-            </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="paymentMethod">
-                Método de Pago <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={formData.paymentMethod}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, paymentMethod: value })
-                }
-                required
-              >
-                <SelectTrigger
-                  id="paymentMethod"
-                  aria-label="Método de pago"
-                  aria-required="true"
-                >
-                  <SelectValue placeholder="Selecciona un método" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((method) => (
-                    <SelectItem key={method.value} value={method.value}>
-                      {method.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Calculadora de vuelto - solo para efectivo */}
-            {formData.paymentMethod === "efectivo" && (
-              <div className="sm:col-span-2 space-y-3 rounded-lg border p-4 bg-primary/5">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Calculator className="h-4 w-4" />
-                  Calculadora de Vuelto
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="receivedAmount">Monto Recibido</Label>
-                  <Input
-                    id="receivedAmount"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    value={formData.receivedAmount || ""}
-                    onChange={(e) => handleReceivedAmountChange(e.target.value)}
-                    placeholder="Ingresa el monto recibido del cliente"
-                    aria-label="Monto recibido"
-                    className="text-base"
-                  />
-                </div>
-
-                {showChange && (
-                  <div className="pt-2 border-t">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Vuelto a devolver:</span>
-                      <span className={`text-lg font-bold ${change < 0 ? 'text-destructive' : 'text-primary'}`}>
-                        ${Math.abs(change).toFixed(2)} {currency}
-                      </span>
-                    </div>
-                    {change < 0 && (
-                      <p className="text-xs text-destructive mt-1">
-                        Falta: ${Math.abs(change).toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+        <form onSubmit={handleSubmit} className="p-4 space-y-3">
+          {/* Info */}
+          <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] px-3 py-2 space-y-1 text-xs">
+            {isSale ? (
+              <>
+                <div className="flex justify-between"><span className="text-gray-500">Venta:</span><span className="font-bold">#{sale.sale_number}</span></div>
+                {sale.customer && <div className="flex justify-between"><span className="text-gray-500">Cliente:</span><span className="font-bold">{sale.customer.name}</span></div>}
+                <div className="flex justify-between"><span className="text-gray-500">Total:</span><span className="font-bold font-mono text-base">${sale.total.toFixed(2)}</span></div>
+              </>
+            ) : (
+              <div className="flex justify-between"><span className="text-gray-500">{entityType === "customer" ? "Cliente:" : "Proveedor:"}</span><span className="font-bold">{entityName}</span></div>
             )}
+          </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="referenceNumber">Número de Referencia</Label>
-              <Input
-                id="referenceNumber"
-                type="text"
-                value={formData.referenceNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, referenceNumber: e.target.value })
-                }
-                placeholder="Opcional"
-                aria-label="Número de referencia"
-              />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={l}>Monto *</label>
+              <input type="number" step="0.01" min="0.01" required value={amount} onChange={e => setAmount(e.target.value)} className={f} />
             </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="notes">Notas</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-                placeholder="Notas adicionales (opcional)"
-                rows={3}
-                aria-label="Notas"
-              />
+            <div>
+              <label className={l}>Método de Pago *</label>
+              <select required value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={f}>
+                <option value="">Seleccionar...</option>
+                {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
             </div>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-              className="w-full sm:w-auto"
-            >
-              Registrar después
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading || !formData.paymentMethod || !isSale}
-              aria-busy={loading}
-              className="w-full sm:w-auto"
-            >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? "Registrando..." : "Registrar Pago"}
-            </Button>
-          </DialogFooter>
+          {/* Cash change calculator */}
+          {paymentMethod === "efectivo" && (
+            <div className="border-2 border-[#808080] bg-[#f0f0f0] shadow-[inset_1px_1px_2px_#808080] p-3 space-y-2">
+              <div className="text-[10px] font-bold text-[#000080] uppercase">Calculadora de Vuelto</div>
+              <div>
+                <label className={l}>Monto Recibido</label>
+                <input type="number" step="0.01" min="0" value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} placeholder="0.00" className={f} />
+              </div>
+              {change !== null && receivedAmount && (
+                <div className="flex justify-between items-center border-t border-[#808080] pt-2">
+                  <span className="text-xs font-bold">Vuelto:</span>
+                  <span className={`text-lg font-bold font-mono ${change < 0 ? "text-red-600" : "text-green-700"}`}>
+                    ${Math.abs(change).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label className={l}>N° Referencia</label>
+            <input type="text" value={referenceNumber} onChange={e => setReferenceNumber(e.target.value)} placeholder="Opcional" className={f} />
+          </div>
+          <div>
+            <label className={l}>Notas</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Opcional" className={f + " resize-none"} />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1 border-t border-[#808080]">
+            <button type="button" onClick={() => onOpenChange(false)} disabled={loading}
+              className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading || !paymentMethod || !isSale}
+              className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+              {loading ? <><Loader2 className="h-3 w-3 animate-spin" /> Registrando...</> : "✔ Registrar Pago"}
+            </button>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

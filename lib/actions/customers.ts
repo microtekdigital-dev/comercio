@@ -485,13 +485,12 @@ export async function addGeneralCustomerPayment(
       return { error: "No se encontró la empresa" };
     }
 
-    // Create payment without sale_id
+    // Create payment in customer_payments table
     const { data: payment, error: paymentError } = await supabase
-      .from("sale_payments")
+      .from("customer_payments")
       .insert({
         company_id: profile.company_id,
         customer_id: customerId,
-        sale_id: null, // General payment, not tied to specific sale
         amount,
         payment_method: paymentMethod,
         reference_number: referenceNumber || null,

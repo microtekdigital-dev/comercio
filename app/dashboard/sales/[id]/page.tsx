@@ -7,39 +7,7 @@ import { getCompanySettings } from "@/lib/actions/company-settings";
 import { sendInvoiceEmail } from "@/lib/actions/email";
 import { getUserPermissions } from "@/lib/utils/permissions";
 import { formatCompanyCurrency } from "@/lib/utils/currency";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, Calendar, User, FileText, Save, Printer, Mail, Trash2, Receipt, ExternalLink } from "lucide-react";
+import { Printer, Mail, Trash2, Receipt, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -49,12 +17,17 @@ import { PaymentManager } from "@/components/dashboard/payment-manager";
 import { SaleReturnsSection } from "@/components/dashboard/sale-returns-section";
 import type { Sale } from "@/lib/types/erp";
 
+const STATUS_LABELS: Record<string, string> = { draft: "Borrador", completed: "Completada", cancelled: "Cancelada" };
+const STATUS_COLORS: Record<string, string> = { draft: "text-gray-600", completed: "text-green-700", cancelled: "text-red-600" };
+const PAY_LABELS: Record<string, string> = { pending: "Pendiente", partial: "Parcial", paid: "Pagado", refunded: "Reembolsado" };
+const PAY_COLORS: Record<string, string> = { pending: "text-amber-700", partial: "text-blue-700", paid: "text-green-700", refunded: "text-red-600" };
+
 export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [sale, setSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string>("");
-  const [saleId, setSaleId] = useState<string>("");
+  const [status, setStatus] = useState("");
+  const [saleId, setSaleId] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -65,581 +38,280 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const [currencyPosition, setCurrencyPosition] = useState<"before" | "after">("before");
   const [electronicInvoice, setElectronicInvoice] = useState<any>(null);
   const [hasEInvoice, setHasEInvoice] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useReactToPrint({
-    contentRef: invoiceRef,
-    documentTitle: `Factura-${sale?.sale_number || ""}`,
-  });
+  const handlePrint = useReactToPrint({ contentRef: invoiceRef, documentTitle: `Factura-${sale?.sale_number || ""}` });
 
   useEffect(() => {
-    params.then((resolvedParams) => {
-      setSaleId(resolvedParams.id);
-      loadSale(resolvedParams.id);
+    params.then((p) => {
+      setSaleId(p.id);
+      loadSale(p.id);
       loadCompanyInfo();
       checkPermissions();
       loadCurrencySettings();
-      loadElectronicInvoice(resolvedParams.id);
+      loadElectronicInvoice(p.id);
     });
   }, []);
 
-  const loadCurrencySettings = async () => {
-    const settings = await getCompanySettings();
-    if (settings) {
-      setCurrencySymbol(settings.currency_symbol);
-      setCurrencyPosition(settings.currency_position);
-    }
-  };
-
-  const checkPermissions = async () => {
-    const permissions = await getUserPermissions();
-    setCanDelete(permissions.canDeleteSales);
-    setCanEdit(permissions.canEditSales);
-  };
-
-  const loadSale = async (id: string) => {
-    const data = await getSale(id);
-    if (data) {
-      setSale(data);
-      setStatus(data.status);
-      setEmailTo(data.customer?.email || "");
-    }
-  };
-
+  const loadCurrencySettings = async () => { const s = await getCompanySettings(); if (s) { setCurrencySymbol(s.currency_symbol); setCurrencyPosition(s.currency_position); } };
+  const checkPermissions = async () => { const p = await getUserPermissions(); setCanDelete(p.canDeleteSales); setCanEdit(p.canEditSales); };
+  const loadSale = async (id: string) => { const d = await getSale(id); if (d) { setSale(d); setStatus(d.status); setEmailTo(d.customer?.email || ""); } };
   const loadCompanyInfo = async () => {
-    const data = await getCompanyInfo();
-    const settings = await getCompanySettings();
-    setCompanyInfo({
-      name: data?.name || "Mi Empresa",
-      address: data?.address || undefined,
-      phone: data?.phone || undefined,
-      email: data?.email || undefined,
-      taxId: data?.tax_id || undefined,
-      logoUrl: data?.logo_url || undefined,
-      termsAndConditions: data?.terms_and_conditions || undefined,
-      currencySymbol: settings?.currency_symbol || "$",
-      currencyPosition: settings?.currency_position || "before",
-    });
+    const d = await getCompanyInfo(); const s = await getCompanySettings();
+    setCompanyInfo({ name: d?.name || "Mi Empresa", address: d?.address, phone: d?.phone, email: d?.email, taxId: d?.tax_id, logoUrl: d?.logo_url, termsAndConditions: d?.terms_and_conditions, currencySymbol: s?.currency_symbol || "$", currencyPosition: s?.currency_position || "before" });
   };
-
   const loadElectronicInvoice = async (id: string) => {
-    const hasInvoiceResult = await hasElectronicInvoice(id);
-    if (hasInvoiceResult.success && hasInvoiceResult.hasInvoice) {
-      setHasEInvoice(true);
-      
-      const invoiceResult = await getElectronicInvoiceForSale(id);
-      if (invoiceResult.success && invoiceResult.invoice) {
-        setElectronicInvoice(invoiceResult.invoice);
-      }
-    }
+    const r = await hasElectronicInvoice(id);
+    if (r.success && r.hasInvoice) { setHasEInvoice(true); const inv = await getElectronicInvoiceForSale(id); if (inv.success && inv.invoice) setElectronicInvoice(inv.invoice); }
   };
 
   const handleUpdateStatus = async () => {
     if (!sale || !saleId) return;
-    
     setLoading(true);
     try {
-      const result = await updateSale(saleId, { status: status as any });
-      
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Estado actualizado exitosamente");
-        router.refresh();
-        loadSale(saleId);
-      }
-    } catch (error) {
-      toast.error("Error al actualizar el estado");
-    } finally {
-      setLoading(false);
-    }
+      const r = await updateSale(saleId, { status: status as any });
+      if (r.error) { toast.error(r.error); } else { toast.success("Estado actualizado"); loadSale(saleId); }
+    } catch { toast.error("Error al actualizar"); } finally { setLoading(false); }
   };
 
   const handleSendEmail = async () => {
-    if (!emailTo || !sale) {
-      toast.error("Por favor ingresa un email válido");
-      return;
-    }
-
+    if (!emailTo || !sale) { toast.error("Ingresá un email válido"); return; }
     setSendingEmail(true);
     try {
-      const result = await sendInvoiceEmail({
-        saleId: sale.id,
-        recipientEmail: emailTo,
-      });
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(result.message || `Factura enviada a ${emailTo}`);
-        setEmailDialogOpen(false);
-      }
-    } catch (error) {
-      toast.error("Error al enviar el email");
-    } finally {
-      setSendingEmail(false);
-    }
-  };
-
-  if (!sale) {
-    return (
-      <div className="flex-1 p-8">
-        <p>Cargando...</p>
-      </div>
-    );
-  }
-
-  const formatCurrency = (amount: number) => {
-    return formatCompanyCurrency(amount, { currency_symbol: currencySymbol, currency_position: currencyPosition });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-AR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      draft: "secondary",
-      completed: "default",
-      cancelled: "destructive",
-    };
-    
-    const labels: Record<string, string> = {
-      draft: "Borrador",
-      completed: "Completada",
-      cancelled: "Cancelada",
-    };
-
-    return (
-      <Badge variant={variants[status] || "secondary"}>
-        {labels[status] || status}
-      </Badge>
-    );
-  };
-
-  const getPaymentStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: "secondary",
-      partial: "outline",
-      paid: "default",
-      refunded: "destructive",
-    };
-    
-    const labels: Record<string, string> = {
-      pending: "Pendiente",
-      partial: "Parcial",
-      paid: "Pagado",
-      refunded: "Reembolsado",
-    };
-
-    return (
-      <Badge variant={variants[status] || "secondary"}>
-        {labels[status] || status}
-      </Badge>
-    );
+      const r = await sendInvoiceEmail({ saleId: sale.id, recipientEmail: emailTo });
+      if (r.error) { toast.error(r.error); } else { toast.success(r.message || `Enviado a ${emailTo}`); setEmailDialogOpen(false); }
+    } catch { toast.error("Error al enviar"); } finally { setSendingEmail(false); }
   };
 
   const handleDelete = async () => {
     if (!saleId) return;
-    
     setLoading(true);
     try {
-      const result = await deleteSale(saleId);
-      
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Venta eliminada exitosamente");
-        router.push("/dashboard/sales");
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("Error al eliminar la venta");
-    } finally {
-      setLoading(false);
-    }
+      const r = await deleteSale(saleId);
+      if (r.error) { toast.error(r.error); } else { toast.success("Venta eliminada"); router.push("/dashboard/sales"); }
+    } catch { toast.error("Error al eliminar"); } finally { setLoading(false); setConfirmDelete(false); }
   };
 
+  const fmt = (n: number) => formatCompanyCurrency(n, { currency_symbol: currencySymbol, currency_position: currencyPosition });
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString("es-AR", { year: "numeric", month: "long", day: "numeric" });
+
+  if (!sale) return (
+    <div className="flex items-center justify-center py-16 text-xs text-gray-500 gap-2">
+      <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+    </div>
+  );
+
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] px-3 py-1">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      <div className="bg-white p-3">{children}</div>
+    </div>
+  );
+
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
+    <div className="space-y-3 text-black select-none">
       {/* Hidden invoice for printing */}
       <div className="hidden">
         {sale && companyInfo && <InvoicePrint ref={invoiceRef} sale={sale} companyInfo={companyInfo} />}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/sales">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
-              Venta {sale.sale_number}
-            </h2>
-            <p className="text-muted-foreground">
-              Detalles de la venta
-            </p>
+      {/* Title bar */}
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard/sales" className="text-blue-200 text-xs hover:text-white">← Volver</Link>
+            <span className="text-white text-sm font-bold">🛒 Venta {sale.sale_number}</span>
+            <span className={`text-xs font-bold ${STATUS_COLORS[sale.status] ?? "text-white"} bg-white px-1.5 py-0.5 border border-[#808080]`}>
+              {STATUS_LABELS[sale.status] ?? sale.status}
+            </span>
+            <span className={`text-xs font-bold ${PAY_COLORS[sale.payment_status] ?? "text-white"} bg-white px-1.5 py-0.5 border border-[#808080]`}>
+              {PAY_LABELS[sale.payment_status] ?? sale.payment_status}
+            </span>
+          </div>
+          <div className="flex gap-1">
+            <button onClick={() => handlePrint()} disabled={!companyInfo}
+              className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1 text-black">
+              <Printer className="h-3 w-3" /> Imprimir
+            </button>
+            <button onClick={() => setEmailDialogOpen(true)}
+              className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 text-black">
+              <Mail className="h-3 w-3" /> Email
+            </button>
+            {canDelete && (
+              <button onClick={() => setConfirmDelete(true)} disabled={loading}
+                className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] text-red-700 flex items-center gap-1 disabled:opacity-50">
+                <Trash2 className="h-3 w-3" /> Eliminar
+              </button>
+            )}
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handlePrint} disabled={!companyInfo}>
-            <Printer className="mr-2 h-4 w-4" />
-            Imprimir
-          </Button>
-          <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Mail className="mr-2 h-4 w-4" />
-                Enviar Email
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Enviar Factura por Email</DialogTitle>
-                <DialogDescription>
-                  Ingresa el email del destinatario para enviar la factura
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="cliente@ejemplo.com"
-                    value={emailTo}
-                    onChange={(e) => setEmailTo(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setEmailDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={handleSendEmail} disabled={sendingEmail}>
-                  {sendingEmail ? "Enviando..." : "Enviar"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          
-          {canDelete && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon" disabled={loading}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Eliminar venta?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Se eliminará permanentemente la venta
-                    y se restaurará el stock de los productos.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Eliminar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          
-          {getStatusBadge(sale.status)}
-          {getPaymentStatusBadge(sale.payment_status)}
-        </div>
       </div>
 
-      {/* Change Status Card */}
-      {canEdit && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Cambiar Estado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 items-end">
-              <div className="flex-1 space-y-2">
-                <label className="text-sm font-medium">Estado de la Venta</label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Borrador</SelectItem>
-                    <SelectItem value="completed">Completada</SelectItem>
-                    <SelectItem value="cancelled">Cancelada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button 
-                onClick={handleUpdateStatus} 
-                disabled={loading || status === sale.status}
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {loading ? "Guardando..." : "Actualizar Estado"}
-              </Button>
+      <div className="grid gap-3 md:grid-cols-3">
+        {/* Info general */}
+        <div className="md:col-span-2 space-y-3">
+          <Section title="Información General">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div><span className="text-gray-500">Fecha:</span> <span className="font-bold">{fmtDate(sale.sale_date)}</span></div>
+              {sale.due_date && <div><span className="text-gray-500">Vencimiento:</span> <span className="font-bold">{fmtDate(sale.due_date)}</span></div>}
+              {sale.customer && <div><span className="text-gray-500">Cliente:</span> <span className="font-bold">{sale.customer.name}</span></div>}
+              {sale.payment_method && <div><span className="text-gray-500">Método de pago:</span> <span className="font-bold capitalize">{sale.payment_method}</span></div>}
             </div>
-          </CardContent>
-        </Card>
-      )}
+            {sale.notes && <div className="mt-2 pt-2 border-t border-[#e0e0e0] text-xs text-gray-600">{sale.notes}</div>}
+          </Section>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Información General</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Fecha de Venta</p>
-                  <p className="font-medium">{formatDate(sale.sale_date)}</p>
-                </div>
-              </div>
-
-              {sale.due_date && (
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Vencimiento</p>
-                    <p className="font-medium">{formatDate(sale.due_date)}</p>
-                  </div>
-                </div>
-              )}
-
-              {sale.customer && (
-                <div className="flex items-center gap-3">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Cliente</p>
-                    <p className="font-medium">{sale.customer.name}</p>
-                  </div>
-                </div>
-              )}
-
-              {sale.payment_method && (
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Método de Pago</p>
-                    <p className="font-medium capitalize">{sale.payment_method}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {sale.notes && (
-              <div className="pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-2">Notas</p>
-                <p className="text-sm">{sale.notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Resumen</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal:</span>
-              <span className="font-medium">{formatCurrency(sale.subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Impuestos:</span>
-              <span className="font-medium">{formatCurrency(sale.tax_amount)}</span>
-            </div>
-            {sale.discount_amount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Descuento:</span>
-                <span className="font-medium text-red-500">
-                  -{formatCurrency(sale.discount_amount)}
-                </span>
-              </div>
-            )}
-            <Separator />
-            <div className="flex justify-between text-lg font-bold">
-              <span>Total:</span>
-              <span>{formatCurrency(sale.total)}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Electronic Invoice Card */}
-      {hasEInvoice && electronicInvoice && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          {/* Change status */}
+          {canEdit && (
+            <Section title="Cambiar Estado">
               <div className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                <CardTitle>Factura Electrónica</CardTitle>
+                <select value={status} onChange={e => setStatus(e.target.value)}
+                  className="border border-[#808080] bg-white text-xs px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none flex-1">
+                  <option value="draft">Borrador</option>
+                  <option value="completed">Completada</option>
+                  <option value="cancelled">Cancelada</option>
+                </select>
+                <button onClick={handleUpdateStatus} disabled={loading || status === sale.status}
+                  className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+                  {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "✔"} Actualizar
+                </button>
               </div>
-              <Link href={`/dashboard/arca/invoices/${electronicInvoice.id}`}>
-                <Button variant="outline" size="sm">
-                  Ver Detalle
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Tipo de Comprobante</p>
-                <p className="font-medium">{electronicInvoice.invoice_type.replace(/_/g, ' ')}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Número</p>
-                <p className="font-medium">
-                  {String(electronicInvoice.point_of_sale).padStart(5, '0')}-{String(electronicInvoice.invoice_number).padStart(8, '0')}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Estado</p>
-                <Badge variant={
-                  electronicInvoice.status === 'AUTHORIZED' ? 'default' :
-                  electronicInvoice.status === 'PENDING' ? 'secondary' :
-                  electronicInvoice.status === 'REJECTED' ? 'destructive' :
-                  'outline'
-                }>
-                  {electronicInvoice.status}
-                </Badge>
-              </div>
-            </div>
+            </Section>
+          )}
+        </div>
 
-            {electronicInvoice.cae && (
-              <div className="pt-4 border-t">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">CAE</p>
-                    <p className="font-mono text-sm">{electronicInvoice.cae}</p>
-                  </div>
-                  {electronicInvoice.cae_expiration_date && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Vencimiento CAE</p>
-                      <p className="text-sm">{formatDate(electronicInvoice.cae_expiration_date)}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+        {/* Resumen */}
+        <Section title="Resumen">
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between"><span className="text-gray-500">Subtotal:</span><span className="font-mono">{fmt(sale.subtotal)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Impuestos:</span><span className="font-mono">{fmt(sale.tax_amount)}</span></div>
+            {sale.discount_amount > 0 && (
+              <div className="flex justify-between"><span className="text-gray-500">Descuento:</span><span className="font-mono text-red-600">-{fmt(sale.discount_amount)}</span></div>
             )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Generate Electronic Invoice Button */}
-      {!hasEInvoice && sale.status === 'completed' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Facturación Electrónica</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Esta venta no tiene una factura electrónica asociada. Puede generar una factura electrónica para cumplir con las obligaciones fiscales.
-            </p>
-            <Link href={`/dashboard/arca/invoices/new?saleId=${sale.id}`}>
-              <Button>
-                <Receipt className="mr-2 h-4 w-4" />
-                Generar Factura Electrónica
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Items de Venta</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {sale.items && sale.items.length > 0 ? (
-              <>
-                <div className="hidden md:grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
-                  <div className="col-span-4">Producto</div>
-                  <div className="col-span-2 text-right">Cantidad</div>
-                  <div className="col-span-2 text-right">Precio Unit.</div>
-                  <div className="col-span-2 text-right">Desc.</div>
-                  <div className="col-span-2 text-right">Total</div>
-                </div>
-                {sale.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 p-4 md:p-0 border md:border-0 rounded-lg md:rounded-none"
-                  >
-                    <div className="md:col-span-4">
-                      <p className="font-medium">{item.product_name}</p>
-                      {item.variant_name && (
-                        <Badge variant="outline" className="mt-1 text-xs">
-                          Talle: {item.variant_name}
-                        </Badge>
-                      )}
-                      {item.product_sku && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          SKU: {item.product_sku}
-                        </p>
-                      )}
-                    </div>
-                    <div className="md:col-span-2 md:text-right">
-                      <span className="md:hidden text-sm text-muted-foreground">Cantidad: </span>
-                      {item.quantity}
-                    </div>
-                    <div className="md:col-span-2 md:text-right">
-                      <span className="md:hidden text-sm text-muted-foreground">Precio: </span>
-                      {formatCurrency(item.unit_price)}
-                    </div>
-                    <div className="md:col-span-2 md:text-right">
-                      <span className="md:hidden text-sm text-muted-foreground">Descuento: </span>
-                      {item.discount_percent}%
-                    </div>
-                    <div className="md:col-span-2 md:text-right font-semibold">
-                      <span className="md:hidden text-sm text-muted-foreground">Total: </span>
-                      {formatCurrency(item.total)}
-                    </div>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">
-                No hay items en esta venta
-              </p>
-            )}
+            <div className="border-t-2 border-[#808080] pt-1.5 flex justify-between font-bold text-base">
+              <span>Total:</span><span className="font-mono">{fmt(sale.total)}</span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Section>
+      </div>
 
-      {/* Payment Manager */}
+      {/* Items */}
+      <Section title="Artículos de la Venta">
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-[1fr_60px_100px_60px_100px] border-b-2 border-[#808080] bg-[#d4d0c8] min-w-[500px]">
+            {["Producto", "Cant.", "Precio Unit.", "Desc.", "Total"].map((h, i) => (
+              <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+            ))}
+          </div>
+          {sale.items && sale.items.length > 0 ? sale.items.map((item, idx) => (
+            <div key={item.id} className={`grid grid-cols-[1fr_60px_100px_60px_100px] border-b border-[#e0e0e0] min-w-[500px] ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+              <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">
+                <div className="font-medium">{item.product_name}</div>
+                {item.variant_name && <div className="text-gray-500 text-[10px]">Talle: {item.variant_name}</div>}
+                {item.product_sku && <div className="text-gray-400 text-[10px]">SKU: {item.product_sku}</div>}
+              </div>
+              <div className="px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0]">{item.quantity}</div>
+              <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0]">{fmt(item.unit_price)}</div>
+              <div className="px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0]">{item.discount_percent}%</div>
+              <div className="px-2 py-1.5 text-xs text-right font-mono font-bold">{fmt(item.total)}</div>
+            </div>
+          )) : (
+            <div className="text-center py-6 text-xs text-gray-500">Sin artículos</div>
+          )}
+        </div>
+      </Section>
+
+      {/* Electronic invoice */}
+      {hasEInvoice && electronicInvoice && (
+        <Section title="📄 Factura Electrónica">
+          <div className="grid grid-cols-3 gap-3 text-xs mb-3">
+            <div><span className="text-gray-500">Tipo:</span> <span className="font-bold">{electronicInvoice.invoice_type.replace(/_/g, ' ')}</span></div>
+            <div><span className="text-gray-500">Número:</span> <span className="font-mono font-bold">{String(electronicInvoice.point_of_sale).padStart(5,'0')}-{String(electronicInvoice.invoice_number).padStart(8,'0')}</span></div>
+            <div><span className="text-gray-500">Estado:</span> <span className={`font-bold ${electronicInvoice.status === 'AUTHORIZED' ? 'text-green-700' : electronicInvoice.status === 'REJECTED' ? 'text-red-600' : 'text-amber-700'}`}>{electronicInvoice.status}</span></div>
+          </div>
+          {electronicInvoice.cae && (
+            <div className="border-t border-[#e0e0e0] pt-2 grid grid-cols-2 gap-3 text-xs">
+              <div><span className="text-gray-500">CAE:</span> <span className="font-mono font-bold">{electronicInvoice.cae}</span></div>
+              {electronicInvoice.cae_expiration_date && <div><span className="text-gray-500">Vencimiento CAE:</span> <span className="font-bold">{fmtDate(electronicInvoice.cae_expiration_date)}</span></div>}
+            </div>
+          )}
+          <div className="mt-2">
+            <Link href={`/dashboard/arca/invoices/${electronicInvoice.id}`}
+              className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] inline-flex items-center gap-1">
+              Ver Detalle →
+            </Link>
+          </div>
+        </Section>
+      )}
+
+      {!hasEInvoice && sale.status === 'completed' && (
+        <Section title="📄 Facturación Electrónica">
+          <p className="text-xs text-gray-600 mb-2">Esta venta no tiene factura electrónica. Podés generar una para cumplir con las obligaciones fiscales.</p>
+          <Link href={`/dashboard/arca/invoices/new?saleId=${sale.id}`}
+            className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] inline-flex items-center gap-1">
+            <Receipt className="h-3 w-3" /> Generar Factura Electrónica
+          </Link>
+        </Section>
+      )}
+
+      {/* Payment manager */}
       <PaymentManager
         sale={sale}
         onPaymentAdded={() => loadSale(saleId)}
-        onAddPayment={async (payment) => {
-          return await addSalePayment(
-            saleId,
-            payment.amount,
-            payment.paymentMethod,
-            payment.referenceNumber,
-            payment.notes
-          );
-        }}
+        onAddPayment={async (payment) => addSalePayment(saleId, payment.amount, payment.paymentMethod, payment.referenceNumber, payment.notes)}
       />
 
-      {/* Returns Section */}
+      {/* Returns */}
       <SaleReturnsSection saleId={saleId} saleStatus={sale.status} salePaymentStatus={sale.payment_status} />
+
+      {/* Email modal */}
+      {emailDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-full max-w-sm">
+            <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+              <span className="text-white text-sm font-bold">📧 Enviar Factura por Email</span>
+              <button onClick={() => setEmailDialogOpen(false)} className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0]">✕</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-black block mb-0.5">Email del destinatario</label>
+                <input type="email" value={emailTo} onChange={e => setEmailTo(e.target.value)} placeholder="cliente@ejemplo.com"
+                  className="border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full" />
+              </div>
+              <div className="flex justify-end gap-2 pt-1 border-t border-[#808080]">
+                <button onClick={() => setEmailDialogOpen(false)} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">Cancelar</button>
+                <button onClick={handleSendEmail} disabled={sendingEmail} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+                  {sendingEmail ? <><Loader2 className="h-3 w-3 animate-spin" /> Enviando...</> : "✔ Enviar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-full max-w-sm">
+            <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+              <span className="text-white text-sm font-bold">⚠ Eliminar Venta</span>
+              <button onClick={() => setConfirmDelete(false)} className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0]">✕</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm font-bold">¿Eliminar esta venta?</p>
+              <p className="text-xs text-gray-600">Esta acción no se puede deshacer. Se eliminará la venta y se restaurará el stock.</p>
+              <div className="flex justify-end gap-2 pt-1 border-t border-[#808080]">
+                <button onClick={() => setConfirmDelete(false)} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">Cancelar</button>
+                <button onClick={handleDelete} disabled={loading} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] text-red-700 disabled:opacity-50 flex items-center gap-1">
+                  {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "✕"} Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
