@@ -1,23 +1,16 @@
 "use client"
 
-import React from "react"
-
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Building2, Loader2, CheckCircle2 } from "lucide-react"
+import { Loader2, CheckCircle2 } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
 
 export default function SignUpPage() {
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get("token")
-  
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
@@ -30,229 +23,146 @@ export default function SignUpPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
-    setLoading(true)
+    setError(null); setLoading(true)
 
-    // Generate a slug from company name
-    const companySlug = companyName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
+    const companySlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
 
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || 
-          `${window.location.origin}/dashboard`,
-        data: {
-          full_name: fullName,
-          company_name: companyName,
-          company_slug: companySlug || `company-${Date.now()}`,
-          invite_token: inviteToken,
-        },
+        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
+        data: { full_name: fullName, company_name: companyName, company_slug: companySlug || `company-${Date.now()}`, invite_token: inviteToken },
       },
     })
 
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
-    }
+    if (error) { setError(error.message); setLoading(false); return }
 
-    // Send welcome email (don't block on this)
     try {
       await fetch('/api/welcome-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          userName: fullName,
-          companyName: companyName || 'Tu Empresa'
-        })
-      });
-    } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
-      // Don't fail registration if email fails
-    }
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, userName: fullName, companyName: companyName || 'Tu Empresa' })
+      })
+    } catch {}
 
-    setSuccess(true)
-    setLoading(false)
+    setSuccess(true); setLoading(false)
   }
 
   const handleGoogleSignUp = async () => {
-    setError(null)
-    setGoogleLoading(true)
-
+    setError(null); setGoogleLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     })
-
-    if (error) {
-      setError(error.message)
-      setGoogleLoading(false)
-    }
+    if (error) { setError(error.message); setGoogleLoading(false) }
   }
+
+  const f = "border border-[#808080] bg-white text-sm px-2 py-1.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full"
+  const l = "text-xs font-bold text-black block mb-0.5"
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
-              </div>
+      <div className="min-h-screen bg-[#008080] flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-sm border-2 border-[#808080] shadow-[4px_4px_0px_#000] bg-[#d4d0c8]">
+          <div className="bg-[#000080] px-3 py-1.5 flex items-center gap-2">
+            <span className="text-white text-sm font-bold">✅ Cuenta Creada</span>
+          </div>
+          <div className="p-6 text-center space-y-4">
+            <CheckCircle2 className="h-12 w-12 text-green-700 mx-auto" />
+            <div>
+              <p className="text-sm font-bold">Revisá tu correo</p>
+              <p className="text-xs text-gray-600 mt-1">
+                Enviamos un enlace de verificación a <strong>{email}</strong>.
+                Hacé clic en el enlace para activar tu cuenta.
+              </p>
             </div>
-            <CardTitle className="text-2xl font-bold">Revisa tu correo</CardTitle>
-            <CardDescription>
-              Hemos enviado un enlace de verificación a <strong>{email}</strong>. 
-              Por favor haz clic en el enlace para verificar tu cuenta.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button asChild variant="outline" className="w-full bg-transparent">
-              <Link href="/auth/login">Volver al inicio de sesión</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+            <Link href="/auth/login"
+              className="block border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] text-center">
+              ← Volver al inicio de sesión
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-              <Building2 className="h-6 w-6 text-primary-foreground" />
-            </div>
+    <div className="min-h-screen bg-[#008080] flex items-center justify-center p-4 py-8 font-sans">
+      <div className="w-full max-w-sm">
+        <div className="border-2 border-[#808080] shadow-[4px_4px_0px_#000] bg-[#d4d0c8]">
+          {/* Title bar */}
+          <div className="bg-[#000080] px-3 py-1.5 flex items-center gap-2">
+            <div className="w-4 h-4 bg-[#d4d0c8] border border-[#808080] flex items-center justify-center text-[8px] font-bold">🏢</div>
+            <span className="text-white text-sm font-bold flex-1">
+              {inviteToken ? "Aceptar Invitación" : "Crear Cuenta — Prueba Gratis 14 días"}
+            </span>
           </div>
-          <CardTitle className="text-2xl font-bold">
-            {inviteToken ? "Aceptar invitación" : "Crea tu cuenta"}
-          </CardTitle>
-          <CardDescription>
-            {inviteToken 
-              ? "Completa la configuración de tu cuenta para unirte al equipo"
-              : "Inicia tu prueba gratuita de 14 días. No se requiere tarjeta de crédito."
-            }
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSignUp}>
-          <CardContent className="space-y-4">
+
+          <form onSubmit={handleSignUp} className="p-5 space-y-3">
+            {/* Logo */}
+            <div className="text-center py-3 border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] mb-4">
+              <div className="text-3xl mb-1">🏢</div>
+              <div className="text-xs font-bold text-[#000080]">Sistema de Gestión</div>
+              <div className="text-[10px] text-gray-500">
+                {inviteToken ? "Completá tu cuenta para unirte al equipo" : "Sin tarjeta · Sin contratos · Gratis 14 días"}
+              </div>
+            </div>
+
             {error && (
-              <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                {error}
-              </div>
+              <div className="border-2 border-red-500 bg-red-50 px-3 py-2 text-xs text-red-700 font-bold">⚠ {error}</div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Nombre completo</Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="Juan Pérez"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                disabled={loading}
-              />
+
+            <div>
+              <label className={l}>Nombre completo *</label>
+              <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
+                placeholder="Juan Pérez" disabled={loading} className={f} autoFocus />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="nombre@empresa.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
+
+            <div>
+              <label className={l}>Correo electrónico *</label>
+              <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="nombre@empresa.com" disabled={loading} className={f} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Crea una contraseña segura"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                disabled={loading}
-              />
+
+            <div>
+              <label className={l}>Contraseña * (mínimo 6 caracteres)</label>
+              <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="Creá una contraseña segura" disabled={loading} className={f} />
             </div>
+
             {!inviteToken && (
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Nombre de la empresa</Label>
-                <Input
-                  id="companyName"
-                  type="text"
-                  placeholder="Mi Comercio S.A."
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  required
-                  disabled={loading}
-                />
+              <div>
+                <label className={l}>Nombre de la empresa *</label>
+                <input type="text" required value={companyName} onChange={e => setCompanyName(e.target.value)}
+                  placeholder="Mi Comercio S.A." disabled={loading} className={f} />
               </div>
             )}
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading || googleLoading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creando cuenta...
-                </>
-              ) : (
-                inviteToken ? "Unirse al equipo" : "Crear cuenta"
-              )}
-            </Button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  O
-                </span>
-              </div>
+
+            <button type="submit" disabled={loading || googleLoading}
+              className="w-full border border-[#808080] bg-[#d4d0c8] py-2 text-sm font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center justify-center gap-2">
+              {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Creando cuenta...</> : inviteToken ? "✔ Unirse al equipo" : "✔ Crear cuenta gratis"}
+            </button>
+
+            {/* Separator */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 border-t border-[#808080]" />
+              <span className="text-[10px] text-gray-500 font-bold">O</span>
+              <div className="flex-1 border-t border-[#808080]" />
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleSignUp}
-              disabled={loading || googleLoading}
-            >
-              {googleLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Conectando con Google...
-                </>
-              ) : (
-                <>
-                  <FcGoogle className="mr-2 h-5 w-5" />
-                  Continuar con Google
-                </>
-              )}
-            </Button>
+            <button type="button" onClick={handleGoogleSignUp} disabled={loading || googleLoading}
+              className="w-full border border-[#808080] bg-[#d4d0c8] py-2 text-sm font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center justify-center gap-2">
+              {googleLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Conectando...</> : <><FcGoogle className="h-4 w-4" /> Continuar con Google</>}
+            </button>
 
-            <p className="text-sm text-muted-foreground text-center">
-              ¿Ya tienes una cuenta?{" "}
-              <Link href="/auth/login" className="text-primary hover:underline font-medium">
+            <div className="border-t border-[#808080] pt-3 text-center">
+              <span className="text-xs text-gray-600">¿Ya tenés cuenta?{" "}</span>
+              <Link href="/auth/login" className="text-xs text-[#000080] underline hover:text-[#0000cc] font-bold">
                 Iniciar sesión
               </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

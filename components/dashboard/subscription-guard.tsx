@@ -2,9 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { XCircle } from "lucide-react";
+import { XCircle, AlertCircle } from "lucide-react";
 
 interface SubscriptionGuardProps {
   subscriptionStatus: string | null;
@@ -17,81 +15,69 @@ export function SubscriptionGuard({ subscriptionStatus, userRole, children }: Su
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
 
-  // Evitar problemas de hidratación
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Mostrar contenido solo después de montar en el cliente
-  if (!mounted) {
-    return <>{children}</>;
-  }
+  if (!mounted) return <>{children}</>;
 
-  // Permitir acceso a la página de billing siempre
   const isBillingPage = pathname === "/dashboard/billing";
-
-  // Si está en la página de billing, siempre permitir acceso
-  if (isBillingPage) {
-    return <>{children}</>;
-  }
+  if (isBillingPage) return <>{children}</>;
 
   const isEmployee = userRole === "employee";
 
-  // Si la suscripción está cancelada, mostrar mensaje y bloquear acceso
+  const RetroAlert = ({ icon, title, message, showButton }: {
+    icon: React.ReactNode; title: string; message: string; showButton: boolean;
+  }) => (
+    <div className="min-h-screen bg-[#d4d0c8] flex items-center justify-center p-8 font-sans">
+      <div className="w-full max-w-md border-2 border-[#808080] shadow-[4px_4px_0px_#000] bg-[#d4d0c8]">
+        <div className="bg-[#000080] px-3 py-1.5 flex items-center gap-2">
+          <span className="text-white text-sm font-bold">⚠ Sistema de Gestión</span>
+        </div>
+        <div className="p-6 space-y-4 text-black">
+          <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-4 flex items-start gap-3">
+            <div className="shrink-0 mt-0.5">{icon}</div>
+            <div>
+              <p className="text-sm font-bold mb-1">{title}</p>
+              <p className="text-xs text-gray-600">{message}</p>
+            </div>
+          </div>
+          {showButton && (
+            <button
+              onClick={() => router.push("/dashboard/billing")}
+              className="w-full border border-[#808080] bg-[#d4d0c8] py-2 text-sm font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0]"
+            >
+              💳 Ver Planes Disponibles
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   if (subscriptionStatus === "cancelled") {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="max-w-md w-full">
-          <Alert variant="destructive" className="mb-4">
-            <XCircle className="h-4 w-4" />
-            <AlertTitle>Suscripción Cancelada</AlertTitle>
-            <AlertDescription>
-              {isEmployee 
-                ? "La suscripción de tu empresa ha sido cancelada. Por favor contacta al administrador para reactivar el servicio."
-                : "Tu suscripción ha sido cancelada. Para continuar usando la plataforma, por favor selecciona un plan de pago."
-              }
-            </AlertDescription>
-          </Alert>
-          {!isEmployee && (
-            <Button 
-              onClick={() => router.push("/dashboard/billing")} 
-              className="w-full"
-            >
-              Ver Planes Disponibles
-            </Button>
-          )}
-        </div>
-      </div>
+      <RetroAlert
+        icon={<XCircle className="h-5 w-5 text-red-600" />}
+        title="Suscripción Cancelada"
+        message={isEmployee
+          ? "La suscripción de tu empresa fue cancelada. Contactá al administrador para reactivar el servicio."
+          : "Tu suscripción fue cancelada. Seleccioná un plan de pago para continuar usando la plataforma."}
+        showButton={!isEmployee}
+      />
     );
   }
 
-  // Si no hay suscripción activa, redirigir a billing
   if (!subscriptionStatus || subscriptionStatus === "expired") {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="max-w-md w-full">
-          <Alert className="mb-4">
-            <AlertTitle>Sin Suscripción Activa</AlertTitle>
-            <AlertDescription>
-              {isEmployee
-                ? "Tu empresa no tiene una suscripción activa. Por favor contacta al administrador para activar un plan."
-                : "No tienes una suscripción activa. Por favor selecciona un plan para continuar."
-              }
-            </AlertDescription>
-          </Alert>
-          {!isEmployee && (
-            <Button 
-              onClick={() => router.push("/dashboard/billing")} 
-              className="w-full"
-            >
-              Ver Planes Disponibles
-            </Button>
-          )}
-        </div>
-      </div>
+      <RetroAlert
+        icon={<AlertCircle className="h-5 w-5 text-amber-600" />}
+        title="Sin Suscripción Activa"
+        message={isEmployee
+          ? "Tu empresa no tiene una suscripción activa. Contactá al administrador para activar un plan."
+          : "No tenés una suscripción activa. Seleccioná un plan para continuar."}
+        showButton={!isEmployee}
+      />
     );
   }
 
-  // Si la suscripción está activa, mostrar el contenido
   return <>{children}</>;
 }
