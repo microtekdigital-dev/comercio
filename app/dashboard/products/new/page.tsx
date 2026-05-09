@@ -14,6 +14,17 @@ import { ImageUpload } from "@/components/dashboard/image-upload";
 import { ProductVariantSelector } from "@/components/dashboard/product-variant-selector";
 import { VariantStockTable } from "@/components/dashboard/variant-stock-table";
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -49,6 +60,8 @@ export default function NewProductPage() {
     setFormData(p => ({ ...p, variants: v }));
   }, []);
 
+  const set = useCallback((k: string, v: any) => setFormData(p => ({ ...p, [k]: v })), []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) { toast.error("El nombre es requerido"); return; }
@@ -65,16 +78,6 @@ export default function NewProductPage() {
 
   const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full";
   const l = "text-xs font-bold text-black block mb-0.5";
-  const set = (k: string, v: any) => setFormData(p => ({ ...p, [k]: v }));
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
-      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
-        <span className="text-xs font-bold">{title}</span>
-      </div>
-      {children}
-    </div>
-  );
 
   return (
     <div className="space-y-3 text-black select-none">

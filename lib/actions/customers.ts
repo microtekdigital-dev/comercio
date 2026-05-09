@@ -53,14 +53,15 @@ export async function validateFiscalData(formData: CustomerFormData): Promise<{ 
     }
   }
 
-  // Validar que tenga tipo de documento
-  if (!formData.document_type) {
-    return { valid: false, error: 'Tipo de documento es requerido' }
+  // Validar que tenga tipo de documento — solo si se proporcionó número
+  if (formData.document_number && !formData.document_type) {
+    return { valid: false, error: 'Seleccioná el tipo de documento' }
   }
 
-  // Validar que tenga número de documento
-  if (!formData.document_number) {
-    return { valid: false, error: 'Número de documento es requerido' }
+  // Validar que tenga número de documento — solo si se proporcionó tipo
+  // (ambos son opcionales, pero si se pone uno hay que poner el otro)
+  if (formData.document_type && !formData.document_number) {
+    return { valid: false, error: 'Ingresá el número de documento' }
   }
 
   // Validar condición fiscal si está presente

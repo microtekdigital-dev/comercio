@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getProduct, updateProduct, deleteProduct } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
@@ -9,42 +9,26 @@ import { getProductStockHistory } from "@/lib/actions/stock-movements";
 import { getProductPriceHistory } from "@/lib/actions/price-changes";
 import { getUserPermissions } from "@/lib/utils/permissions";
 import { getCompanySettings } from "@/lib/actions/company-settings";
-import { formatCompanyCurrency } from "@/lib/utils/currency";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Trash2, History, DollarSign } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Product, Category, Supplier, StockMovement, PriceChange } from "@/lib/types/erp";
+import type { Product, Category, Supplier, StockMovement, PriceChange, VariantType, ProductVariantFormData } from "@/lib/types/erp";
 import { ImageUpload } from "@/components/dashboard/image-upload";
 import { StockHistoryTable } from "@/components/dashboard/stock-history-table";
 import { ProductPriceHistory } from "@/components/dashboard/product-price-history";
 import { ProductVariantSelector } from "@/components/dashboard/product-variant-selector";
 import { VariantStockTable } from "@/components/dashboard/variant-stock-table";
-import type { VariantType, ProductVariantFormData } from "@/lib/types/erp";
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -57,706 +41,296 @@ export default function ProductDetailPage() {
   const [priceHistory, setPriceHistory] = useState<PriceChange[]>([]);
   const [canEdit, setCanEdit] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
-  const [variantType, setVariantType] = useState<VariantType>('none');
+  const [variantType, setVariantType] = useState<VariantType>("none");
   const [variants, setVariants] = useState<ProductVariantFormData[]>([]);
-  const [currencySymbol, setCurrencySymbol] = useState('$');
-  const [currencyPosition, setCurrencyPosition] = useState<'before' | 'after'>('before');
+  const [currencySymbol, setCurrencySymbol] = useState("$");
+  const [tab, setTab] = useState<"details" | "prices" | "stock">("details");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    sku: "",
-    barcode: "",
-    description: "",
+    name: "", sku: "", barcode: "", description: "",
     type: "product" as "product" | "service",
-    category_id: "",
-    supplier_id: "",
-    price: 0,
-    cost: 0,
-    currency: "ARS",
-    tax_rate: 21,
-    stock_quantity: 0,
-    min_stock_level: 0,
-    track_inventory: true,
-    is_active: true,
-    image_url: "",
-    has_variants: false,
-    variant_type: undefined as VariantType | undefined,
+    category_id: "", supplier_id: "",
+    price: 0, cost: 0, currency: "ARS", tax_rate: 21,
+    stock_quantity: 0, min_stock_level: 0,
+    track_inventory: true, is_active: true, image_url: "",
+    has_variants: false, variant_type: undefined as VariantType | undefined,
     variants: [] as ProductVariantFormData[],
   });
 
-  useEffect(() => {
-    loadData();
-    checkPermissions();
-    loadCurrencySettings();
-  }, []);
+  useEffect(() => { loadData(); checkPermissions(); getCompanySettings().then(s => { if (s) setCurrencySymbol(s.currency_symbol); }); }, []);
 
-  const loadCurrencySettings = async () => {
-    const settings = await getCompanySettings();
-    if (settings) {
-      setCurrencySymbol(settings.currency_symbol);
-      setCurrencyPosition(settings.currency_position);
-    }
-  };
-
-  const checkPermissions = async () => {
-    const permissions = await getUserPermissions();
-    setCanEdit(permissions.canEditProducts);
-    setCanDelete(permissions.canDeleteProducts);
-  };
+  const checkPermissions = async () => { const p = await getUserPermissions(); setCanEdit(p.canEditProducts); setCanDelete(p.canDeleteProducts); };
 
   const loadData = async () => {
-    const [productData, categoriesData, suppliersData, historyData, priceHistoryData] = await Promise.all([
-      getProduct(params.id as string),
-      getCategories(),
-      getSuppliers(),
-      getProductStockHistory(params.id as string),
-      getProductPriceHistory(params.id as string),
+    const [productData, cats, sups, hist, priceHist] = await Promise.all([
+      getProduct(params.id as string), getCategories(), getSuppliers(),
+      getProductStockHistory(params.id as string), getProductPriceHistory(params.id as string),
     ]);
-
-    if (productData) {
-      setProduct(productData);
-      setCategories(categoriesData);
-      setSuppliers(suppliersData.filter(s => s.status === 'active'));
-      setStockHistory(historyData);
-      setPriceHistory(priceHistoryData);
-      
-      // Set variant type and variants
-      const hasVariants = productData.has_variants || false;
-      const productVariantType = productData.variant_type || 'none';
-      setVariantType(productVariantType);
-      
-      if (hasVariants && productData.variants) {
-        setVariants(productData.variants.map(v => ({
-          id: v.id,
-          variant_name: v.variant_name,
-          sku: v.sku || '',
-          stock_quantity: v.stock_quantity,
-          min_stock_level: v.min_stock_level,
-          sort_order: v.sort_order,
-        })));
-      }
-      
-      setFormData({
-        name: productData.name,
-        sku: productData.sku || "",
-        barcode: productData.barcode || "",
-        description: productData.description || "",
-        type: productData.type,
-        category_id: productData.category_id || "",
-        supplier_id: productData.supplier_id || "",
-        price: productData.price,
-        cost: productData.cost,
-        currency: productData.currency,
-        tax_rate: productData.tax_rate,
-        stock_quantity: productData.stock_quantity,
-        min_stock_level: productData.min_stock_level,
-        track_inventory: productData.track_inventory,
-        is_active: productData.is_active,
-        image_url: productData.image_url || "",
-        has_variants: hasVariants,
-        variant_type: hasVariants ? productVariantType : undefined,
-        variants: hasVariants && productData.variants ? productData.variants.map(v => ({
-          id: v.id,
-          variant_name: v.variant_name,
-          sku: v.sku || '',
-          stock_quantity: v.stock_quantity,
-          min_stock_level: v.min_stock_level,
-          sort_order: v.sort_order,
-        })) : [],
-      });
-    } else {
-      toast.error("Producto no encontrado");
-      router.push("/dashboard/products");
+    if (!productData) { toast.error("Producto no encontrado"); router.push("/dashboard/products"); return; }
+    setProduct(productData); setCategories(cats); setSuppliers(sups.filter(s => s.status === "active"));
+    setStockHistory(hist); setPriceHistory(priceHist);
+    const hasVariants = productData.has_variants || false;
+    const pvt = productData.variant_type || "none";
+    setVariantType(pvt);
+    if (hasVariants && productData.variants) {
+      setVariants(productData.variants.map(v => ({ id: v.id, variant_name: v.variant_name, sku: v.sku || "", stock_quantity: v.stock_quantity, min_stock_level: v.min_stock_level, sort_order: v.sort_order })));
     }
+    setFormData({
+      name: productData.name, sku: productData.sku || "", barcode: productData.barcode || "",
+      description: productData.description || "", type: productData.type,
+      category_id: productData.category_id || "", supplier_id: productData.supplier_id || "",
+      price: productData.price, cost: productData.cost, currency: productData.currency,
+      tax_rate: productData.tax_rate, stock_quantity: productData.stock_quantity,
+      min_stock_level: productData.min_stock_level, track_inventory: productData.track_inventory,
+      is_active: productData.is_active, image_url: productData.image_url || "",
+      has_variants: hasVariants, variant_type: hasVariants ? pvt : undefined,
+      variants: hasVariants && productData.variants ? productData.variants.map(v => ({ id: v.id, variant_name: v.variant_name, sku: v.sku || "", stock_quantity: v.stock_quantity, min_stock_level: v.min_stock_level, sort_order: v.sort_order })) : [],
+    });
   };
 
-  const handleVariantTypeChange = (type: VariantType) => {
-    // Si el producto ya tiene variantes con stock, mostrar confirmación
-    if (product?.has_variants && type === 'none' && product.variants && product.variants.some(v => v.stock_quantity > 0)) {
-      toast.error("No se pueden desactivar las variantes mientras haya stock. Primero debe mover el stock a 0.");
-      return;
-    }
+  const set = useCallback((k: string, v: any) => setFormData(p => ({ ...p, [k]: v })), []);
 
+  const handleVariantTypeChange = useCallback((type: VariantType) => {
+    if (product?.has_variants && type === "none" && product.variants?.some(v => v.stock_quantity > 0)) {
+      toast.error("No se pueden desactivar las variantes mientras haya stock."); return;
+    }
     setVariantType(type);
-    setFormData({
-      ...formData,
-      has_variants: type !== 'none',
-      variant_type: type !== 'none' ? type : undefined,
-    });
-  };
+    setFormData(p => ({ ...p, has_variants: type !== "none", variant_type: type !== "none" ? type : undefined }));
+  }, [product]);
 
-  const handleVariantsChange = (newVariants: ProductVariantFormData[]) => {
-    setVariants(newVariants);
-    setFormData({
-      ...formData,
-      variants: newVariants,
-    });
-  };
+  const handleVariantsChange = useCallback((v: ProductVariantFormData[]) => {
+    setVariants(v); setFormData(p => ({ ...p, variants: v }));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+    e.preventDefault(); setLoading(true);
     try {
-      const result = await updateProduct(params.id as string, formData);
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Producto actualizado exitosamente");
-        router.push("/dashboard/products");
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("Error al actualizar el producto");
-    } finally {
-      setLoading(false);
-    }
+      const r = await updateProduct(params.id as string, formData);
+      if (r.error) { toast.error(r.error); } else { toast.success("Producto actualizado"); router.push("/dashboard/products"); }
+    } catch { toast.error("Error al actualizar"); } finally { setLoading(false); }
   };
 
   const handleDelete = async () => {
     setLoading(true);
-
     try {
-      const result = await deleteProduct(params.id as string);
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Producto eliminado exitosamente");
-        router.push("/dashboard/products");
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("Error al eliminar el producto");
-    } finally {
-      setLoading(false);
-    }
+      const r = await deleteProduct(params.id as string);
+      if (r.error) { toast.error(r.error); } else { toast.success("Producto eliminado"); router.push("/dashboard/products"); }
+    } catch { toast.error("Error al eliminar"); } finally { setLoading(false); setConfirmDelete(false); }
   };
 
-  if (!product) {
-    return (
-      <div className="flex-1 p-8">
-        <p>Cargando...</p>
-      </div>
-    );
-  }
+  const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full disabled:bg-[#f0f0f0] disabled:text-gray-500";
+  const l = "text-xs font-bold text-black block mb-0.5";
+
+  if (!product) return (
+    <div className="flex items-center justify-center py-16 gap-2 text-xs text-gray-500">
+      <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+    </div>
+  );
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/products">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
-              {canEdit ? "Editar Producto" : "Ver Producto"}
-            </h2>
-            <p className="text-muted-foreground">
-              {canEdit ? "Actualiza los datos del producto" : "Detalles del producto"}
-            </p>
+    <div className="space-y-3 text-black select-none">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        {/* Title bar */}
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard/products" className="text-blue-200 text-xs hover:text-white">← Volver</Link>
+            <span className="text-white text-sm font-bold">📦 {canEdit ? "Editar" : "Ver"} Producto — {product.name}</span>
           </div>
+          {canDelete && (
+            <button onClick={() => setConfirmDelete(true)} disabled={loading}
+              className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] text-red-700 flex items-center gap-1 disabled:opacity-50">
+              <Trash2 className="h-3 w-3" /> Eliminar
+            </button>
+          )}
         </div>
-        {canDelete && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={loading}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminará permanentemente el producto.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>
-                  Eliminar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
 
-      <Tabs defaultValue="details" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="details">Detalles</TabsTrigger>
-          <TabsTrigger value="price-history">
-            <DollarSign className="mr-2 h-4 w-4" />
-            Historial de Precios
-          </TabsTrigger>
-          {product.track_inventory && (
-            <TabsTrigger value="history">
-              <History className="mr-2 h-4 w-4" />
-              Historial de Stock
-            </TabsTrigger>
-          )}
-        </TabsList>
+        {/* Tabs */}
+        <div className="flex border-b border-[#808080] bg-[#d4d0c8]">
+          {[
+            { id: "details" as const, label: "Detalles" },
+            { id: "prices" as const, label: "💲 Historial Precios" },
+            ...(product.track_inventory ? [{ id: "stock" as const, label: "📈 Historial Stock" }] : []),
+          ].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`px-4 py-1.5 text-xs font-bold border-r border-[#808080] last:border-r-0 transition-none ${tab === t.id ? "bg-white border-b-2 border-b-white -mb-px" : "hover:bg-[#c0c0c0]"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        <TabsContent value="details">
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-6 md:grid-cols-2">
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Información Básica</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Nombre <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    required
-                    maxLength={35}
-                    disabled={!canEdit}
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {formData.name.length}/35 caracteres
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sku">SKU / Código</Label>
-                  <Input
-                    id="sku"
-                    disabled={!canEdit}
-                    value={formData.sku}
-                    onChange={(e) =>
-                      setFormData({ ...formData, sku: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="barcode">Código de Barras</Label>
-                  <Input
-                    id="barcode"
-                    disabled={!canEdit}
-                    value={formData.barcode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, barcode: e.target.value })
-                    }
-                    placeholder="7790001234567"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
-                  <Select
-                    disabled={!canEdit}
-                    value={formData.type}
-                    onValueChange={(value: "product" | "service") =>
-                      setFormData({ ...formData, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="product">Producto</SelectItem>
-                      <SelectItem value="service">Servicio</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category_id">Categoría</Label>
-                  <Select
-                    disabled={!canEdit}
-                    value={formData.category_id || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, category_id: value === "none" ? "" : value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin categoría</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="supplier_id">Proveedor</Label>
-                  <Select
-                    disabled={!canEdit}
-                    value={formData.supplier_id || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, supplier_id: value === "none" ? "" : value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar proveedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin proveedor</SelectItem>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
-                    disabled={!canEdit}
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {canEdit && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Imagen</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ImageUpload
-                  currentImageUrl={formData.image_url}
-                  onImageUrlChange={(url) =>
-                    setFormData({ ...formData, image_url: url || "" })
-                  }
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {formData.track_inventory && canEdit && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Gestión de Variantes</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Configura si este producto tiene variantes (tallas, colores, etc.)
-                </p>
-              </CardHeader>
-              <CardContent>
-                <ProductVariantSelector
-                  value={variantType}
-                  onChange={handleVariantTypeChange}
-                  disabled={!canEdit}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {formData.track_inventory && formData.has_variants && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Variantes del Producto</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {canEdit 
-                    ? "Gestiona el stock de cada variante del producto" 
-                    : "Stock disponible por variante"}
-                </p>
-              </CardHeader>
-              <CardContent>
-                {canEdit ? (
-                  <VariantStockTable
-                    variants={variants}
-                    onChange={handleVariantsChange}
-                    variantType={variantType}
-                    readOnly={false}
-                  />
-                ) : (
-                  <div className="space-y-4">
-                    <div className="rounded-md border">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b bg-muted/50">
-                            <th className="p-3 text-left font-medium">Variante</th>
-                            <th className="p-3 text-left font-medium">SKU</th>
-                            <th className="p-3 text-right font-medium">Stock</th>
-                            <th className="p-3 text-right font-medium">Stock Mínimo</th>
-                            <th className="p-3 text-right font-medium">Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {variants.map((variant, index) => {
-                            const isLowStock = variant.stock_quantity <= variant.min_stock_level;
-                            return (
-                              <tr key={variant.id || index} className="border-b last:border-0">
-                                <td className="p-3 font-medium">{variant.variant_name}</td>
-                                <td className="p-3 text-muted-foreground">{variant.sku || '-'}</td>
-                                <td className="p-3 text-right">
-                                  <span className={isLowStock ? 'text-destructive font-semibold' : ''}>
-                                    {variant.stock_quantity}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-right text-muted-foreground">
-                                  {variant.min_stock_level}
-                                </td>
-                                <td className="p-3 text-right">
-                                  {variant.stock_quantity === 0 ? (
-                                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive">
-                                      Sin stock
-                                    </span>
-                                  ) : isLowStock ? (
-                                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500">
-                                      Stock bajo
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
-                                      Disponible
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t bg-muted/30">
-                            <td className="p-3 font-semibold" colSpan={2}>Stock Total</td>
-                            <td className="p-3 text-right font-semibold">
-                              {variants.reduce((sum, v) => sum + v.stock_quantity, 0)}
-                            </td>
-                            <td colSpan={2}></td>
-                          </tr>
-                        </tfoot>
-                      </table>
+        <div className="bg-[#d4d0c8] p-4">
+          {/* Details tab */}
+          {tab === "details" && (
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <Section title="Información Básica">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className={l}>Nombre * <span className="font-normal text-gray-500">({formData.name.length}/35)</span></label>
+                        <input required maxLength={35} disabled={!canEdit} value={formData.name} onChange={e => set("name", e.target.value)} className={f} />
+                      </div>
+                      <div><label className={l}>SKU / Código</label><input disabled={!canEdit} value={formData.sku} onChange={e => set("sku", e.target.value)} placeholder="PROD-001" className={f} /></div>
+                      <div><label className={l}>Código de Barras</label><input disabled={!canEdit} value={formData.barcode} onChange={e => set("barcode", e.target.value)} placeholder="7790001234567" className={f} /></div>
+                      <div>
+                        <label className={l}>Tipo</label>
+                        <select disabled={!canEdit} value={formData.type} onChange={e => set("type", e.target.value)} className={f}>
+                          <option value="product">Producto</option>
+                          <option value="service">Servicio</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className={l}>Categoría</label>
+                        <select disabled={!canEdit} value={formData.category_id} onChange={e => set("category_id", e.target.value)} className={f}>
+                          <option value="">Sin categoría</option>
+                          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={l}>Proveedor</label>
+                        <select disabled={!canEdit} value={formData.supplier_id} onChange={e => set("supplier_id", e.target.value)} className={f}>
+                          <option value="">Sin proveedor</option>
+                          {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className={l}>Descripción</label>
+                        <textarea disabled={!canEdit} value={formData.description} onChange={e => set("description", e.target.value)} rows={2} className={f + " resize-none"} />
+                      </div>
                     </div>
+                  </Section>
+                </div>
+
+                <Section title="Precios">
+                  <div className="space-y-2">
+                    <div><label className={l}>Precio de Venta * ({currencySymbol})</label><input type="number" step="0.01" min="0" required disabled={!canEdit} value={formData.price} onChange={e => set("price", parseFloat(e.target.value) || 0)} className={f} /></div>
+                    <div><label className={l}>Costo ({currencySymbol})</label><input type="number" step="0.01" min="0" disabled={!canEdit} value={formData.cost} onChange={e => set("cost", parseFloat(e.target.value) || 0)} className={f} /></div>
+                    <div>
+                      <label className={l}>Moneda</label>
+                      <select disabled={!canEdit} value={formData.currency} onChange={e => set("currency", e.target.value)} className={f}>
+                        <option value="ARS">ARS - Peso Argentino</option>
+                        <option value="USD">USD - Dólar</option>
+                        <option value="EUR">EUR - Euro</option>
+                      </select>
+                    </div>
+                    <div><label className={l}>IVA (%)</label><input type="number" step="0.01" min="0" max="100" disabled={!canEdit} value={formData.tax_rate} onChange={e => set("tax_rate", parseFloat(e.target.value) || 0)} className={f} /></div>
+                  </div>
+                </Section>
+
+                <Section title="Inventario">
+                  <div className="flex items-center gap-2 mb-2">
+                    <input type="checkbox" id="track_inventory" disabled={!canEdit} checked={formData.track_inventory} onChange={e => set("track_inventory", e.target.checked)} className="border border-[#808080]" />
+                    <label htmlFor="track_inventory" className="text-xs font-bold cursor-pointer">Controlar Stock</label>
+                  </div>
+                  {formData.track_inventory && !formData.has_variants && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><label className={l}>Cantidad en Stock</label><input type="number" min="0" disabled={!canEdit} value={formData.stock_quantity} onChange={e => set("stock_quantity", parseInt(e.target.value) || 0)} className={f} /></div>
+                      <div><label className={l}>Stock Mínimo</label><input type="number" min="0" disabled={!canEdit} value={formData.min_stock_level} onChange={e => set("min_stock_level", parseInt(e.target.value) || 0)} className={f} /></div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 pt-2 border-t border-[#808080]">
+                    <input type="checkbox" id="is_active" disabled={!canEdit} checked={formData.is_active} onChange={e => set("is_active", e.target.checked)} className="border border-[#808080]" />
+                    <label htmlFor="is_active" className="text-xs font-bold cursor-pointer">Producto Activo</label>
+                  </div>
+                </Section>
+
+                {canEdit && (
+                  <div className="md:col-span-2">
+                    <Section title="Imagen">
+                      <ImageUpload currentImageUrl={formData.image_url} onImageUrlChange={url => set("image_url", url || "")} />
+                    </Section>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+
+                {formData.track_inventory && canEdit && (
+                  <div className="md:col-span-2">
+                    <Section title="Variantes">
+                      <ProductVariantSelector value={variantType} onChange={handleVariantTypeChange} disabled={!canEdit} />
+                    </Section>
+                  </div>
+                )}
+
+                {formData.track_inventory && formData.has_variants && (
+                  <div className="md:col-span-2">
+                    <Section title="Stock por Variante">
+                      {canEdit ? (
+                        <VariantStockTable variants={variants} onChange={handleVariantsChange} variantType={variantType} readOnly={false} />
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <div className="grid grid-cols-[1fr_100px_80px_80px_100px] border-b-2 border-[#808080] bg-[#d4d0c8]">
+                            {["Variante", "SKU", "Stock", "Mínimo", "Estado"].map((h, i) => (
+                              <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+                            ))}
+                          </div>
+                          {variants.map((v, idx) => (
+                            <div key={v.id || idx} className={`grid grid-cols-[1fr_100px_80px_80px_100px] border-b border-[#e0e0e0] ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                              <div className="px-2 py-1.5 text-xs font-bold border-r border-[#e0e0e0]">{v.variant_name}</div>
+                              <div className="px-2 py-1.5 text-xs font-mono border-r border-[#e0e0e0]">{v.sku || "—"}</div>
+                              <div className={`px-2 py-1.5 text-xs text-center font-bold border-r border-[#e0e0e0] ${v.stock_quantity <= v.min_stock_level ? "text-red-600" : "text-green-700"}`}>{v.stock_quantity}</div>
+                              <div className="px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0] text-gray-500">{v.min_stock_level}</div>
+                              <div className="px-2 py-1.5 text-xs text-center">
+                                <span className={`font-bold ${v.stock_quantity === 0 ? "text-red-600" : v.stock_quantity <= v.min_stock_level ? "text-amber-700" : "text-green-700"}`}>
+                                  {v.stock_quantity === 0 ? "Sin stock" : v.stock_quantity <= v.min_stock_level ? "Stock bajo" : "Disponible"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Section>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <Link href="/dashboard/products" className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+                  {canEdit ? "Cancelar" : "Volver"}
+                </Link>
+                {canEdit && (
+                  <button type="submit" disabled={loading} className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+                    {loading ? <><Loader2 className="h-3 w-3 animate-spin" /> Guardando...</> : "✔ Guardar Cambios"}
+                  </button>
+                )}
+              </div>
+            </form>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Precios</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">
-                  Precio de Venta <span className="text-destructive">*</span>
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {currencySymbol}
-                  </span>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    disabled={!canEdit}
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
-                    }
-                    className={currencyPosition === 'before' ? 'pl-8' : 'pr-8'}
-                  />
-                  {currencyPosition === 'after' && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      {currencySymbol}
-                    </span>
-                  )}
-                </div>
+          {/* Price history tab */}
+          {tab === "prices" && (
+            <ProductPriceHistory
+              changes={priceHistory}
+              currencySymbol={product.currency === "USD" ? "$" : product.currency === "EUR" ? "€" : "$"}
+            />
+          )}
+
+          {/* Stock history tab */}
+          {tab === "stock" && product.track_inventory && (
+            <StockHistoryTable movements={stockHistory} />
+          )}
+        </div>
+      </div>
+
+      {/* Confirm delete */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-full max-w-sm">
+            <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+              <span className="text-white text-sm font-bold">⚠ Eliminar Producto</span>
+              <button onClick={() => setConfirmDelete(false)} className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0]">✕</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm font-bold">¿Eliminar este producto?</p>
+              <p className="text-xs text-gray-600">Esta acción no se puede deshacer.</p>
+              <div className="flex justify-end gap-2 pt-1 border-t border-[#808080]">
+                <button onClick={() => setConfirmDelete(false)} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">Cancelar</button>
+                <button onClick={handleDelete} disabled={loading} className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] text-red-700 disabled:opacity-50 flex items-center gap-1">
+                  {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "✕"} Eliminar
+                </button>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cost">Costo</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {currencySymbol}
-                  </span>
-                  <Input
-                    id="cost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    disabled={!canEdit}
-                    value={formData.cost}
-                    onChange={(e) =>
-                      setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })
-                    }
-                    className={currencyPosition === 'before' ? 'pl-8' : 'pr-8'}
-                  />
-                  {currencyPosition === 'after' && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      {currencySymbol}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="currency">Moneda</Label>
-                <Select
-                  disabled={!canEdit}
-                  value={formData.currency}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, currency: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ARS">ARS - Peso Argentino</SelectItem>
-                    <SelectItem value="USD">USD - Dólar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tax_rate">Tasa de Impuesto (%)</Label>
-                <Input
-                  id="tax_rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  disabled={!canEdit}
-                  value={formData.tax_rate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tax_rate: parseFloat(e.target.value) || 0 })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventario</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="track_inventory">Controlar Stock</Label>
-                <Switch
-                  id="track_inventory"
-                  disabled={!canEdit}
-                  checked={formData.track_inventory}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, track_inventory: checked })
-                  }
-                />
-              </div>
-
-              {formData.track_inventory && !formData.has_variants && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="stock_quantity">Cantidad en Stock</Label>
-                    <Input
-                      id="stock_quantity"
-                      type="number"
-                      min="0"
-                      disabled={!canEdit}
-                      value={formData.stock_quantity}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          stock_quantity: parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="min_stock_level">Stock Mínimo</Label>
-                    <Input
-                      id="min_stock_level"
-                      type="number"
-                      min="0"
-                      disabled={!canEdit}
-                      value={formData.min_stock_level}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          min_stock_level: parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="flex items-center justify-between pt-4 border-t">
-                <Label htmlFor="is_active">Producto Activo</Label>
-                <Switch
-                  id="is_active"
-                  disabled={!canEdit}
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, is_active: checked })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
+            </div>
           </div>
-
-          <div className="flex justify-end gap-4 mt-6">
-            <Link href="/dashboard/products">
-              <Button type="button" variant="outline">
-                {canEdit ? "Cancelar" : "Volver"}
-              </Button>
-            </Link>
-            {canEdit && (
-              <Button type="submit" disabled={loading}>
-                <Save className="mr-2 h-4 w-4" />
-                {loading ? "Guardando..." : "Guardar Cambios"}
-              </Button>
-            )}
-          </div>
-        </form>
-      </TabsContent>
-
-      <TabsContent value="price-history">
-        <ProductPriceHistory 
-          changes={priceHistory}
-          currencySymbol={product.currency === "USD" ? "$" : product.currency === "EUR" ? "€" : "$"}
-        />
-      </TabsContent>
-
-      {product.track_inventory && (
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Historial de Movimientos de Stock</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Registro completo de todos los movimientos de inventario para este producto
-              </p>
-            </CardHeader>
-            <CardContent>
-              <StockHistoryTable movements={stockHistory} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        </div>
       )}
-    </Tabs>
     </div>
   );
 }

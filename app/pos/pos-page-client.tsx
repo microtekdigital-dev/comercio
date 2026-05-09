@@ -12,6 +12,7 @@ import type { POSPayment, POSProductSearchResult } from "@/lib/types/pos";
 import type { FinancialStats } from "@/lib/actions/financial-stats";
 import { PaymentModalRetro } from "@/components/dashboard/pos/payment-modal-retro";
 import { Loader2, Printer, Search, Plus, Users, Package, BarChart2, X, UserPlus } from "lucide-react";
+import { ProductSearchModal } from "@/components/dashboard/pos/product-search-modal";
 import { NotificationsPopover } from "@/components/dashboard/notifications-popover";
 import { SupportChatWidget } from "@/components/dashboard/support-chat-widget";
 import { toast } from "sonner";
@@ -73,10 +74,6 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
 
   // Manual product search modal
   const [productModalOpen, setProductModalOpen] = useState(false);
-  const [productSearch, setProductSearch] = useState("");
-  const [productResults, setProductResults] = useState<POSProductSearchResult[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const productSearchRef = useRef<HTMLInputElement>(null);
 
   // Support chat (non-admin users)
   const [supportOpen, setSupportOpen] = useState(false);
@@ -133,49 +130,6 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
     const t = setTimeout(() => searchCustomers(customerSearch), 300);
     return () => clearTimeout(t);
   }, [customerSearch, customerDropOpen, searchCustomers]);
-
-  // ── Manual product modal ────────────────────────────────────────────────────
-
-  const openProductModal = useCallback(async () => {
-    setProductModalOpen(true);
-    setProductSearch("");
-    setLoadingProducts(true);
-    try {
-      const results = await getPOSProductsByCategory(null);
-      setProductResults(results);
-    } finally {
-      setLoadingProducts(false);
-      setTimeout(() => productSearchRef.current?.focus(), 50);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!productModalOpen) return;
-    if (!productSearch.trim()) return;
-    const t = setTimeout(async () => {
-      setLoadingProducts(true);
-      try {
-        const results = await searchPOSProducts(productSearch);
-        setProductResults(results);
-      } finally {
-        setLoadingProducts(false);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [productSearch, productModalOpen]);
-
-  const handleSelectProduct = (product: POSProductSearchResult) => {
-    addItem(product);
-    if (product.track_inventory) {
-      if (product.stock_quantity <= 0) {
-        setStockAlert(`${product.name.toUpperCase()} — Sin stock`);
-      } else if (product.stock_quantity <= product.min_stock_level) {
-        setStockAlert(`${product.name.toUpperCase()} Por debajo del Stock Mínimo - Actualmente hay ${product.stock_quantity}`);
-      }
-    }
-    setProductModalOpen(false);
-    codeRef.current?.focus();
-  };
 
   // ── Panel handlers ──────────────────────────────────────────────────────────
 
@@ -693,7 +647,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
           {searching && <Loader2 className="h-4 w-4 animate-spin text-[#000080]" />}
           {stockAlert && <span className="text-sm text-red-600 font-semibold">{stockAlert}</span>}
           <button
-            onClick={openProductModal}
+            onClick={() => setProductModalOpen(true)}
             className="ml-auto border border-[#808080] bg-[#d4d0c8] px-3 py-0.5 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] flex items-center gap-1"
           >
             <Plus className="h-3 w-3" />
@@ -742,7 +696,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
                   <div className="px-1 py-1 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
                     <input
                       type="number" min={0} max={100} step={1}
-                      value={item.discount_percent}
+                      value={item.discount_percent ?? 0}
                       onChange={e => updateItemDiscount(item.id, parseFloat(e.target.value) || 0)}
                       className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black"
                     />
@@ -770,7 +724,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
                   <div className="px-1 py-1 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
                     <input
                       type="number" min={0} max={100} step={1}
-                      value={item.discount_percent}
+                      value={item.discount_percent ?? 0}
                       onChange={e => updateItemDiscount(item.id, parseFloat(e.target.value) || 0)}
                       className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black"
                     />
@@ -867,83 +821,18 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
       )}
 
       {/* ── Manual product search modal ── */}
-      {productModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-full max-w-2xl flex flex-col max-h-[80vh]">
-            {/* Modal title bar */}
-            <div className="flex items-center justify-between bg-[#000080] px-2 py-1 shrink-0">
-              <span className="text-white text-sm font-bold">Buscar Artículo</span>
-              <button
-                onClick={() => setProductModalOpen(false)}
-                className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0]"
-              >✕</button>
-            </div>
-
-            {/* Search input */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-[#808080] shrink-0">
-              <Search className="h-4 w-4 text-[#000080] shrink-0" />
-              <input
-                ref={productSearchRef}
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Buscar por nombre, código, SKU..."
-                className="flex-1 border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
-              />
-              {loadingProducts && <Loader2 className="h-4 w-4 animate-spin text-[#000080] shrink-0" />}
-            </div>
-
-            {/* Product list */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Table header */}
-              <div className="grid grid-cols-[80px_1fr_100px_80px_60px] border-b-2 border-[#808080] bg-[#d4d0c8] sticky top-0">
-                {["Código", "Descripción", "Precio", "Stock", ""].map((h, i) => (
-                  <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
-                ))}
-              </div>
-
-              {productResults.length === 0 && !loadingProducts ? (
-                <div className="flex items-center justify-center py-8 text-sm text-gray-500">
-                  No se encontraron productos
-                </div>
-              ) : (
-                productResults.map((product, idx) => (
-                  <div
-                    key={product.id}
-                    onClick={() => handleSelectProduct(product)}
-                    className={`grid grid-cols-[80px_1fr_100px_80px_60px] border-b border-[#e0e0e0] cursor-pointer hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}
-                  >
-                    <div className="px-2 py-1.5 text-xs font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
-                      {product.sku ?? "—"}
-                    </div>
-                    <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
-                      {product.name}
-                    </div>
-                    <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
-                      {currencySymbol}{product.price.toFixed(2)}
-                    </div>
-                    <div className={`px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa] ${product.track_inventory && product.stock_quantity <= 0 ? "text-red-600 group-hover:text-red-300" : ""}`}>
-                      {product.track_inventory ? product.stock_quantity : "∞"}
-                    </div>
-                    <div className="flex items-center justify-center">
-                      <Plus className="h-3.5 w-3.5 text-[#000080] group-hover:text-white" />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-2 px-3 py-2 border-t border-[#808080] shrink-0">
-              <button
-                onClick={() => setProductModalOpen(false)}
-                className="border border-[#808080] bg-[#d4d0c8] px-4 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0]"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProductSearchModal
+        open={productModalOpen}
+        onClose={() => { setProductModalOpen(false); codeRef.current?.focus(); }}
+        onSelect={(product) => {
+          addItem(product);
+          if (product.track_inventory) {
+            if (product.stock_quantity <= 0) setStockAlert(`${product.name.toUpperCase()} — Sin stock`);
+            else if (product.stock_quantity <= product.min_stock_level) setStockAlert(`${product.name.toUpperCase()} Por debajo del Stock Mínimo - Actualmente hay ${product.stock_quantity}`);
+          }
+        }}
+        currencySymbol={currencySymbol}
+      />
     </div>
   );
 }
