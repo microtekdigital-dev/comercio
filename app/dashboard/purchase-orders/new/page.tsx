@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseOrder } from "@/lib/actions/purchase-orders";
 import { getSuppliers } from "@/lib/actions/suppliers";
@@ -12,6 +12,17 @@ import type { PurchaseOrderFormData, PurchaseOrderItemFormData, Supplier, Produc
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function NewPurchaseOrderPage() {
   const router = useRouter();
@@ -51,18 +62,19 @@ export default function NewPurchaseOrderPage() {
     });
   }, [formData.items, products]);
 
-  const addItem = () => setFormData(p => ({ ...p, items: [...p.items, { product_id: "", product_name: "", product_sku: "", variant_id: "", variant_name: "", quantity: 1, unit_cost: 0, tax_rate: 21, discount_percent: 0 }] }));
-  const removeItem = (i: number) => setFormData(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }));
+  const addItem = useCallback(() => setFormData(p => ({ ...p, items: [...p.items, { product_id: "", product_name: "", product_sku: "", variant_id: "", variant_name: "", quantity: 1, unit_cost: 0, tax_rate: 21, discount_percent: 0 }] })), []);
+  const removeItem = useCallback((i: number) => setFormData(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) })), []);
 
-  const updateItem = (index: number, field: keyof PurchaseOrderItemFormData, value: any) => {
+  const updateItem = useCallback((index: number, field: keyof PurchaseOrderItemFormData, value: any) => {
     setFormData(p => ({
       ...p,
       items: p.items.map((item, i) => {
         if (i !== index) return item;
         const updated = { ...item, [field]: value };
         if (field === "product_id" && value) {
-          const prod = products.find(p => p.id === value);
-          if (prod) { updated.product_name = prod.name; updated.product_sku = prod.sku || ""; updated.unit_cost = prod.cost; updated.variant_id = ""; updated.variant_name = ""; }
+          const prod = p.items[i].product_id !== value ? undefined : item;
+          const foundProd = products.find(pr => pr.id === value);
+          if (foundProd) { updated.product_name = foundProd.name; updated.product_sku = foundProd.sku || ""; updated.unit_cost = foundProd.cost; updated.variant_id = ""; updated.variant_name = ""; }
         }
         if (field === "variant_id" && value && item.product_id && productVariants[item.product_id]) {
           const v = productVariants[item.product_id].find(v => v.id === value);
@@ -71,7 +83,12 @@ export default function NewPurchaseOrderPage() {
         return updated;
       }),
     }));
-  };
+  }, [products, productVariants]);
+
+  const handleFormChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(p => ({ ...p, [name]: value }));
+  }, []);
 
   const calcItem = (item: PurchaseOrderItemFormData) => {
     const sub = item.quantity * item.unit_cost;
@@ -109,15 +126,6 @@ export default function NewPurchaseOrderPage() {
   const fFull = f + " w-full";
   const l = "text-xs font-bold text-black block mb-0.5";
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
-      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
-        <span className="text-xs font-bold">{title}</span>
-      </div>
-      {children}
-    </div>
-  );
-
   return (
     <div className="space-y-3 text-black select-none">
       <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
@@ -131,29 +139,29 @@ export default function NewPurchaseOrderPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={l}>Proveedor *</label>
-                <select required value={formData.supplier_id} onChange={e => setFormData(p => ({ ...p, supplier_id: e.target.value }))} className={fFull}>
+                <select required name="supplier_id" value={formData.supplier_id} onChange={handleFormChange} className={fFull}>
                   <option value="">Seleccionar...</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className={l}>Estado</label>
-                <select value={formData.status} onChange={e => setFormData(p => ({ ...p, status: e.target.value as any }))} className={fFull}>
+                <select name="status" value={formData.status} onChange={handleFormChange} className={fFull}>
                   <option value="pending">Pendiente</option>
                   <option value="confirmed">Confirmada</option>
                 </select>
               </div>
               <div>
                 <label className={l}>Fecha de Orden *</label>
-                <input type="date" required value={formData.order_date} onChange={e => setFormData(p => ({ ...p, order_date: e.target.value }))} className={fFull} />
+                <input type="date" required name="order_date" value={formData.order_date} onChange={handleFormChange} className={fFull} />
               </div>
               <div>
                 <label className={l}>Fecha Esperada</label>
-                <input type="date" value={formData.expected_date} onChange={e => setFormData(p => ({ ...p, expected_date: e.target.value }))} className={fFull} />
+                <input type="date" name="expected_date" value={formData.expected_date} onChange={handleFormChange} className={fFull} />
               </div>
               <div className="col-span-2">
                 <label className={l}>Notas</label>
-                <textarea value={formData.notes} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} rows={2} className={fFull + " resize-none"} />
+                <textarea name="notes" value={formData.notes} onChange={handleFormChange} rows={2} className={fFull + " resize-none"} />
               </div>
             </div>
           </Section>

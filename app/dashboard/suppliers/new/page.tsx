@@ -1,12 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createSupplier } from "@/lib/actions/suppliers";
 import type { SupplierFormData } from "@/lib/types/erp";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function NewSupplierPage() {
   const router = useRouter();
@@ -25,20 +36,13 @@ export default function NewSupplierPage() {
     else { toast.success("Proveedor creado"); router.push("/dashboard/suppliers"); }
   };
 
-  const set = (k: keyof SupplierFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setFormData(p => ({ ...p, [k]: e.target.value }));
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(p => ({ ...p, [name]: value }));
+  }, []);
 
   const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full";
   const l = "text-xs font-bold text-black block mb-0.5";
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
-      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
-        <span className="text-xs font-bold">{title}</span>
-      </div>
-      {children}
-    </div>
-  );
 
   return (
     <div className="space-y-3 text-black select-none">
@@ -53,35 +57,35 @@ export default function NewSupplierPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 sm:col-span-1">
                 <label className={l}>Nombre de la Empresa *</label>
-                <input required value={formData.name} onChange={set("name")} className={f} />
+                <input required name="name" value={formData.name} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>Contacto</label>
-                <input value={formData.contact_name} onChange={set("contact_name")} className={f} />
+                <input name="contact_name" value={formData.contact_name} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>Email</label>
-                <input type="email" value={formData.email} onChange={set("email")} className={f} />
+                <input type="email" name="email" value={formData.email} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>Teléfono</label>
-                <input value={formData.phone} onChange={set("phone")} className={f} />
+                <input name="phone" value={formData.phone} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>CUIT/RUT</label>
-                <input value={formData.tax_id} onChange={set("tax_id")} className={f} />
+                <input name="tax_id" value={formData.tax_id} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>Sitio Web</label>
-                <input type="url" value={formData.website} onChange={set("website")} placeholder="https://" className={f} />
+                <input type="url" name="website" value={formData.website} onChange={handleChange} placeholder="https://" className={f} />
               </div>
               <div>
                 <label className={l}>Términos de Pago</label>
-                <input value={formData.payment_terms} onChange={set("payment_terms")} placeholder="30 días, Contado..." className={f} />
+                <input name="payment_terms" value={formData.payment_terms} onChange={handleChange} placeholder="30 días, Contado..." className={f} />
               </div>
               <div>
                 <label className={l}>Estado</label>
-                <select value={formData.status} onChange={set("status")} className={f}>
+                <select name="status" value={formData.status} onChange={handleChange} className={f}>
                   <option value="active">Activo</option>
                   <option value="inactive">Inactivo</option>
                 </select>
@@ -92,30 +96,30 @@ export default function NewSupplierPage() {
           <Section title="Dirección">
             <div>
               <label className={l}>Dirección</label>
-              <input value={formData.address} onChange={set("address")} className={f} />
+              <input name="address" value={formData.address} onChange={handleChange} className={f} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={l}>Ciudad</label>
-                <input value={formData.city} onChange={set("city")} className={f} />
+                <input name="city" value={formData.city} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>Provincia</label>
-                <input value={formData.state} onChange={set("state")} className={f} />
+                <input name="state" value={formData.state} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>País</label>
-                <input value={formData.country} onChange={set("country")} className={f} />
+                <input name="country" value={formData.country} onChange={handleChange} className={f} />
               </div>
               <div>
                 <label className={l}>Código Postal</label>
-                <input value={formData.postal_code} onChange={set("postal_code")} className={f} />
+                <input name="postal_code" value={formData.postal_code} onChange={handleChange} className={f} />
               </div>
             </div>
           </Section>
 
           <Section title="Notas">
-            <textarea value={formData.notes} onChange={set("notes")} rows={3} placeholder="Notas adicionales..." className={f + " resize-none"} />
+            <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} placeholder="Notas adicionales..." className={f + " resize-none"} />
           </Section>
 
           <div className="flex justify-end gap-2 pt-1">

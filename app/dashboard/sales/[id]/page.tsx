@@ -22,6 +22,17 @@ const STATUS_COLORS: Record<string, string> = { draft: "text-gray-600", complete
 const PAY_LABELS: Record<string, string> = { pending: "Pendiente", partial: "Parcial", paid: "Pagado", refunded: "Reembolsado" };
 const PAY_COLORS: Record<string, string> = { pending: "text-amber-700", partial: "text-blue-700", paid: "text-green-700", refunded: "text-red-600" };
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] px-3 py-1">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      <div className="bg-white p-3">{children}</div>
+    </div>
+  );
+}
+
 export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [sale, setSale] = useState<Sale | null>(null);
@@ -99,15 +110,6 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   if (!sale) return (
     <div className="flex items-center justify-center py-16 text-xs text-gray-500 gap-2">
       <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
-    </div>
-  );
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
-      <div className="bg-[#c0c0c0] border-b border-[#808080] px-3 py-1">
-        <span className="text-xs font-bold">{title}</span>
-      </div>
-      <div className="bg-white p-3">{children}</div>
     </div>
   );
 

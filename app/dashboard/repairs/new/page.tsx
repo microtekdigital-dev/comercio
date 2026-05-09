@@ -11,6 +11,18 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import type { Customer, Technician } from '@/lib/types/erp'
 
+function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+        {sub && <span className="text-[10px] text-gray-600 ml-2">{sub}</span>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 export default function NewRepairPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -67,16 +79,6 @@ export default function NewRepairPage() {
 
   const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full"
   const l = "text-xs font-bold text-black block mb-0.5"
-
-  const Section = ({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) => (
-    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
-      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
-        <span className="text-xs font-bold">{title}</span>
-        {sub && <span className="text-[10px] text-gray-600 ml-2">{sub}</span>}
-      </div>
-      {children}
-    </div>
-  )
 
   return (
     <div className="space-y-3 text-black select-none">

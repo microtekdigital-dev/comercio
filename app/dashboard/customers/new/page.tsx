@@ -7,6 +7,17 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export default function NewCustomerPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -30,15 +41,6 @@ export default function NewCustomerPage() {
   const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full";
   const l = "text-xs font-bold text-black block mb-0.5";
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setFormData(p => ({ ...p, [k]: e.target.value }));
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
-      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
-        <span className="text-xs font-bold">{title}</span>
-      </div>
-      {children}
-    </div>
-  );
 
   return (
     <div className="space-y-3 text-black select-none">

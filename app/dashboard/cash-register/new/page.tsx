@@ -11,6 +11,17 @@ import Link from "next/link"
 import { toast } from "sonner"
 import type { CashRegisterOpening } from "@/lib/types/erp"
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080]">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] px-3 py-1">
+        <span className="text-xs font-bold">{title}</span>
+      </div>
+      <div className="p-3 space-y-2">{children}</div>
+    </div>
+  )
+}
+
 export default function NewCashRegisterClosurePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -93,15 +104,6 @@ export default function NewCashRegisterClosurePage() {
 
   const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full"
   const l = "text-xs font-bold text-black block mb-0.5"
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080]">
-      <div className="bg-[#c0c0c0] border-b border-[#808080] px-3 py-1">
-        <span className="text-xs font-bold">{title}</span>
-      </div>
-      <div className="p-3 space-y-2">{children}</div>
-    </div>
-  )
 
   const Row = ({ label, value, color = "" }: { label: string; value: string; color?: string }) => (
     <div className="flex items-center justify-between border-b border-[#e0e0e0] py-1.5 last:border-b-0">
