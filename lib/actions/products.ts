@@ -194,6 +194,8 @@ export async function createProduct(formData: ProductFormData) {
       ...productData,
       category_id: productData.category_id || null,
       supplier_id: productData.supplier_id || null,
+      sku: productData.sku?.trim() || null,
+      barcode: productData.barcode?.trim() || null,
     };
 
     const { data, error } = await supabase
@@ -293,6 +295,8 @@ export async function updateProduct(id: string, formData: ProductFormData) {
       ...productData,
       category_id: productData.category_id || null,
       supplier_id: productData.supplier_id || null,
+      sku: productData.sku?.trim() || null,
+      barcode: productData.barcode?.trim() || null,
     };
 
     const { data, error } = await supabase
