@@ -1,16 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Upload, Download, Loader2, CheckCircle2, AlertCircle, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Upload, Download, Loader2, CheckCircle2, AlertCircle, FileText, X } from "lucide-react";
 import { getCategories } from "@/lib/actions/categories";
 import { getProducts } from "@/lib/actions/products";
 import { importProductsFromCsv } from "@/lib/actions/csv-import";
@@ -37,19 +29,29 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
-  const handleClose = () => {
+  const reset = useCallback(() => {
+    setState("idle");
+    setParseResult(null);
+    setImportResult(null);
+    setFileError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const handleClose = useCallback(() => {
     onOpenChange(false);
-    // Reset after animation
-    setTimeout(() => {
-      setState("idle");
-      setParseResult(null);
-      setImportResult(null);
-      setFileError(null);
-    }, 300);
-  };
+    setTimeout(reset, 300);
+  }, [onOpenChange, reset]);
 
-  const handleDownloadTemplate = () => {
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.target === overlayRef.current) handleClose();
+    },
+    [handleClose]
+  );
+
+  const handleDownloadTemplate = useCallback(() => {
     const csv = generateTemplateCsv();
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -58,7 +60,7 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
     a.download = "plantilla_productos.csv";
     a.click();
     URL.revokeObjectURL(url);
-  };
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,7 +68,6 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
 
     setFileError(null);
 
-    // Validar archivo
     const validation = validateCsvFile(file);
     if (!validation.valid) {
       setFileError(validation.error ?? "Archivo inválido");
@@ -78,9 +79,8 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
 
     try {
       const text = await file.text();
-
-      // Verificar límite de filas antes de parsear completo
       const lineCount = text.split(/\r?\n/).filter((l) => l.trim().length > 0).length - 1;
+
       if (lineCount > CSV_MAX_ROWS) {
         setFileError(`El archivo no puede contener más de ${CSV_MAX_ROWS} productos`);
         setState("idle");
@@ -95,7 +95,6 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
         return;
       }
 
-      // Cargar categorías y SKUs existentes
       const [categories, existingProducts] = await Promise.all([
         getCategories(),
         getProducts(),
@@ -109,7 +108,7 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
       const result = parseAndValidateCsv(text, categories, existingSkuMap);
       setParseResult(result);
       setState("preview");
-    } catch (err) {
+    } catch {
       setFileError("El archivo no es un CSV válido");
       setState("idle");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -118,12 +117,10 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
 
   const handleConfirmImport = async () => {
     if (!parseResult) return;
-
     const validRows = parseResult.rows.filter((r) => r.status !== "error");
     if (validRows.length === 0) return;
 
     setState("importing");
-
     try {
       const result = await importProductsFromCsv(
         validRows.map((r) => ({
@@ -135,179 +132,213 @@ export function CsvImportModal({ open, onOpenChange, onImportComplete }: CsvImpo
       );
       setImportResult(result);
       setState("done");
-    } catch (err: any) {
+    } catch {
       toast.error("Error al importar productos");
       setState("preview");
     }
   };
 
-  const handleImportAnother = () => {
-    setState("idle");
-    setParseResult(null);
-    setImportResult(null);
-    setFileError(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Importar Productos desde CSV</DialogTitle>
-          <DialogDescription>
-            Cargá un archivo CSV para importar múltiples productos de forma masiva.
-          </DialogDescription>
-        </DialogHeader>
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+    >
+      {/* Ventana retro */}
+      <div className="w-full max-w-4xl mx-4 border-2 border-[#808080] shadow-[4px_4px_0px_#000] flex flex-col max-h-[90vh]">
 
-        {/* IDLE */}
-        {state === "idle" && (
-          <div className="space-y-6">
-            <div className="rounded-lg border bg-muted/50 p-4 space-y-2 text-sm">
-              <p className="font-medium">Instrucciones:</p>
-              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                <li>Descargá la plantilla CSV de ejemplo</li>
-                <li>Completá los datos de tus productos (máx. {CSV_MAX_ROWS} filas, 5 MB)</li>
-                <li>Subí el archivo y revisá la vista previa</li>
-                <li>Confirmá la importación</li>
-              </ol>
-              <p className="text-muted-foreground">
-                Columnas: <code className="text-xs bg-muted px-1 rounded">nombre, descripcion, precio, precio_costo, stock, sku, categoria, unidad, activo</code>
-              </p>
-            </div>
+        {/* Barra de título */}
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between flex-shrink-0">
+          <span className="text-white text-sm font-bold">📥 Importar Productos desde CSV</span>
+          <button
+            onClick={handleClose}
+            className="text-white hover:bg-[#cc0000] px-2 py-0.5 text-xs font-bold border border-[#6060a0]"
+          >
+            ✕
+          </button>
+        </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button variant="outline" onClick={handleDownloadTemplate}>
-                <Download className="mr-2 h-4 w-4" />
-                Descargar Plantilla
-              </Button>
+        {/* Cuerpo */}
+        <div className="bg-[#d4d0c8] p-4 overflow-y-auto flex-1 space-y-3">
 
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Seleccionar archivo CSV
-              </Button>
-            </div>
-
-            {fileError && (
-              <div className="flex items-center gap-2 text-destructive text-sm">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                {fileError}
+          {/* ── IDLE ── */}
+          {state === "idle" && (
+            <div className="space-y-3">
+              {/* Instrucciones */}
+              <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3">
+                <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+                  <span className="text-xs font-bold">Instrucciones</span>
+                </div>
+                <ol className="list-decimal list-inside space-y-1 text-xs text-gray-700">
+                  <li>Descargá la plantilla CSV de ejemplo</li>
+                  <li>Completá los datos de tus productos (máx. {CSV_MAX_ROWS} filas, 5 MB)</li>
+                  <li>Subí el archivo y revisá la vista previa</li>
+                  <li>Confirmá la importación</li>
+                </ol>
+                <div className="mt-2 text-xs text-gray-600">
+                  Columnas:{" "}
+                  <code className="bg-[#f0f0f0] border border-[#c0c0c0] px-1 text-[10px] font-mono">
+                    nombre, descripcion, precio, precio_costo, stock, sku, categoria, unidad, activo
+                  </code>
+                </div>
               </div>
-            )}
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
-        )}
-
-        {/* PARSING */}
-        {state === "parsing" && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground">Procesando archivo...</p>
-          </div>
-        )}
-
-        {/* PREVIEW */}
-        {state === "preview" && parseResult && (
-          <div className="space-y-4">
-            {/* Resumen */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-2xl font-bold">{parseResult.totalRows}</p>
-                <p className="text-xs text-muted-foreground">Total filas</p>
+              {/* Botones */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="border border-[#808080] bg-[#d4d0c8] px-4 py-2 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center justify-center gap-2"
+                >
+                  <Download className="h-3 w-3" /> Descargar Plantilla
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 border border-[#808080] bg-[#d4d0c8] px-4 py-2 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center justify-center gap-2"
+                >
+                  <Upload className="h-3 w-3" /> Seleccionar archivo CSV...
+                </button>
               </div>
-              <div className="rounded-lg border p-3 text-center bg-green-50">
-                <p className="text-2xl font-bold text-green-700">{parseResult.validRows}</p>
-                <p className="text-xs text-muted-foreground">Válidas</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center bg-red-50">
-                <p className="text-2xl font-bold text-red-700">{parseResult.errorRows}</p>
-                <p className="text-xs text-muted-foreground">Con errores</p>
-              </div>
-            </div>
 
-            <CsvPreviewTable rows={parseResult.rows} />
-
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={handleImportAnother}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleConfirmImport}
-                disabled={parseResult.validRows === 0}
-              >
-                Confirmar Importación ({parseResult.validRows} productos)
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* IMPORTING */}
-        {state === "importing" && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground">Importando productos...</p>
-          </div>
-        )}
-
-        {/* DONE */}
-        {state === "done" && importResult && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              {importResult.errors.length === 0 ? (
-                <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-6 w-6 text-yellow-600 flex-shrink-0" />
+              {fileError && (
+                <div className="border-2 border-[#cc0000] bg-[#fff0f0] p-2 flex items-center gap-2 text-xs text-red-700">
+                  <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                  {fileError}
+                </div>
               )}
-              <div>
-                <p className="font-medium">
-                  {importResult.errors.length === 0
-                    ? "Importación completada exitosamente"
-                    : "Importación completada con algunos errores"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {importResult.created} creados · {importResult.updated} actualizados
-                  {importResult.errors.length > 0 && ` · ${importResult.errors.length} errores`}
-                </p>
-              </div>
-            </div>
 
-            {importResult.errors.length > 0 && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1 max-h-48 overflow-y-auto">
-                <p className="text-sm font-medium text-destructive">Filas con error:</p>
-                {importResult.errors.map((e, i) => (
-                  <p key={i} className="text-xs text-muted-foreground">
-                    Fila {e.rowNumber}{e.sku ? ` (${e.sku})` : ""}: {e.error}
-                  </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </div>
+          )}
+
+          {/* ── PARSING ── */}
+          {state === "parsing" && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+              <p className="text-sm text-gray-600 font-bold">Procesando archivo...</p>
+            </div>
+          )}
+
+          {/* ── PREVIEW ── */}
+          {state === "preview" && parseResult && (
+            <div className="space-y-3">
+              {/* Resumen */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Total filas", value: parseResult.totalRows, color: "" },
+                  { label: "Válidas", value: parseResult.validRows, color: "text-green-700" },
+                  { label: "Con errores", value: parseResult.errorRows, color: "text-red-700" },
+                ].map((s) => (
+                  <div key={s.label} className="border-2 border-[#808080] bg-white p-2 text-center shadow-[inset_1px_1px_2px_#808080]">
+                    <div className={`text-2xl font-bold font-mono ${s.color}`}>{s.value}</div>
+                    <div className="text-[10px] text-gray-500">{s.label}</div>
+                  </div>
                 ))}
               </div>
-            )}
 
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={handleImportAnother}>
-                <FileText className="mr-2 h-4 w-4" />
-                Importar otro archivo
-              </Button>
-              <Button
-                onClick={() => {
-                  onImportComplete();
-                  handleClose();
-                }}
-              >
-                Ver productos
-              </Button>
+              <CsvPreviewTable rows={parseResult.rows} />
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={reset}
+                  className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmImport}
+                  disabled={parseResult.validRows === 0}
+                  className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-40"
+                >
+                  ✔ Confirmar Importación ({parseResult.validRows} productos)
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+
+          {/* ── IMPORTING ── */}
+          {state === "importing" && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+              <p className="text-sm text-gray-600 font-bold">Importando productos...</p>
+            </div>
+          )}
+
+          {/* ── DONE ── */}
+          {state === "done" && importResult && (
+            <div className="space-y-3">
+              {/* Resultado */}
+              <div className={`border-2 p-3 flex items-start gap-3 ${
+                importResult.errors.length === 0
+                  ? "border-[#28a745] bg-[#d4edda]"
+                  : "border-[#ffc107] bg-[#fff3cd]"
+              }`}>
+                {importResult.errors.length === 0 ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-700 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className="text-sm font-bold">
+                    {importResult.errors.length === 0
+                      ? "Importación completada exitosamente"
+                      : "Importación completada con algunos errores"}
+                  </p>
+                  <p className="text-xs text-gray-700 mt-0.5">
+                    {importResult.created} creados · {importResult.updated} actualizados
+                    {importResult.errors.length > 0 && ` · ${importResult.errors.length} errores`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Errores */}
+              {importResult.errors.length > 0 && (
+                <div className="border-2 border-[#cc0000] bg-[#fff0f0] p-3 space-y-1 max-h-48 overflow-y-auto">
+                  <p className="text-xs font-bold text-red-700 mb-1">Filas con error:</p>
+                  {importResult.errors.map((e, i) => (
+                    <p key={i} className="text-[10px] text-gray-700 font-mono">
+                      Fila {e.rowNumber}{e.sku ? ` (${e.sku})` : ""}: {e.error}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={reset}
+                  className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1"
+                >
+                  <FileText className="h-3 w-3" /> Importar otro archivo
+                </button>
+                <button
+                  onClick={() => { onImportComplete(); handleClose(); }}
+                  className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]"
+                >
+                  Ver productos
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Footer */}
+        <div className="bg-[#d4d0c8] border-t-2 border-[#808080] px-3 py-2 flex justify-end flex-shrink-0">
+          <button
+            onClick={handleClose}
+            className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
