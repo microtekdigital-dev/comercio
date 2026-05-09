@@ -249,18 +249,13 @@ export default function NewSalePage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/sales">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Nueva Venta</h2>
-          <p className="text-muted-foreground">Registra una nueva venta</p>
+    <div className="space-y-3 text-black select-none">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <span className="text-white text-sm font-bold">🛒 Nueva Venta</span>
+          <Link href="/dashboard/sales" className="text-blue-200 text-xs hover:text-white">← Volver</Link>
         </div>
-      </div>
+        <div className="bg-[#d4d0c8] p-4">
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6">
@@ -583,15 +578,12 @@ export default function NewSalePage() {
         </div>
 
         <div className="flex justify-end gap-4 mt-6">
-          <Link href="/dashboard/sales">
-            <Button type="button" variant="outline">
-              Cancelar
-            </Button>
+          <Link href="/dashboard/sales" className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+            Cancelar
           </Link>
-          <Button type="submit" disabled={loading || formData.items.length === 0}>
-            <Save className="mr-2 h-4 w-4" />
-            {loading ? "Procesando..." : formData.status === "completed" ? "Crear y Pagar" : "Guardar Borrador"}
-          </Button>
+          <button type="submit" disabled={loading || formData.items.length === 0} className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+            {loading ? "Procesando..." : formData.status === "completed" ? "✔ Crear y Pagar" : "✔ Guardar Borrador"}
+          </button>
         </div>
       </form>
 
@@ -603,6 +595,8 @@ export default function NewSalePage() {
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}
+        </div>
+      </div>
     </div>
   );
 }

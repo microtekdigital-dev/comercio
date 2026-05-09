@@ -6,514 +6,199 @@ import { createProduct } from "@/lib/actions/products";
 import { getCategories } from "@/lib/actions/categories";
 import { getSuppliers } from "@/lib/actions/suppliers";
 import { getCompanySettings } from "@/lib/actions/company-settings";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { Category, Supplier } from "@/lib/types/erp";
+import type { Category, Supplier, VariantType, ProductVariantFormData } from "@/lib/types/erp";
 import { ImageUpload } from "@/components/dashboard/image-upload";
 import { ProductVariantSelector } from "@/components/dashboard/product-variant-selector";
 import { VariantStockTable } from "@/components/dashboard/variant-stock-table";
-import type { VariantType, ProductVariantFormData } from "@/lib/types/erp";
 
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [variantType, setVariantType] = useState<VariantType>('none');
+  const [variantType, setVariantType] = useState<VariantType>("none");
   const [variants, setVariants] = useState<ProductVariantFormData[]>([]);
-  const [currencySymbol, setCurrencySymbol] = useState('$');
-  const [currencyPosition, setCurrencyPosition] = useState<'before' | 'after'>('before');
+  const [currencySymbol, setCurrencySymbol] = useState("$");
   const [formData, setFormData] = useState({
-    name: "",
-    sku: "",
-    barcode: "",
-    description: "",
+    name: "", sku: "", barcode: "", description: "",
     type: "product" as "product" | "service",
-    category_id: "",
-    supplier_id: "",
-    price: 0,
-    cost: 0,
-    currency: "ARS",
-    tax_rate: 21,
-    stock_quantity: 0,
-    min_stock_level: 0,
-    track_inventory: true,
-    is_active: true,
-    image_url: "",
-    has_variants: false,
-    variant_type: undefined as VariantType | undefined,
+    category_id: "", supplier_id: "",
+    price: 0, cost: 0, currency: "ARS", tax_rate: 21,
+    stock_quantity: 0, min_stock_level: 0,
+    track_inventory: true, is_active: true, image_url: "",
+    has_variants: false, variant_type: undefined as VariantType | undefined,
     variants: [] as ProductVariantFormData[],
   });
 
   useEffect(() => {
-    loadCategories();
-    loadSuppliers();
-    loadCurrencySettings();
+    getCategories().then(setCategories);
+    getSuppliers().then(d => setSuppliers(d.filter(s => s.status === "active")));
+    getCompanySettings().then(s => { if (s) setCurrencySymbol(s.currency_symbol); });
   }, []);
-
-  const loadCurrencySettings = async () => {
-    const settings = await getCompanySettings();
-    if (settings) {
-      setCurrencySymbol(settings.currency_symbol);
-      setCurrencyPosition(settings.currency_position);
-    }
-  };
-
-  const loadCategories = async () => {
-    const data = await getCategories();
-    setCategories(data);
-  };
-
-  const loadSuppliers = async () => {
-    const data = await getSuppliers();
-    // Filtrar solo proveedores activos
-    setSuppliers(data.filter(s => s.status === 'active'));
-  };
 
   const handleVariantTypeChange = useCallback((type: VariantType) => {
     setVariantType(type);
-    setFormData(prev => ({
-      ...prev,
-      has_variants: type !== 'none',
-      variant_type: type !== 'none' ? type : undefined,
-    }));
+    setFormData(p => ({ ...p, has_variants: type !== "none", variant_type: type !== "none" ? type : undefined }));
   }, []);
 
-  const handleVariantsChange = useCallback((newVariants: ProductVariantFormData[]) => {
-    setVariants(newVariants);
-    setFormData(prev => ({
-      ...prev,
-      variants: newVariants,
-    }));
+  const handleVariantsChange = useCallback((v: ProductVariantFormData[]) => {
+    setVariants(v);
+    setFormData(p => ({ ...p, variants: v }));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validación de campos requeridos
-    const missingFields: string[] = [];
-    
-    if (!formData.name.trim()) {
-      missingFields.push("Nombre del producto");
-    }
-    
-    if (formData.price <= 0) {
-      missingFields.push("Precio de venta (debe ser mayor a 0)");
-    }
-
-    // Validar variantes si has_variants es true
-    if (formData.has_variants) {
-      if (!formData.variants || formData.variants.length === 0) {
-        missingFields.push("Al menos una variante (cuando se activan variantes)");
-      }
-    }
-    
-    // Si hay campos faltantes, mostrar mensaje específico
-    if (missingFields.length > 0) {
-      const fieldsList = missingFields.join(", ");
-      toast.error(`Faltan completar los siguientes campos: ${fieldsList}`);
-      return;
-    }
-    
+    if (!formData.name.trim()) { toast.error("El nombre es requerido"); return; }
+    if (formData.price <= 0) { toast.error("El precio debe ser mayor a 0"); return; }
+    if (formData.has_variants && formData.variants.length === 0) { toast.error("Agregá al menos una variante"); return; }
     setLoading(true);
-
     try {
       const result = await createProduct(formData);
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Producto creado exitosamente");
-        router.push("/dashboard/products");
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("Error al crear el producto");
-    } finally {
-      setLoading(false);
-    }
+      if (result.error) { toast.error(result.error); }
+      else { toast.success("Producto creado"); router.push("/dashboard/products"); router.refresh(); }
+    } catch { toast.error("Error al crear el producto"); }
+    finally { setLoading(false); }
   };
 
-  return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/products">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Nuevo Producto</h2>
-          <p className="text-muted-foreground">
-            Completa los datos del producto o servicio
-          </p>
-        </div>
+  const f = "border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full";
+  const l = "text-xs font-bold text-black block mb-0.5";
+  const set = (k: string, v: any) => setFormData(p => ({ ...p, [k]: v }));
+
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3">
+        <span className="text-xs font-bold">{title}</span>
       </div>
+      {children}
+    </div>
+  );
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Información Básica</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Nombre <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    required
-                    maxLength={35}
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder="Nombre del producto"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {formData.name.length}/35 caracteres
-                  </p>
+  return (
+    <div className="space-y-3 text-black select-none">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <span className="text-white text-sm font-bold">📦 Nuevo Producto</span>
+          <Link href="/dashboard/products" className="text-blue-200 text-xs hover:text-white">← Volver</Link>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-[#d4d0c8] p-4 space-y-3">
+          <Section title="Información Básica">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={l}>Nombre * <span className="font-normal text-gray-500">({formData.name.length}/35)</span></label>
+                <input required maxLength={35} value={formData.name} onChange={e => set("name", e.target.value)} placeholder="Nombre del producto" className={f} />
+              </div>
+              <div>
+                <label className={l}>SKU / Código</label>
+                <input value={formData.sku} onChange={e => set("sku", e.target.value)} placeholder="PROD-001" className={f} />
+              </div>
+              <div>
+                <label className={l}>Código de Barras</label>
+                <input value={formData.barcode} onChange={e => set("barcode", e.target.value)} placeholder="7790001234567" className={f} />
+              </div>
+              <div>
+                <label className={l}>Tipo</label>
+                <select value={formData.type} onChange={e => set("type", e.target.value)} className={f}>
+                  <option value="product">Producto</option>
+                  <option value="service">Servicio</option>
+                </select>
+              </div>
+              <div>
+                <label className={l}>Categoría</label>
+                <select value={formData.category_id} onChange={e => set("category_id", e.target.value)} className={f}>
+                  <option value="">Sin categoría</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={l}>Proveedor</label>
+                <select value={formData.supplier_id} onChange={e => set("supplier_id", e.target.value)} className={f}>
+                  <option value="">Sin proveedor</option>
+                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className={l}>Descripción</label>
+                <textarea value={formData.description} onChange={e => set("description", e.target.value)} rows={2} placeholder="Descripción del producto..." className={f + " resize-none"} />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Precios">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={l}>Precio de Venta * ({currencySymbol})</label>
+                <input type="number" step="0.01" min="0" required value={formData.price} onChange={e => set("price", parseFloat(e.target.value) || 0)} className={f} />
+              </div>
+              <div>
+                <label className={l}>Costo ({currencySymbol})</label>
+                <input type="number" step="0.01" min="0" value={formData.cost} onChange={e => set("cost", parseFloat(e.target.value) || 0)} className={f} />
+              </div>
+              <div>
+                <label className={l}>Moneda</label>
+                <select value={formData.currency} onChange={e => set("currency", e.target.value)} className={f}>
+                  <option value="ARS">ARS - Peso Argentino</option>
+                  <option value="USD">USD - Dólar</option>
+                  <option value="EUR">EUR - Euro</option>
+                </select>
+              </div>
+              <div>
+                <label className={l}>IVA (%)</label>
+                <input type="number" step="0.01" min="0" max="100" value={formData.tax_rate} onChange={e => set("tax_rate", parseFloat(e.target.value) || 0)} className={f} />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Inventario">
+            <div className="flex items-center gap-2 mb-2">
+              <input type="checkbox" id="track_inventory" checked={formData.track_inventory} onChange={e => set("track_inventory", e.target.checked)} className="border border-[#808080]" />
+              <label htmlFor="track_inventory" className="text-xs font-bold cursor-pointer">Controlar Stock</label>
+            </div>
+            {formData.track_inventory && !formData.has_variants && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={l}>Cantidad en Stock</label>
+                  <input type="number" min="0" value={formData.stock_quantity} onChange={e => set("stock_quantity", parseInt(e.target.value) || 0)} className={f} />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sku">SKU / Código</Label>
-                  <Input
-                    id="sku"
-                    value={formData.sku}
-                    onChange={(e) =>
-                      setFormData({ ...formData, sku: e.target.value })
-                    }
-                    placeholder="PROD-001"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="barcode">Código de Barras</Label>
-                  <Input
-                    id="barcode"
-                    value={formData.barcode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, barcode: e.target.value })
-                    }
-                    placeholder="7790001234567"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: "product" | "service") =>
-                      setFormData({ ...formData, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="product">Producto</SelectItem>
-                      <SelectItem value="service">Servicio</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category_id">Categoría</Label>
-                  <Select
-                    value={formData.category_id || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, category_id: value === "none" ? "" : value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin categoría</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="supplier_id">Proveedor</Label>
-                  <Select
-                    value={formData.supplier_id || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, supplier_id: value === "none" ? "" : value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar proveedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin proveedor</SelectItem>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    placeholder="Descripción del producto..."
-                    rows={3}
-                  />
+                <div>
+                  <label className={l}>Stock Mínimo</label>
+                  <input type="number" min="0" value={formData.min_stock_level} onChange={e => set("min_stock_level", parseInt(e.target.value) || 0)} className={f} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Imagen</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ImageUpload
-                currentImageUrl={formData.image_url}
-                onImageUrlChange={(url) =>
-                  setFormData({ ...formData, image_url: url || "" })
-                }
-              />
-            </CardContent>
-          </Card>
+            )}
+            <div className="flex items-center gap-2 pt-2 border-t border-[#808080]">
+              <input type="checkbox" id="is_active" checked={formData.is_active} onChange={e => set("is_active", e.target.checked)} className="border border-[#808080]" />
+              <label htmlFor="is_active" className="text-xs font-bold cursor-pointer">Producto Activo</label>
+            </div>
+          </Section>
 
           {formData.track_inventory && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Gestión de Variantes</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Configura si este producto tiene variantes (tallas, colores, etc.)
-                </p>
-              </CardHeader>
-              <CardContent>
-                <ProductVariantSelector
-                  value={variantType}
-                  onChange={handleVariantTypeChange}
-                />
-              </CardContent>
-            </Card>
+            <Section title="Variantes">
+              <ProductVariantSelector value={variantType} onChange={handleVariantTypeChange} />
+            </Section>
           )}
 
           {formData.track_inventory && formData.has_variants && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Variantes del Producto</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Gestiona el stock de cada variante del producto
-                </p>
-              </CardHeader>
-              <CardContent>
-                <VariantStockTable
-                  variants={variants}
-                  onChange={handleVariantsChange}
-                  variantType={variantType}
-                />
-              </CardContent>
-            </Card>
+            <Section title="Stock por Variante">
+              <VariantStockTable variants={variants} onChange={handleVariantsChange} variantType={variantType} />
+            </Section>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Precios</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">
-                  Precio de Venta <span className="text-destructive">*</span>
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {currencySymbol}
-                  </span>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
-                    }
-                    className={currencyPosition === 'before' ? 'pl-8' : 'pr-8'}
-                  />
-                  {currencyPosition === 'after' && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      {currencySymbol}
-                    </span>
-                  )}
-                </div>
-              </div>
+          <Section title="Imagen">
+            <ImageUpload currentImageUrl={formData.image_url} onImageUrlChange={url => set("image_url", url || "")} />
+          </Section>
 
-              <div className="space-y-2">
-                <Label htmlFor="cost">Costo</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {currencySymbol}
-                  </span>
-                  <Input
-                    id="cost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.cost}
-                    onChange={(e) =>
-                      setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })
-                    }
-                    className={currencyPosition === 'before' ? 'pl-8' : 'pr-8'}
-                  />
-                  {currencyPosition === 'after' && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      {currencySymbol}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="currency">Moneda</Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, currency: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ARS">ARS - Peso Argentino</SelectItem>
-                    <SelectItem value="USD">USD - Dólar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tax_rate">Tasa de Impuesto (%)</Label>
-                <Input
-                  id="tax_rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={formData.tax_rate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tax_rate: parseFloat(e.target.value) || 0 })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventario</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="track_inventory">Controlar Stock</Label>
-                <Switch
-                  id="track_inventory"
-                  checked={formData.track_inventory}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, track_inventory: checked })
-                  }
-                />
-              </div>
-
-              {formData.track_inventory && !formData.has_variants && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="stock_quantity">Cantidad en Stock</Label>
-                    <Input
-                      id="stock_quantity"
-                      type="number"
-                      min="0"
-                      value={formData.stock_quantity}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          stock_quantity: parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="min_stock_level">Stock Mínimo</Label>
-                    <Input
-                      id="min_stock_level"
-                      type="number"
-                      min="0"
-                      value={formData.min_stock_level}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          min_stock_level: parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="flex items-center justify-between pt-4 border-t">
-                <Label htmlFor="is_active">Producto Activo</Label>
-                <Switch
-                  id="is_active"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, is_active: checked })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex justify-end gap-4 mt-6">
-          <Link href="/dashboard/products">
-            <Button type="button" variant="outline">
-              Cancelar
-            </Button>
-          </Link>
-          <Button type="submit" disabled={loading}>
-            <Save className="mr-2 h-4 w-4" />
-            {loading ? "Guardando..." : "Guardar Producto"}
-          </Button>
-        </div>
-      </form>
+          <div className="flex justify-end gap-2 pt-1">
+            <Link href="/dashboard/products" className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">Cancelar</Link>
+            <button type="submit" disabled={loading} className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+              {loading ? <><Loader2 className="h-3 w-3 animate-spin" /> Guardando...</> : "✔ Guardar Producto"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

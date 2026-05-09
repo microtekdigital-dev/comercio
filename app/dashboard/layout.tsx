@@ -6,7 +6,6 @@ import { DashboardSidebarServer } from "@/components/dashboard/sidebar-server"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { SubscriptionGuard } from "@/components/dashboard/subscription-guard"
 import { SupportChatButton } from "@/components/dashboard/support-chat-button"
-import { TutorialWrapper } from "@/components/dashboard/tutorial-wrapper"
 import { getUnreadMessageCount } from "@/lib/actions/support"
 import { Toaster } from "sonner"
 import { createClient } from "@/lib/supabase/server"
@@ -77,17 +76,15 @@ export default async function DashboardLayout({
 
   return (
     <SubscriptionGuard subscriptionStatus={subscriptionStatus} userRole={profile?.role || null}>
-      <div className="min-h-screen flex flex-col md:flex-row">
-        <DashboardSidebarServer />
-        <div className="flex-1 flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[#d4d0c8]" suppressHydrationWarning>
+        <div className="flex-1 flex flex-col min-w-0">
           <DashboardHeader />
-          <main className="flex-1 bg-muted/30 overflow-x-hidden">
+          <main className="flex-1 overflow-x-hidden p-4">
             {children}
           </main>
         </div>
         <Toaster position="top-right" richColors />
         <SupportChatButton unreadCount={unreadCount} />
-        <TutorialWrapper />
       </div>
     </SubscriptionGuard>
   )

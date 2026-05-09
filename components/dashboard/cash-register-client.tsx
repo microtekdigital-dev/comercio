@@ -6,10 +6,7 @@ import { getCashMovements } from "@/lib/actions/cash-movements"
 import { getCompanySettings } from "@/lib/actions/company-settings"
 import { formatCompanyCurrency } from "@/lib/utils/currency"
 import type { CompanySettings } from "@/lib/types/erp"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Calendar, User, DollarSign, TrendingUp, TrendingDown, Clock, Lock, Eye } from "lucide-react"
+import { Plus, TrendingUp, TrendingDown, Lock, Eye, Loader2, DollarSign } from "lucide-react"
 import Link from "next/link"
 import type { CashRegisterClosure, CashRegisterOpening, CashMovement } from "@/lib/types/erp"
 import { CashMovementModal } from "@/components/dashboard/cash-movement-modal"
@@ -25,343 +22,148 @@ export function CashRegisterClient() {
   const [settings, setSettings] = useState<CompanySettings | null>(null)
 
   const loadData = async () => {
-    const [closuresData, openingsData] = await Promise.all([
-      getCashRegisterClosures(),
-      getCashRegisterOpenings()
-    ])
+    const [closuresData, openingsData] = await Promise.all([getCashRegisterClosures(), getCashRegisterOpenings()])
     setClosures(closuresData)
     setOpenings(openingsData)
-
-    // Find active opening
-    const closedOpeningIds = new Set(closuresData.map(c => c.opening_id).filter(Boolean))
-    const activeOpening = openingsData.find(op => !closedOpeningIds.has(op.id))
-    
+    const closedIds = new Set(closuresData.map(c => c.opening_id).filter(Boolean))
+    const activeOpening = openingsData.find(op => !closedIds.has(op.id))
     if (activeOpening) {
-      // Load cash movements for active opening
       const movements = await getCashMovements({ openingId: activeOpening.id })
       setCashMovements(movements)
-    } else {
-      setCashMovements([])
-    }
-
+    } else { setCashMovements([]) }
     setLoading(false)
   }
 
   useEffect(() => {
     loadData()
-    loadSettings()
+    getCompanySettings().then(setSettings).catch(console.error)
   }, [])
 
-  const loadSettings = async () => {
-    try {
-      const data = await getCompanySettings()
-      setSettings(data)
-    } catch (error) {
-      console.error("Error loading settings:", error)
-    }
+  const fmt = (n: number) => settings ? formatCompanyCurrency(n, settings) : `$${n.toFixed(2)}`
+  const fmtDate = (d: string) => {
+    const dt = new Date(d)
+    return `${dt.getDate().toString().padStart(2,"0")}/${(dt.getMonth()+1).toString().padStart(2,"0")}/${dt.getFullYear()} ${dt.getHours().toString().padStart(2,"0")}:${dt.getMinutes().toString().padStart(2,"0")}`
   }
 
-  const formatCurrency = (amount: number) => {
-    return settings 
-      ? formatCompanyCurrency(amount, settings)
-      : `$${amount.toFixed(2)}`
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const day = date.getDate().toString().padStart(2, '0')
-    const month = (date.getMonth() + 1).toString().padStart(2, '0')
-    const year = date.getFullYear()
-    const hours = date.getHours().toString().padStart(2, '0')
-    const minutes = date.getMinutes().toString().padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
-  }
-
-  // Get last 5 openings
   const recentOpenings = openings.slice(0, 5)
+  const hasOpenOpening = openings.some(op => !closures.some(c => c.opening_id === op.id))
 
-  // Check if there's an opening without a corresponding closure
-  const hasOpenOpeningToday = openings.some(opening => {
-    const hasMatchingClosure = closures.some(closure => 
-      closure.opening_id === opening.id
-    )
-    return !hasMatchingClosure
-  })
+  if (loading) return (
+    <div className="flex items-center justify-center py-8 gap-2 text-xs text-gray-500">
+      <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+    </div>
+  )
 
-  if (loading) {
-    return (
-      <div className="flex-1 space-y-6 p-8 pt-6">
-        <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    )
-  }
+  const btn = (disabled: boolean, onClick: () => void, icon: React.ReactNode, label: string) => (
+    <button onClick={onClick} disabled={disabled}
+      className="border border-[#808080] bg-[#d4d0c8] px-3 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-40 flex items-center gap-1">
+      {icon}{label}
+    </button>
+  )
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Apertura/Cierre Caja</h2>
-          <p className="text-muted-foreground">
-            Gestiona las aperturas y cierres de caja
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 md:flex">
-          <Button
-            variant="outline"
-            onClick={() => setIncomeModalOpen(true)}
-            disabled={!hasOpenOpeningToday}
-            className="w-full md:w-auto"
-          >
-            {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
-            {hasOpenOpeningToday && <TrendingUp className="mr-2 h-4 w-4" />}
-            Registrar Ingreso
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setWithdrawalModalOpen(true)}
-            disabled={!hasOpenOpeningToday}
-            className="w-full md:w-auto"
-          >
-            {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
-            {hasOpenOpeningToday && <TrendingDown className="mr-2 h-4 w-4" />}
-            Registrar Retiro
-          </Button>
-          <Link href="/dashboard/cash-register/opening/new" className="w-full md:w-auto">
-            <Button 
-              variant="outline"
-              disabled={hasOpenOpeningToday}
-              className="relative w-full"
-            >
-              {hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
-              {!hasOpenOpeningToday && <Plus className="mr-2 h-4 w-4" />}
-              Nueva Apertura
-            </Button>
-          </Link>
-          <Link href="/dashboard/cash-register/new" className="w-full md:w-auto">
-            <Button
-              disabled={!hasOpenOpeningToday}
-              className="relative w-full"
-            >
-              {!hasOpenOpeningToday && <Lock className="mr-2 h-4 w-4" />}
-              {hasOpenOpeningToday && <Plus className="mr-2 h-4 w-4" />}
-              Nuevo Cierre
-            </Button>
-          </Link>
-        </div>
+    <div className="space-y-3 text-black">
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2">
+        {btn(!hasOpenOpening, () => setIncomeModalOpen(true),
+          hasOpenOpening ? <TrendingUp className="h-3 w-3" /> : <Lock className="h-3 w-3" />, "Registrar Ingreso")}
+        {btn(!hasOpenOpening, () => setWithdrawalModalOpen(true),
+          hasOpenOpening ? <TrendingDown className="h-3 w-3" /> : <Lock className="h-3 w-3" />, "Registrar Retiro")}
+        <Link href="/dashboard/cash-register/opening/new"
+          className={`border border-[#808080] bg-[#d4d0c8] px-3 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 ${hasOpenOpening ? "opacity-40 pointer-events-none" : ""}`}>
+          {hasOpenOpening ? <Lock className="h-3 w-3" /> : <Plus className="h-3 w-3" />} Nueva Apertura
+        </Link>
+        <Link href="/dashboard/cash-register/new"
+          className={`border border-[#808080] bg-[#d4d0c8] px-3 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 ${!hasOpenOpening ? "opacity-40 pointer-events-none" : ""}`}>
+          {!hasOpenOpening ? <Lock className="h-3 w-3" /> : <Plus className="h-3 w-3" />} Nuevo Cierre
+        </Link>
       </div>
 
-      {/* Alert messages */}
-      {hasOpenOpeningToday && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <p className="text-sm text-blue-800">
-              Hay una apertura de caja pendiente de cierre. Debes cerrar la caja antes de crear una nueva apertura.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Status alert */}
+      <div className={`border-2 px-3 py-2 text-xs font-bold ${hasOpenOpening ? "border-blue-400 bg-blue-50 text-blue-800" : "border-amber-400 bg-amber-50 text-amber-800"}`}>
+        {hasOpenOpening
+          ? "ℹ Hay una apertura pendiente de cierre."
+          : "⚠ No hay aperturas activas. Creá una apertura antes de registrar movimientos."}
+      </div>
 
-      {!hasOpenOpeningToday && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
-            <p className="text-sm text-amber-800">
-              No hay aperturas de caja pendientes. Debes crear una apertura antes de hacer un cierre o registrar movimientos.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Cash Movements Section */}
-      {hasOpenOpeningToday && cashMovements.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Movimientos de Caja del Turno Actual
-          </h3>
-          <CashMovementsList movements={cashMovements} onDelete={loadData} />
+      {/* Cash movements */}
+      {hasOpenOpening && cashMovements.length > 0 && (
+        <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">💵 Movimientos del Turno Actual</span>
+          </div>
+          <div className="bg-[#d4d0c8] p-2">
+            <CashMovementsList movements={cashMovements} onDelete={loadData} />
+          </div>
         </div>
       )}
 
-      {/* Aperturas Recientes */}
+      {/* Recent openings */}
       {recentOpenings.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Aperturas Recientes
-          </h3>
-          <div className="grid gap-4">
-            {recentOpenings.map((opening) => (
-              <Card key={opening.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5" />
-                        {formatDate(opening.opening_date)}
-                        <Badge variant="secondary">{opening.shift}</Badge>
-                      </CardTitle>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <User className="h-4 w-4" />
-                        {opening.opened_by_name}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(opening.initial_cash_amount)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Monto inicial
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                {opening.notes && (
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{opening.notes}</p>
-                  </CardContent>
-                )}
-              </Card>
+        <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">🕐 Aperturas Recientes</span>
+          </div>
+          <div className="bg-white overflow-x-auto">
+            <div className="grid grid-cols-[140px_100px_1fr_120px] border-b-2 border-[#808080] bg-[#d4d0c8]">
+              {["Fecha", "Turno", "Abierto por", "Monto Inicial"].map((h, i) => (
+                <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+              ))}
+            </div>
+            {recentOpenings.map((op, idx) => (
+              <div key={op.id} className={`grid grid-cols-[140px_100px_1fr_120px] border-b border-[#e0e0e0] ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">{fmtDate(op.opening_date)}</div>
+                <div className="px-2 py-1.5 text-xs font-bold border-r border-[#e0e0e0]">{op.shift}</div>
+                <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] truncate">{op.opened_by_name}</div>
+                <div className="px-2 py-1.5 text-xs text-right font-mono font-bold text-green-700">{fmt(op.initial_cash_amount)}</div>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Cierres de Caja */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
-          Cierres de Caja
-        </h3>
-        
+      {/* Closures */}
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1">
+          <span className="text-white text-sm font-bold">💰 Cierres de Caja ({closures.length})</span>
+        </div>
         {closures.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <DollarSign className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No hay cierres de caja</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                Comienza creando tu primer cierre de caja
-              </p>
-              <Link href="/dashboard/cash-register/new">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Crear Cierre
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <div className="bg-white flex flex-col items-center justify-center py-10 gap-2 text-gray-500">
+            <DollarSign className="h-8 w-8 opacity-30" />
+            <p className="text-xs">Sin cierres de caja</p>
+          </div>
         ) : (
-          <div className="grid gap-4">
-            {closures.map((closure) => (
-            <Card key={closure.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      {formatDate(closure.closure_date)}
-                      {closure.shift && (
-                        <Badge variant="outline">{closure.shift}</Badge>
-                      )}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      {closure.closed_by_name}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold">
-                      {formatCurrency(closure.total_sales_amount)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {closure.total_sales_count} {closure.total_sales_count === 1 ? "venta" : "ventas"}
-                    </div>
-                  </div>
+          <div className="bg-white overflow-x-auto">
+            <div className="grid grid-cols-[140px_80px_1fr_100px_100px_100px_100px_80px] border-b-2 border-[#808080] bg-[#d4d0c8]">
+              {["Fecha", "Turno", "Cerrado por", "Total Ventas", "Efectivo", "Tarjeta", "Transfer.", ""].map((h, i) => (
+                <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+              ))}
+            </div>
+            {closures.map((c, idx) => (
+              <div key={c.id} className={`grid grid-cols-[140px_80px_1fr_100px_100px_100px_100px_80px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmtDate(c.closure_date)}</div>
+                <div className="px-2 py-1.5 text-xs font-bold border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{c.shift ?? "—"}</div>
+                <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{c.closed_by_name}</div>
+                <div className="px-2 py-1.5 text-xs text-right font-mono font-bold border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                  {fmt(c.total_sales_amount)}
+                  <div className="text-[10px] font-normal opacity-70">{c.total_sales_count} ventas</div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Efectivo Final</p>
-                    <p className="text-lg font-semibold">{formatCurrency(closure.cash_sales - (closure.supplier_payments_cash || 0))}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tarjeta</p>
-                    <p className="text-lg font-semibold">{formatCurrency(closure.card_sales)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Transferencia</p>
-                    <p className="text-lg font-semibold">{formatCurrency(closure.transfer_sales)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Otros</p>
-                    <p className="text-lg font-semibold">{formatCurrency(closure.other_sales)}</p>
-                  </div>
-                </div>
-
-                {closure.cash_counted !== null && (
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Efectivo Esperado</p>
-                        <p className="text-lg font-semibold">{formatCurrency(closure.cash_sales)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Efectivo Contado</p>
-                        <p className="text-lg font-semibold">{formatCurrency(closure.cash_counted)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Diferencia</p>
-                        <p className={`text-lg font-semibold ${
-                          closure.cash_difference && closure.cash_difference < 0 
-                            ? "text-red-500" 
-                            : closure.cash_difference && closure.cash_difference > 0 
-                            ? "text-green-500" 
-                            : ""
-                        }`}>
-                          {closure.cash_difference !== null && formatCurrency(closure.cash_difference)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {closure.notes && (
-                  <div className="mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-1">Notas</p>
-                    <p className="text-sm">{closure.notes}</p>
-                  </div>
-                )}
-
-                <div className="mt-4 pt-4 border-t">
-                  <Link href={`/dashboard/cash-register/${closure.id}`}>
-                    <Button variant="outline" className="w-full">
-                      <Eye className="mr-2 h-4 w-4" />
-                      Ver Informe Detallado
-                    </Button>
+                <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(c.cash_sales)}</div>
+                <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(c.card_sales)}</div>
+                <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(c.transfer_sales)}</div>
+                <div className="px-2 py-1.5 text-xs text-center">
+                  <Link href={`/dashboard/cash-register/${c.id}`} className="text-[#000080] group-hover:text-white underline flex items-center justify-center gap-0.5">
+                    <Eye className="h-3 w-3" /> Ver
                   </Link>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Cash Movement Modals */}
-      <CashMovementModal
-        type="income"
-        open={incomeModalOpen}
-        onOpenChange={setIncomeModalOpen}
-        onSuccess={loadData}
-      />
-      <CashMovementModal
-        type="withdrawal"
-        open={withdrawalModalOpen}
-        onOpenChange={setWithdrawalModalOpen}
-        onSuccess={loadData}
-      />
+      <CashMovementModal type="income" open={incomeModalOpen} onOpenChange={setIncomeModalOpen} onSuccess={loadData} />
+      <CashMovementModal type="withdrawal" open={withdrawalModalOpen} onOpenChange={setWithdrawalModalOpen} onSuccess={loadData} />
     </div>
   )
 }

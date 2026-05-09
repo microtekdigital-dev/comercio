@@ -8,34 +8,13 @@ import { canExportToExcel } from "@/lib/utils/plan-limits";
 import { createClient } from "@/lib/supabase/client";
 import { getCompanySettings } from "@/lib/actions/company-settings";
 import { formatCompanyCurrency } from "@/lib/utils/currency";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users, Upload } from "lucide-react";
+import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users, Upload, Loader2 } from "lucide-react";
 import { CsvImportModal } from "@/components/dashboard/csv-import-modal";
 import Link from "next/link";
 import { exportProductsToExcel, exportProductsToCSV, exportProductsReportToPDF } from "@/lib/utils/export";
-import { ProductImage } from "@/components/dashboard/product-image";
 import { toast } from "sonner";
 import { BulkAssignSuppliersDialog } from "@/components/dashboard/bulk-assign-suppliers-dialog";
 import { ProductVariantBadge } from "@/components/dashboard/product-variant-badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import type { Product, Category } from "@/lib/types/erp";
 
 export default function ProductsPage() {
@@ -53,8 +32,8 @@ export default function ProductsPage() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
-  const [currencySymbol, setCurrencySymbol] = useState('$');
-  const [currencyPosition, setCurrencyPosition] = useState<'before' | 'after'>('before');
+  const [currencySymbol, setCurrencySymbol] = useState("$");
+  const [currencyPosition, setCurrencyPosition] = useState<"before" | "after">("before");
 
   useEffect(() => {
     loadCategories();
@@ -64,508 +43,215 @@ export default function ProductsPage() {
     loadCurrencySettings();
   }, []);
 
+  useEffect(() => { loadProducts(); }, [search, categoryFilter, typeFilter, lowStockFilter, activeFilter]);
+
   const loadCurrencySettings = async () => {
     const settings = await getCompanySettings();
-    if (settings) {
-      setCurrencySymbol(settings.currency_symbol);
-      setCurrencyPosition(settings.currency_position);
-    }
+    if (settings) { setCurrencySymbol(settings.currency_symbol); setCurrencyPosition(settings.currency_position); }
   };
-
-  const checkPermissions = async () => {
-    const permissions = await getUserPermissions();
-    setCanCreate(permissions.canCreateProducts);
-  };
-
+  const checkPermissions = async () => { const p = await getUserPermissions(); setCanCreate(p.canCreateProducts); };
   const checkExportPermissions = async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.company_id) {
-      const exportPermission = await canExportToExcel(profile.company_id);
-      setCanExport(exportPermission.allowed);
-    }
+    const { data: profile } = await supabase.from("profiles").select("company_id").eq("id", user.id).single();
+    if (profile?.company_id) { const ep = await canExportToExcel(profile.company_id); setCanExport(ep.allowed); }
   };
-
-  useEffect(() => {
-    loadProducts();
-  }, [search, categoryFilter, typeFilter, lowStockFilter, activeFilter]);
-
   const loadProducts = async () => {
     setLoading(true);
-    const data = await getProducts({
-      search: search || undefined,
-      categoryId: categoryFilter || undefined,
-      type: typeFilter as any || undefined,
-      lowStock: lowStockFilter || undefined,
-      isActive: activeFilter,
-    });
-    setProducts(data);
-    setLoading(false);
+    const data = await getProducts({ search: search || undefined, categoryId: categoryFilter || undefined, type: typeFilter as any || undefined, lowStock: lowStockFilter || undefined, isActive: activeFilter });
+    setProducts(data); setLoading(false);
   };
-
-  const loadCategories = async () => {
-    const data = await getCategories();
-    setCategories(data);
-  };
-
-  const clearFilters = () => {
-    setSearch("");
-    setCategoryFilter("");
-    setTypeFilter("");
-    setLowStockFilter(false);
-    setActiveFilter(undefined);
-  };
-
+  const loadCategories = async () => { const data = await getCategories(); setCategories(data); };
+  const clearFilters = () => { setSearch(""); setCategoryFilter(""); setTypeFilter(""); setLowStockFilter(false); setActiveFilter(undefined); };
   const hasActiveFilters = search || categoryFilter || typeFilter || lowStockFilter || activeFilter !== undefined;
-
-  const formatPrice = (amount: number) => {
-    return formatCompanyCurrency(amount, {
-      currency_symbol: currencySymbol,
-      currency_position: currencyPosition,
-    });
-  };
-
+  const formatPrice = (amount: number) => formatCompanyCurrency(amount, { currency_symbol: currencySymbol, currency_position: currencyPosition });
   const isLowStock = (product: Product) => {
     if (!product.track_inventory) return false;
-    
-    // For products with variants, check if any variant has low stock
-    if (product.has_variants && product.variants) {
-      return product.variants.some(
-        (v) => v.is_active && v.stock_quantity <= v.min_stock_level
-      );
-    }
-    
-    // For simple products, check traditional stock
+    if (product.has_variants && product.variants) return product.variants.some(v => v.is_active && v.stock_quantity <= v.min_stock_level);
     return product.stock_quantity <= product.min_stock_level;
   };
-
-  const getTotalStock = (product: Product): number => {
-    if (product.has_variants && product.variants) {
-      return product.variants
-        .filter((v) => v.is_active)
-        .reduce((sum, v) => sum + v.stock_quantity, 0);
-    }
+  const getTotalStock = (product: Product) => {
+    if (product.has_variants && product.variants) return product.variants.filter(v => v.is_active).reduce((s, v) => s + v.stock_quantity, 0);
     return product.stock_quantity;
   };
-
-  const handleExportExcel = () => {
-    try {
-      exportProductsToExcel(products);
-      toast.success("Productos exportados a Excel exitosamente");
-    } catch (error) {
-      toast.error("Error al exportar a Excel");
-    }
-  };
-
-  const handleExportCSV = () => {
-    try {
-      exportProductsToCSV(products);
-      toast.success("Productos exportados a CSV exitosamente");
-    } catch (error) {
-      toast.error("Error al exportar a CSV");
-    }
-  };
-
-  const handleExportPDF = () => {
-    try {
-      const lowStockProducts = products.filter(isLowStock).length;
-      const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock_quantity), 0);
-      
-      exportProductsReportToPDF(
-        products,
-        {
-          totalProducts: products.length,
-          lowStockProducts,
-          totalValue,
-        },
-        "Mi Empresa" // TODO: Get from company settings
-      );
-      toast.success("Reporte PDF generado exitosamente");
-    } catch (error) {
-      toast.error("Error al generar PDF");
-    }
-  };
-
-  const handleSelectAll = () => {
-    if (selectedProducts.length === products.length) {
-      setSelectedProducts([]);
-    } else {
-      setSelectedProducts(products.map(p => p.id));
-    }
-  };
-
-  const handleSelectProduct = (productId: string) => {
-    setSelectedProducts(prev => {
-      if (prev.includes(productId)) {
-        return prev.filter(id => id !== productId);
-      } else {
-        return [...prev, productId];
-      }
-    });
-  };
-
-  const handleBulkAssignSuccess = () => {
-    setSelectedProducts([]);
-    loadProducts();
-  };
+  const handleSelectProduct = (id: string) => setSelectedProducts(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const handleSelectAll = () => setSelectedProducts(selectedProducts.length === products.length ? [] : products.map(p => p.id));
 
   return (
-    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Productos</h2>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Gestiona tu catálogo de productos y servicios
-          </p>
-        </div>
-        <div className="flex gap-2 flex-col sm:flex-row">
-          {canExport && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportExcel}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Exportar a Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Exportar a CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPDF}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Generar Reporte PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {canCreate && (
-            <Link href="/dashboard/products/new" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Producto
-              </Button>
-            </Link>
-          )}
-          {canCreate && (
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => setShowCsvImportModal(true)}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Importar CSV
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-3 text-black select-none">
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-              <Package className="h-5 w-5" />
-              Lista de Productos ({products.length})
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="w-full sm:w-auto"
-            >
-              <Filter className="mr-2 h-4 w-4" />
-              Filtros
-            </Button>
+      {/* Window: header */}
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <span className="text-white text-sm font-bold">📦 Productos ({products.length})</span>
+          <div className="flex gap-1">
+            {canExport && (
+              <div className="relative group">
+                <button className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+                  <Download className="h-3 w-3" /> Exportar ▾
+                </button>
+                <div className="absolute right-0 top-full z-50 hidden group-hover:block bg-[#d4d0c8] border-2 border-[#808080] shadow-[2px_2px_0px_#000] min-w-[160px]">
+                  <button onClick={() => { try { exportProductsToExcel(products); toast.success("Exportado a Excel"); } catch { toast.error("Error"); } }} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[#000080] hover:text-white text-left"><FileSpreadsheet className="h-3 w-3" /> Excel</button>
+                  <button onClick={() => { try { exportProductsToCSV(products); toast.success("Exportado a CSV"); } catch { toast.error("Error"); } }} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[#000080] hover:text-white text-left"><FileSpreadsheet className="h-3 w-3" /> CSV</button>
+                  <button onClick={() => { try { exportProductsReportToPDF(products, { totalProducts: products.length, lowStockProducts: products.filter(isLowStock).length, totalValue: products.reduce((s, p) => s + p.price * p.stock_quantity, 0) }, "Mi Empresa"); toast.success("PDF generado"); } catch { toast.error("Error"); } }} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[#000080] hover:text-white text-left"><FileText className="h-3 w-3" /> PDF</button>
+                </div>
+              </div>
+            )}
+            {canCreate && (
+              <>
+                <button onClick={() => setShowCsvImportModal(true)} className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+                  <Upload className="h-3 w-3" /> CSV
+                </button>
+                <Link href="/dashboard/products/new" className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Nuevo
+                </Link>
+              </>
+            )}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre, SKU o descripción..."
+        </div>
+
+        {/* Search + filters bar */}
+        <div className="bg-[#d4d0c8] px-3 py-2 border-b border-[#808080] flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 flex-1 min-w-[180px]">
+            <span className="text-xs font-bold">Buscar:</span>
+            <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Nombre, SKU..."
+              className="flex-1 border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
             />
           </div>
-
-          {/* Filters */}
-          {showFilters && (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4 border rounded-lg bg-muted/50">
-              <div className="space-y-2">
-                <Label>Categoría</Label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Todas</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Todos</SelectItem>
-                    <SelectItem value="product">Producto</SelectItem>
-                    <SelectItem value="service">Servicio</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Estado</Label>
-                <Select 
-                  value={activeFilter === undefined ? "all" : activeFilter ? "active" : "inactive"} 
-                  onValueChange={(value) => {
-                    if (value === "all") setActiveFilter(undefined);
-                    else setActiveFilter(value === "active");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="active">Activos</SelectItem>
-                    <SelectItem value="inactive">Inactivos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="low-stock"
-                  checked={lowStockFilter}
-                  onCheckedChange={setLowStockFilter}
-                />
-                <Label htmlFor="low-stock" className="cursor-pointer">
-                  Solo stock bajo
-                </Label>
-              </div>
-
-              <div className="flex items-end lg:col-span-2 sm:col-span-1">
-                {hasActiveFilters && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="w-full"
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Limpiar Filtros
-                  </Button>
-                )}
-              </div>
-            </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1"
+          >
+            <Filter className="h-3 w-3" /> Filtros
+          </button>
+          {hasActiveFilters && (
+            <button onClick={clearFilters} className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 text-red-700">
+              <X className="h-3 w-3" /> Limpiar
+            </button>
           )}
+        </div>
 
-          {/* Products Grid */}
+        {/* Extended filters */}
+        {showFilters && (
+          <div className="bg-[#d4d0c8] px-3 py-2 border-b border-[#808080] flex flex-wrap gap-3 items-end">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-bold text-[#000080]">Categoría</span>
+              <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none">
+                <option value="">Todas</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-bold text-[#000080]">Tipo</span>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none">
+                <option value="">Todos</option>
+                <option value="product">Producto</option>
+                <option value="service">Servicio</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-bold text-[#000080]">Estado</span>
+              <select value={activeFilter === undefined ? "all" : activeFilter ? "active" : "inactive"} onChange={e => { if (e.target.value === "all") setActiveFilter(undefined); else setActiveFilter(e.target.value === "active"); }} className="border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none">
+                <option value="all">Todos</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+              </select>
+            </div>
+            <label className="flex items-center gap-1 text-xs font-bold cursor-pointer">
+              <input type="checkbox" checked={lowStockFilter} onChange={e => setLowStockFilter(e.target.checked)} className="border border-[#808080]" />
+              Stock bajo
+            </label>
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="bg-white overflow-x-auto">
+          {/* Table header */}
+          <div className="grid grid-cols-[30px_1fr_100px_80px_80px_70px_80px_60px] border-b-2 border-[#808080] bg-[#d4d0c8]">
+            <div className="px-2 py-1 border-r border-[#808080]">
+              <input type="checkbox" checked={selectedProducts.length === products.length && products.length > 0} onChange={handleSelectAll} className="border border-[#808080]" />
+            </div>
+            {["Producto", "Categoría", "SKU", "Precio", "Stock", "Tipo", ""].map((h, i) => (
+              <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+            ))}
+          </div>
+
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Cargando...
+            <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-base md:text-lg font-semibold">No hay productos</h3>
-              <p className="text-muted-foreground mt-2 text-sm md:text-base">
-                {hasActiveFilters
-                  ? "No se encontraron productos con los filtros aplicados"
-                  : "Comienza agregando tu primer producto"}
-              </p>
-              {!hasActiveFilters && (
-                <Link href="/dashboard/products/new" className="inline-block w-full sm:w-auto">
-                  <Button className="mt-4 w-full sm:w-auto">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nuevo Producto
-                  </Button>
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
+              <Package className="h-10 w-10 opacity-30" />
+              <p className="text-sm">{hasActiveFilters ? "Sin resultados con los filtros aplicados" : "No hay productos"}</p>
+              {!hasActiveFilters && canCreate && (
+                <Link href="/dashboard/products/new" className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 mt-2">
+                  <Plus className="h-3 w-3" /> Nuevo Producto
                 </Link>
               )}
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
-                <div key={product.id} className="relative">
-                  <div
-                    className="absolute top-2 left-2 z-10"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selectedProducts.includes(product.id)}
-                      onCheckedChange={() => handleSelectProduct(product.id)}
-                      className="bg-background"
-                    />
+            products.map((product, idx) => (
+              <div key={product.id} className={`grid grid-cols-[30px_1fr_100px_80px_80px_70px_80px_60px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                <div className="px-2 py-1.5 border-r border-[#e0e0e0] group-hover:border-[#3333aa] flex items-center" onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={selectedProducts.includes(product.id)} onChange={() => handleSelectProduct(product.id)} className="border border-[#808080]" />
+                </div>
+                <Link href={`/dashboard/products/${product.id}`} className="contents">
+                  <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                    <div className="font-semibold truncate">{product.name}</div>
+                    {!product.is_active && <span className="text-[10px] text-red-500 group-hover:text-red-300">Inactivo</span>}
                   </div>
-                  <Link
-                    href={`/dashboard/products/${product.id}`}
-                    className="block"
-                  >
-                    <Card className="hover:bg-muted/50 transition-colors h-full">
-                      <CardContent className="p-3 md:p-4">
-                      <div className="relative w-full aspect-video mb-2 md:mb-3 rounded-md overflow-hidden bg-muted">
-                        <ProductImage
-                          imageUrl={product.image_url}
-                          productName={product.name}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                        />
-                      </div>
-                      <div className="flex items-start justify-between mb-2 md:mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold line-clamp-2 text-sm md:text-base break-words">
-                            {product.name}
-                          </h3>
-                          {product.sku && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              SKU: {product.sku}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1 items-end flex-shrink-0 ml-2">
-                          {!product.is_active && (
-                            <Badge variant="secondary">Inactivo</Badge>
-                          )}
-                          <ProductVariantBadge
-                            hasVariants={product.has_variants}
-                            variantCount={product.variants?.filter((v) => v.is_active).length}
-                          />
-                        </div>
-                      </div>
-
-                      {product.category && (
-                        <Badge variant="outline" className="mb-2">
-                          {product.category.name}
-                        </Badge>
-                      )}
-
-                      {product.supplier && (
-                        <Badge variant="outline" className="mb-2 ml-1">
-                          {product.supplier.name}
-                        </Badge>
-                      )}
-                      {!product.supplier && (
-                        <span className="text-xs text-muted-foreground italic mb-2 block">
-                          Sin proveedor
-                        </span>
-                      )}
-
-                      <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mb-2 md:mb-3">
-                        {product.description || "Sin descripción"}
-                      </p>
-
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-lg md:text-xl font-bold">
-                            {formatPrice(product.price)}
-                          </p>
-                          <Badge variant={product.type === "product" ? "default" : "secondary"}>
-                            {product.type === "product" ? "Producto" : "Servicio"}
-                          </Badge>
-                        </div>
-
-                        {product.track_inventory && (
-                          <div className="text-right">
-                            <p className="text-xs md:text-sm font-medium">
-                              Stock: {getTotalStock(product)}
-                              {product.has_variants && (
-                                <span className="text-muted-foreground ml-1">(total)</span>
-                              )}
-                            </p>
-                            {isLowStock(product) && (
-                              <div className="flex items-center gap-1 text-xs text-destructive">
-                                <AlertTriangle className="h-3 w-3" />
-                                <span className="hidden sm:inline">Stock bajo</span>
-                                <span className="sm:hidden">Bajo</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
+                    {product.category?.name ?? "—"}
+                  </div>
+                  <div className="px-2 py-1.5 text-xs font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
+                    {product.sku ?? "—"}
+                  </div>
+                  <div className="px-2 py-1.5 text-xs text-right font-mono font-bold border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                    {formatPrice(product.price)}
+                  </div>
+                  <div className={`px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa] ${isLowStock(product) ? "text-red-600 group-hover:text-red-300 font-bold" : ""}`}>
+                    {product.track_inventory ? (
+                      <span className="flex items-center justify-center gap-1">
+                        {isLowStock(product) && <AlertTriangle className="h-3 w-3" />}
+                        {getTotalStock(product)}
+                      </span>
+                    ) : "∞"}
+                  </div>
+                  <div className="px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                    {product.type === "product" ? "Prod." : "Serv."}
+                  </div>
+                  <div className="px-2 py-1.5 text-xs text-center">
+                    <span className="text-[#000080] group-hover:text-white underline">Editar</span>
+                  </div>
                 </Link>
               </div>
-              ))}
-            </div>
+            ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Bulk Actions Bar */}
+      {/* Bulk actions bar */}
       {selectedProducts.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <Card className="shadow-lg">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={selectedProducts.length === products.length}
-                  onCheckedChange={handleSelectAll}
-                />
-                <span className="text-sm font-medium">
-                  {selectedProducts.length} seleccionado(s)
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => setShowBulkAssignDialog(true)}
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Asignar Proveedor
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelectedProducts([])}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Cancelar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+          <div className="bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000] px-4 py-2 flex items-center gap-3">
+            <span className="text-xs font-bold">{selectedProducts.length} seleccionado(s)</span>
+            <button onClick={() => setShowBulkAssignDialog(true)} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+              <Users className="h-3 w-3" /> Asignar Proveedor
+            </button>
+            <button onClick={() => setSelectedProducts([])} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+              <X className="h-3 w-3" /> Cancelar
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Bulk Assign Suppliers Dialog */}
-      <BulkAssignSuppliersDialog
-        open={showBulkAssignDialog}
-        onOpenChange={setShowBulkAssignDialog}
-        selectedProductIds={selectedProducts}
-        onSuccess={handleBulkAssignSuccess}
-      />
-
-      {/* CSV Import Modal */}
-      <CsvImportModal
-        open={showCsvImportModal}
-        onOpenChange={setShowCsvImportModal}
-        onImportComplete={loadProducts}
-      />
+      <BulkAssignSuppliersDialog open={showBulkAssignDialog} onOpenChange={setShowBulkAssignDialog} selectedProductIds={selectedProducts} onSuccess={() => { setSelectedProducts([]); loadProducts(); }} />
+      <CsvImportModal open={showCsvImportModal} onOpenChange={setShowCsvImportModal} onImportComplete={loadProducts} />
     </div>
   );
 }

@@ -84,10 +84,12 @@ export default async function AdminSupportPage() {
   }
 
   return (
-    <div className="flex-1 h-screen overflow-hidden">
-      <Suspense fallback={<div>Cargando...</div>}>
-        <AdminSupportDashboard initialTickets={tickets || []} />
-      </Suspense>
+    <div className="space-y-3 text-black">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]" style={{ height: "calc(100vh - 80px)" }}>
+        <Suspense fallback={<div className="flex items-center justify-center h-full text-xs text-gray-500">Cargando...</div>}>
+          <AdminSupportDashboard initialTickets={tickets || []} />
+        </Suspense>
+      </div>
     </div>
   );
 }

@@ -1,309 +1,90 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import {
-  getNotificationPreferences,
-  updateNotificationPreferences,
-  runNotificationChecks,
-  type NotificationPreferences,
-} from "@/lib/actions/notifications";
+import { getNotificationPreferences, updateNotificationPreferences, runNotificationChecks, type NotificationPreferences } from "@/lib/actions/notifications";
 import { toast } from "sonner";
-import { Bell, Mail, Package, DollarSign, ShoppingCart, CheckCircle, Settings as SettingsIcon, RefreshCw, RotateCcw, Wrench } from "lucide-react";
+import { Bell, Mail, Package, DollarSign, ShoppingCart, CheckCircle, Settings as SettingsIcon, RefreshCw, RotateCcw, Wrench, Loader2 } from "lucide-react";
+
+const NOTIF_ITEMS = [
+  { key: "low_stock_enabled", icon: Package, label: "Stock Bajo", desc: "Cuando un producto alcanza el stock mínimo" },
+  { key: "pending_payment_enabled", icon: DollarSign, label: "Pagos Pendientes", desc: "Recordatorios de ventas con pagos pendientes" },
+  { key: "new_sale_enabled", icon: ShoppingCart, label: "Nuevas Ventas", desc: "Cuando se registra una nueva venta" },
+  { key: "payment_received_enabled", icon: CheckCircle, label: "Pagos Recibidos", desc: "Cuando se registra un pago" },
+  { key: "system_enabled", icon: SettingsIcon, label: "Sistema", desc: "Actualizaciones y mensajes importantes" },
+  { key: "sale_return_enabled", icon: RotateCcw, label: "Devoluciones", desc: "Cuando se registra una devolución" },
+  { key: "repair_status_change_enabled", icon: Wrench, label: "Cambios en Reparaciones", desc: "Cuando cambia el estado de una reparación" },
+  { key: "email_notifications", icon: Mail, label: "Notificaciones por Email", desc: "Enviar resumen diario de notificaciones" },
+] as const;
 
 export function NotificationSettings() {
-  const [preferences, setPreferences] = useState<Partial<NotificationPreferences>>({
-    low_stock_enabled: true,
-    pending_payment_enabled: true,
-    new_sale_enabled: true,
-    payment_received_enabled: true,
-    system_enabled: true,
-    sale_return_enabled: true,
-    repair_status_change_enabled: true,
-    email_notifications: false,
+  const [prefs, setPrefs] = useState<Partial<NotificationPreferences>>({
+    low_stock_enabled: true, pending_payment_enabled: true, new_sale_enabled: true,
+    payment_received_enabled: true, system_enabled: true, sale_return_enabled: true,
+    repair_status_change_enabled: true, email_notifications: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    loadPreferences();
+    getNotificationPreferences().then(p => { if (p) setPrefs(p); setLoading(false); });
   }, []);
-
-  const loadPreferences = async () => {
-    setLoading(true);
-    const prefs = await getNotificationPreferences();
-    if (prefs) {
-      setPreferences(prefs);
-    }
-    setLoading(false);
-  };
 
   const handleSave = async () => {
     setSaving(true);
-    const result = await updateNotificationPreferences(preferences);
-    if (result.success) {
-      toast.success("Preferencias guardadas exitosamente");
-    } else {
-      toast.error("Error al guardar preferencias");
-    }
+    const result = await updateNotificationPreferences(prefs);
+    if (result.success) toast.success("Preferencias guardadas"); else toast.error("Error al guardar");
     setSaving(false);
   };
 
-  const handleRunChecks = async () => {
+  const handleCheck = async () => {
     setChecking(true);
     const result = await runNotificationChecks();
-    if (result.success) {
-      toast.success("Verificación completada. Se crearon notificaciones si hay alertas.");
-    } else {
-      toast.error("Error al ejecutar verificación");
-    }
+    if (result.success) toast.success("Verificación completada"); else toast.error("Error al verificar");
     setChecking(false);
   };
 
-  const handleToggle = (key: keyof NotificationPreferences) => {
-    setPreferences(prev => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Notificaciones</CardTitle>
-          <CardDescription>Cargando preferencias...</CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  if (loading) return (
+    <div className="border-2 border-[#808080] bg-white p-4 flex items-center gap-2 text-xs text-gray-500">
+      <Loader2 className="h-3 w-3 animate-spin" /> Cargando preferencias...
+    </div>
+  );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="h-5 w-5" />
-          Notificaciones
-        </CardTitle>
-        <CardDescription>
-          Configura qué notificaciones deseas recibir
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Manual Check Button */}
-        <div className="bg-muted/50 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-medium mb-1">Verificar Alertas Ahora</h3>
-              <p className="text-xs text-muted-foreground">
-                Ejecuta manualmente la verificación de stock bajo y pagos pendientes
-              </p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRunChecks}
-              disabled={checking}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${checking ? 'animate-spin' : ''}`} />
-              {checking ? "Verificando..." : "Verificar"}
-            </Button>
-          </div>
-        </div>
+    <div className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-3">
+      <div className="bg-[#c0c0c0] border-b border-[#808080] -mx-3 -mt-3 px-3 py-1 mb-3 flex items-center justify-between">
+        <span className="text-xs font-bold">🔔 Notificaciones</span>
+        <button onClick={handleCheck} disabled={checking} className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-[10px] font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+          <RefreshCw className={`h-3 w-3 ${checking ? "animate-spin" : ""}`} />
+          {checking ? "Verificando..." : "Verificar ahora"}
+        </button>
+      </div>
 
-        <Separator />
-
-        {/* In-App Notifications */}
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium mb-3">Notificaciones en la aplicación</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="low_stock" className="cursor-pointer">
-                      Stock Bajo
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Cuando un producto alcanza el stock mínimo
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="low_stock"
-                  checked={preferences.low_stock_enabled}
-                  onCheckedChange={() => handleToggle('low_stock_enabled')}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="pending_payment" className="cursor-pointer">
-                      Pagos Pendientes
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Recordatorios de ventas con pagos pendientes
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="pending_payment"
-                  checked={preferences.pending_payment_enabled}
-                  onCheckedChange={() => handleToggle('pending_payment_enabled')}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="new_sale" className="cursor-pointer">
-                      Nuevas Ventas
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Cuando se registra una nueva venta
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="new_sale"
-                  checked={preferences.new_sale_enabled}
-                  onCheckedChange={() => handleToggle('new_sale_enabled')}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="payment_received" className="cursor-pointer">
-                      Pagos Recibidos
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Cuando se registra un pago
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="payment_received"
-                  checked={preferences.payment_received_enabled}
-                  onCheckedChange={() => handleToggle('payment_received_enabled')}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <SettingsIcon className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="system" className="cursor-pointer">
-                      Notificaciones del Sistema
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Actualizaciones y mensajes importantes
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="system"
-                  checked={preferences.system_enabled}
-                  onCheckedChange={() => handleToggle('system_enabled')}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <RotateCcw className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="sale_return" className="cursor-pointer">
-                      Devoluciones
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Cuando se registra una devolución de venta
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="sale_return"
-                  checked={preferences.sale_return_enabled}
-                  onCheckedChange={() => handleToggle('sale_return_enabled')}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Wrench className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="repair_status_change" className="cursor-pointer">
-                      Cambios en Reparaciones
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Cuando cambia el estado de una orden de reparación
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="repair_status_change"
-                  checked={preferences.repair_status_change_enabled}
-                  onCheckedChange={() => handleToggle('repair_status_change_enabled')}
-                />
+      <div className="space-y-1">
+        {NOTIF_ITEMS.map(({ key, icon: Icon, label, desc }) => (
+          <div key={key} className="flex items-center justify-between py-1.5 border-b border-[#e0e0e0] last:border-b-0">
+            <div className="flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+              <div>
+                <div className="text-xs font-bold">{label}</div>
+                <div className="text-[10px] text-gray-500">{desc}</div>
               </div>
             </div>
+            <input
+              type="checkbox"
+              checked={!!prefs[key as keyof NotificationPreferences]}
+              onChange={() => setPrefs(p => ({ ...p, [key]: !p[key as keyof NotificationPreferences] }))}
+              className="border border-[#808080] w-4 h-4 cursor-pointer"
+            />
           </div>
-        </div>
+        ))}
+      </div>
 
-        <Separator />
-
-        {/* Email Notifications */}
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium mb-3">Notificaciones por Email</h3>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <Label htmlFor="email" className="cursor-pointer">
-                    Recibir notificaciones por email
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Enviar resumen diario de notificaciones
-                  </p>
-                </div>
-              </div>
-              <Switch
-                id="email"
-                checked={preferences.email_notifications}
-                onCheckedChange={() => handleToggle('email_notifications')}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Guardando..." : "Guardar Cambios"}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <div className="flex justify-end pt-1 border-t border-[#808080]">
+        <button onClick={handleSave} disabled={saving} className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1">
+          {saving ? <><Loader2 className="h-3 w-3 animate-spin" /> Guardando...</> : "✔ Guardar Cambios"}
+        </button>
+      </div>
+    </div>
   );
 }

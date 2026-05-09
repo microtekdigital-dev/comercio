@@ -4,13 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createCashRegisterOpening } from "@/lib/actions/cash-register"
 import { getInitialCashAmount } from "@/lib/actions/company-settings"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, DollarSign } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 
@@ -19,14 +13,12 @@ export default function NewCashRegisterOpeningPage() {
   const [loading, setLoading] = useState(false)
   const [loadingInitialAmount, setLoadingInitialAmount] = useState(true)
   const [suggestedAmount, setSuggestedAmount] = useState<number | null>(null)
-  
-  // Form state
+
   const [openingDate, setOpeningDate] = useState(new Date().toISOString().split("T")[0])
   const [shift, setShift] = useState("")
   const [initialCashAmount, setInitialCashAmount] = useState("")
   const [notes, setNotes] = useState("")
 
-  // Load initial cash amount on mount
   useEffect(() => {
     async function loadInitialAmount() {
       try {
@@ -46,8 +38,7 @@ export default function NewCashRegisterOpeningPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Validate
+
     if (!shift) {
       toast.error("Debe seleccionar un turno")
       return
@@ -60,11 +51,10 @@ export default function NewCashRegisterOpeningPage() {
     }
 
     setLoading(true)
-
     try {
       const result = await createCashRegisterOpening({
         opening_date: openingDate,
-        shift: shift,
+        shift,
         initial_cash_amount: amount,
         notes: notes || undefined,
       })
@@ -73,9 +63,9 @@ export default function NewCashRegisterOpeningPage() {
         toast.error(result.error)
       } else {
         toast.success("Apertura de caja creada exitosamente")
-        router.push("/dashboard/cash-register")
+        router.push("/pos")
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al crear la apertura de caja")
     } finally {
       setLoading(false)
@@ -83,114 +73,119 @@ export default function NewCashRegisterOpeningPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/cash-register">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Nueva Apertura de Caja</h2>
-          <p className="text-muted-foreground">
-            Registra la apertura de caja al inicio del turno
-          </p>
-        </div>
-      </div>
+    <div className="flex items-center justify-center p-4 font-sans text-black">
+      <div className="w-full max-w-md">
 
-      <div className="max-w-2xl">
-        <form onSubmit={handleSubmit}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Información de Apertura
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="openingDate">Fecha de Apertura *</Label>
-                <Input
-                  id="openingDate"
-                  type="date"
-                  value={openingDate}
-                  onChange={(e) => setOpeningDate(e.target.value)}
-                  required
-                />
-              </div>
+        {/* Window */}
+        <div className="border-2 border-[#808080] shadow-[4px_4px_0px_#000] bg-[#d4d0c8] text-black">
 
-              <div>
-                <Label htmlFor="shift">Turno *</Label>
-                <Select value={shift} onValueChange={setShift} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar turno" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Mañana">Mañana</SelectItem>
-                    <SelectItem value="Tarde">Tarde</SelectItem>
-                    <SelectItem value="Noche">Noche</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Selecciona el turno de trabajo
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="initialCashAmount">Monto Inicial en Efectivo *</Label>
-                <Input
-                  id="initialCashAmount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  placeholder="0.00"
-                  value={initialCashAmount}
-                  onChange={(e) => setInitialCashAmount(e.target.value)}
-                  disabled={loadingInitialAmount}
-                  required
-                />
-                {loadingInitialAmount ? (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Cargando importe sugerido...
-                  </p>
-                ) : suggestedAmount !== null ? (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Valor sugerido: ${suggestedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (puedes modificarlo)
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Ingresa el monto inicial de efectivo en la caja
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Notas (opcional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Observaciones de la apertura..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-2 mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Guardando..." : "Guardar Apertura"}
-            </Button>
+          {/* Title bar */}
+          <div className="flex items-center justify-between bg-[#000080] px-2 py-1">
+            <span className="text-white text-sm font-bold">🏦 Apertura de Caja</span>
+            <Link
+              href="/dashboard/cash-register"
+              className="w-5 h-5 bg-[#d4d0c8] border border-[#808080] text-black text-xs flex items-center justify-center font-bold hover:bg-[#c0c0c0] leading-none"
+            >✕</Link>
           </div>
-        </form>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-4 space-y-3">
+
+            {/* Fecha */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-bold text-black">Fecha de Apertura *</span>
+              <input
+                type="date"
+                value={openingDate}
+                onChange={(e) => setOpeningDate(e.target.value)}
+                required
+                className="border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full"
+              />
+            </div>
+
+            {/* Turno */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-bold text-black">Turno *</span>
+              <select
+                value={shift}
+                onChange={(e) => setShift(e.target.value)}
+                required
+                className="border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full"
+              >
+                <option value="">— Seleccionar turno —</option>
+                <option value="Mañana">Mañana</option>
+                <option value="Tarde">Tarde</option>
+                <option value="Noche">Noche</option>
+              </select>
+            </div>
+
+            {/* Monto inicial */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-bold text-black">Monto Inicial en Efectivo *</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                value={initialCashAmount}
+                onChange={(e) => setInitialCashAmount(e.target.value)}
+                disabled={loadingInitialAmount}
+                required
+                className="border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full text-right font-mono"
+              />
+              <span className="text-[10px] text-gray-600">
+                {loadingInitialAmount
+                  ? "Cargando importe sugerido..."
+                  : suggestedAmount !== null
+                  ? `Valor sugerido: $${suggestedAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })} (podés modificarlo)`
+                  : "Ingresá el monto inicial de efectivo en caja"}
+              </span>
+            </div>
+
+            {/* Notas */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-bold text-black">Notas (opcional)</span>
+              <textarea
+                placeholder="Observaciones de la apertura..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="border border-[#808080] bg-white text-sm px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full resize-none"
+              />
+            </div>
+
+            {/* Separator */}
+            <div className="border-t border-[#808080] pt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                disabled={loading}
+                className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px hover:bg-[#c0c0c0] disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading || loadingInitialAmount}
+                className="border border-[#808080] bg-[#d4d0c8] px-6 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px hover:bg-[#c0c0c0] disabled:opacity-50 flex items-center gap-1"
+              >
+                {loading
+                  ? <><Loader2 className="h-3 w-3 animate-spin" /> Guardando...</>
+                  : "✔ Abrir Caja"}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Back link */}
+        <div className="mt-3 text-center">
+          <Link
+            href="/dashboard/cash-register"
+            className="text-xs text-black underline hover:text-[#0000cc]"
+          >
+            ← Volver a Caja Registradora
+          </Link>
+        </div>
       </div>
     </div>
   )

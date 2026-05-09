@@ -3,10 +3,7 @@
 import { useState, useEffect } from "react";
 import { getCategories } from "@/lib/actions/categories";
 import { getUserPermissions } from "@/lib/utils/permissions";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, FolderTree } from "lucide-react";
+import { Plus, FolderTree, Loader2 } from "lucide-react";
 import Link from "next/link";
 import type { Category } from "@/lib/types/erp";
 
@@ -31,99 +28,73 @@ export default function CategoriesPage() {
     setLoading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="flex-1 p-8">
-        <p>Cargando...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Categorías</h2>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Organiza tus productos con categorías
-          </p>
-        </div>
-        {canCreate && (
-          <Link href="/dashboard/categories/new" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva Categoría
-            </Button>
-          </Link>
-        )}
-      </div>
+    <div className="space-y-3 text-black select-none">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-            <FolderTree className="h-5 w-5" />
-            Lista de Categorías ({categories.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {categories.length === 0 ? (
-            <div className="text-center py-12">
-              <FolderTree className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-base md:text-lg font-semibold">No hay categorías</h3>
-              <p className="text-muted-foreground text-sm md:text-base">
-                Comienza agregando tu primera categoría
-              </p>
-              <Link href="/dashboard/categories/new" className="w-full sm:w-auto inline-block">
-                <Button className="mt-4 w-full sm:w-auto">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Agregar Categoría
-                </Button>
-              </Link>
+        {/* Title bar */}
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <span className="text-white text-sm font-bold">🗂 Categorías ({categories.length})</span>
+          {canCreate && (
+            <Link href="/dashboard/categories/new" className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 text-black">
+              <Plus className="h-3 w-3" /> Nueva
+            </Link>
+          )}
+        </div>
+
+        {/* Table header */}
+        <div className="grid grid-cols-[30px_1fr_200px_80px_80px] border-b-2 border-[#808080] bg-[#d4d0c8]">
+          {["#", "Nombre", "Descripción", "Estado", ""].map((h, i) => (
+            <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+          ))}
+        </div>
+
+        {/* Table body */}
+        <div className="bg-white">
+          {loading ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
+              <FolderTree className="h-10 w-10 opacity-30" />
+              <p className="text-sm">No hay categorías</p>
+              {canCreate && (
+                <Link href="/dashboard/categories/new" className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 mt-2 text-black">
+                  <Plus className="h-3 w-3" /> Nueva Categoría
+                </Link>
+              )}
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  className="border rounded-lg p-3 md:p-4 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2 md:mb-3">
-                    <div className="flex items-center gap-2">
-                      {category.color && (
-                        <div
-                          className="w-4 h-4 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: category.color }}
-                        />
-                      )}
-                      <h3 className="font-semibold text-sm md:text-base">{category.name}</h3>
-                    </div>
-                    <Badge variant={category.is_active ? "default" : "secondary"}>
-                      {category.is_active ? "Activa" : "Inactiva"}
-                    </Badge>
-                  </div>
-
-                  {category.description && (
-                    <p className="text-xs md:text-sm text-muted-foreground mb-2 md:mb-3">
-                      {category.description}
-                    </p>
-                  )}
-
-                  <div className="flex gap-2 mt-4 flex-col sm:flex-row">
-                    <Link
-                      href={`/dashboard/categories/${category.id}`}
-                      className="flex-1"
-                    >
-                      <Button variant="outline" size="sm" className="w-full">
-                        Editar
-                      </Button>
-                    </Link>
-                  </div>
+            categories.map((category, idx) => (
+              <div key={category.id} className={`grid grid-cols-[30px_1fr_200px_80px_80px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                <div className="px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa] text-gray-400 group-hover:text-gray-300">
+                  {idx + 1}
                 </div>
-              ))}
-            </div>
+                <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] flex items-center gap-2">
+                  {category.color && (
+                    <div className="w-3 h-3 rounded-full shrink-0 border border-[#808080]" style={{ backgroundColor: category.color }} />
+                  )}
+                  <span className="font-semibold truncate">{category.name}</span>
+                </div>
+                <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate text-gray-600 group-hover:text-gray-200">
+                  {category.description ?? "—"}
+                </div>
+                <div className="px-2 py-1.5 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                  <span className={category.is_active ? "text-green-700 group-hover:text-green-300 font-bold" : "text-red-600 group-hover:text-red-300"}>
+                    {category.is_active ? "Activa" : "Inactiva"}
+                  </span>
+                </div>
+                <div className="px-2 py-1.5 text-xs text-center">
+                  <Link href={`/dashboard/categories/${category.id}`} className="text-[#000080] group-hover:text-white underline">
+                    Editar
+                  </Link>
+                </div>
+              </div>
+            ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

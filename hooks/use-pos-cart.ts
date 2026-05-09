@@ -239,6 +239,22 @@ export function usePOSCart() {
   }
 
   // --------------------------------------------------
+  // updateItemDiscount
+  // --------------------------------------------------
+  function updateItemDiscount(itemId: string, discountPercent: number): void {
+    setCart((prev) => {
+      const updatedItems = prev.items.map((item) => {
+        if (item.id !== itemId) return item;
+        const pct = Math.max(0, Math.min(100, discountPercent));
+        const totals = calculateItemTotals(item.quantity, item.unit_price, item.tax_rate, pct);
+        return { ...item, discount_percent: pct, ...totals };
+      });
+      const cartTotals = calculateCartTotals(updatedItems, prev.discount_type, prev.discount_value);
+      return { ...prev, items: updatedItems, ...cartTotals };
+    });
+  }
+
+  // --------------------------------------------------
   // applyDiscount
   // --------------------------------------------------
   function applyDiscount(
@@ -283,6 +299,7 @@ export function usePOSCart() {
     addItem,
     updateQuantity,
     removeItem,
+    updateItemDiscount,
     applyDiscount,
     setCustomer,
     clearCart,

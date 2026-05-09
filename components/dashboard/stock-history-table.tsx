@@ -2,34 +2,19 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { CalendarIcon, Filter, X, TrendingUp, TrendingDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Filter, X, TrendingUp, TrendingDown, Loader2 } from "lucide-react"
 import type { StockMovement } from "@/lib/types/erp"
+
+const TYPE_LABELS: Record<string, string> = {
+  purchase: "Compra", sale: "Venta",
+  adjustment_in: "Ajuste +", adjustment_out: "Ajuste -",
+  return_in: "Devolución +", return_out: "Devolución -",
+}
+const TYPE_COLORS: Record<string, string> = {
+  purchase: "text-green-700", sale: "text-blue-700",
+  adjustment_in: "text-green-700", adjustment_out: "text-red-600",
+  return_in: "text-green-700", return_out: "text-red-600",
+}
 
 interface StockHistoryTableProps {
   movements: StockMovement[]
@@ -37,294 +22,100 @@ interface StockHistoryTableProps {
 }
 
 export function StockHistoryTable({ movements, employees = [] }: StockHistoryTableProps) {
-  const [filteredMovements, setFilteredMovements] = useState(movements)
-  const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all")
-  const [employeeFilter, setEmployeeFilter] = useState<string>("all")
-  const [dateFrom, setDateFrom] = useState<Date>()
-  const [dateTo, setDateTo] = useState<Date>()
+  const [filtered, setFiltered] = useState(movements)
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [empFilter, setEmpFilter] = useState("all")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
 
-  // Apply filters
   const applyFilters = () => {
-    let filtered = movements
-
-    if (movementTypeFilter !== "all") {
-      filtered = filtered.filter(m => m.movement_type === movementTypeFilter)
-    }
-
-    if (employeeFilter !== "all") {
-      filtered = filtered.filter(m => m.created_by === employeeFilter)
-    }
-
-    if (dateFrom) {
-      filtered = filtered.filter(m => new Date(m.created_at) >= dateFrom)
-    }
-
-    if (dateTo) {
-      const endOfDay = new Date(dateTo)
-      endOfDay.setHours(23, 59, 59, 999)
-      filtered = filtered.filter(m => new Date(m.created_at) <= endOfDay)
-    }
-
-    setFilteredMovements(filtered)
+    let f = movements
+    if (typeFilter !== "all") f = f.filter(m => m.movement_type === typeFilter)
+    if (empFilter !== "all") f = f.filter(m => m.created_by === empFilter)
+    if (dateFrom) f = f.filter(m => new Date(m.created_at) >= new Date(dateFrom))
+    if (dateTo) { const end = new Date(dateTo); end.setHours(23,59,59,999); f = f.filter(m => new Date(m.created_at) <= end); }
+    setFiltered(f)
   }
 
-  // Clear filters
   const clearFilters = () => {
-    setMovementTypeFilter("all")
-    setEmployeeFilter("all")
-    setDateFrom(undefined)
-    setDateTo(undefined)
-    setFilteredMovements(movements)
+    setTypeFilter("all"); setEmpFilter("all"); setDateFrom(""); setDateTo(""); setFiltered(movements)
   }
 
-  // Get movement type label and color
-  const getMovementTypeInfo = (type: string) => {
-    const types: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      purchase: { label: "Compra", variant: "default" },
-      sale: { label: "Venta", variant: "secondary" },
-      adjustment_in: { label: "Ajuste +", variant: "outline" },
-      adjustment_out: { label: "Ajuste -", variant: "outline" },
-      return_in: { label: "Devolución +", variant: "default" },
-      return_out: { label: "Devolución -", variant: "destructive" },
-    }
-    return types[type] || { label: type, variant: "outline" as const }
-  }
-
-  // Check if movement is manual or automatic
-  const isManualMovement = (type: string) => {
-    return ['adjustment_in', 'adjustment_out', 'return_in', 'return_out'].includes(type)
-  }
+  const f = "border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 text-black">
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 p-4 bg-muted/50 rounded-lg">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-sm font-medium mb-2 block">Tipo de movimiento</label>
-          <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="purchase">Compra</SelectItem>
-              <SelectItem value="sale">Venta</SelectItem>
-              <SelectItem value="adjustment_in">Ajuste +</SelectItem>
-              <SelectItem value="adjustment_out">Ajuste -</SelectItem>
-              <SelectItem value="return_in">Devolución +</SelectItem>
-              <SelectItem value="return_out">Devolución -</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="bg-[#d4d0c8] border border-[#808080] p-2 flex flex-wrap gap-2 items-end">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-bold">Tipo</span>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className={f}>
+            <option value="all">Todos</option>
+            {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
         </div>
-
         {employees.length > 0 && (
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium mb-2 block">Empleado</label>
-            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {employees.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold">Empleado</span>
+            <select value={empFilter} onChange={e => setEmpFilter(e.target.value)} className={f}>
+              <option value="all">Todos</option>
+              {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
           </div>
         )}
-
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-sm font-medium mb-2 block">Desde</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !dateFrom && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Seleccionar"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={dateFrom}
-                onSelect={setDateFrom}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-bold">Desde</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={f} />
         </div>
-
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-sm font-medium mb-2 block">Hasta</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !dateTo && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={dateTo}
-                onSelect={setDateTo}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-bold">Hasta</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={f} />
         </div>
-
-        <div className="flex items-end gap-2">
-          <Button onClick={applyFilters}>
-            <Filter className="mr-2 h-4 w-4" />
-            Filtrar
-          </Button>
-          <Button variant="outline" onClick={clearFilters}>
-            <X className="mr-2 h-4 w-4" />
-            Limpiar
-          </Button>
-        </div>
-      </div>
-
-      {/* Results count */}
-      <div className="text-sm text-muted-foreground">
-        Mostrando {filteredMovements.length} de {movements.length} movimientos
+        <button onClick={applyFilters} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+          <Filter className="h-3 w-3" /> Filtrar
+        </button>
+        <button onClick={clearFilters} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 text-red-700">
+          <X className="h-3 w-3" /> Limpiar
+        </button>
+        <span className="text-xs text-gray-600 ml-auto">{filtered.length} de {movements.length} movimientos</span>
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha y Hora</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Producto</TableHead>
-              <TableHead className="text-right">Cantidad</TableHead>
-              <TableHead className="text-right">Stock Anterior</TableHead>
-              <TableHead className="text-right">Stock Nuevo</TableHead>
-              <TableHead>Empleado</TableHead>
-              <TableHead>Origen</TableHead>
-              <TableHead>Notas</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredMovements.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                  No se encontraron movimientos
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredMovements.map((movement) => {
-                const typeInfo = getMovementTypeInfo(movement.movement_type)
-                const isManual = isManualMovement(movement.movement_type)
-                
-                return (
-                  <TableRow key={movement.id}>
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {format(new Date(movement.created_at), "dd/MM/yyyy", { locale: es })}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(movement.created_at), "HH:mm:ss")}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant={typeInfo.variant}>
-                          {typeInfo.label}
-                        </Badge>
-                        {movement.purchase_order_id ? (
-                          <span className="text-xs text-muted-foreground">
-                            Orden de Compra
-                          </span>
-                        ) : movement.sale_id ? (
-                          <span className="text-xs text-muted-foreground">
-                            Venta
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {isManual ? "Manual" : "Automático"}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{movement.product?.name}</span>
-                        {movement.product?.sku && (
-                          <span className="text-xs text-muted-foreground">
-                            SKU: {movement.product.sku}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {movement.quantity > 0 ? (
-                          <TrendingUp className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-600" />
-                        )}
-                        <span className={cn(
-                          "font-medium",
-                          movement.quantity > 0 ? "text-green-600" : "text-red-600"
-                        )}>
-                          {movement.quantity > 0 ? "+" : ""}{movement.quantity}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {movement.stock_before}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-medium">
-                      {movement.stock_after}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{movement.created_by_name}</span>
-                    </TableCell>
-                    <TableCell>
-                      {movement.sale_id && (
-                        <Badge variant="secondary">Venta</Badge>
-                      )}
-                      {movement.purchase_order_id && (
-                        <Badge variant="default">Orden de Compra</Badge>
-                      )}
-                      {!movement.sale_id && !movement.purchase_order_id && (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-[200px]">
-                      {movement.notes ? (
-                        <span className="text-sm text-muted-foreground truncate block">
-                          {movement.notes}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
+      <div className="border border-[#808080] bg-white overflow-x-auto">
+        <div className="grid grid-cols-[120px_1fr_100px_80px_80px_80px_120px_80px] border-b-2 border-[#808080] bg-[#d4d0c8] min-w-[800px]">
+          {["Fecha/Hora", "Producto", "Tipo", "Cantidad", "Ant.", "Nuevo", "Empleado", "Origen"].map((h, i) => (
+            <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+          ))}
+        </div>
+        {filtered.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-xs text-gray-500">Sin movimientos</div>
+        ) : filtered.map((m, idx) => (
+          <div key={m.id} className={`grid grid-cols-[120px_1fr_100px_80px_80px_80px_120px_80px] border-b border-[#e0e0e0] text-black min-w-[800px] ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+            <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">
+              <div className="font-medium">{format(new Date(m.created_at), "dd/MM/yyyy")}</div>
+              <div className="text-gray-500">{format(new Date(m.created_at), "HH:mm:ss")}</div>
+            </div>
+            <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">
+              <div className="font-medium truncate">{m.product?.name}</div>
+              {m.product?.sku && <div className="text-gray-500">SKU: {m.product.sku}</div>}
+            </div>
+            <div className={`px-2 py-1.5 text-xs font-bold border-r border-[#e0e0e0] ${TYPE_COLORS[m.movement_type] ?? ""}`}>
+              {TYPE_LABELS[m.movement_type] ?? m.movement_type}
+            </div>
+            <div className="px-2 py-1.5 text-xs text-right font-mono font-bold border-r border-[#e0e0e0]">
+              <span className={`flex items-center justify-end gap-0.5 ${m.quantity > 0 ? "text-green-700" : "text-red-600"}`}>
+                {m.quantity > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {m.quantity > 0 ? "+" : ""}{m.quantity}
+              </span>
+            </div>
+            <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0]">{m.stock_before}</div>
+            <div className="px-2 py-1.5 text-xs text-right font-mono font-bold border-r border-[#e0e0e0]">{m.stock_after}</div>
+            <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] truncate">{m.created_by_name}</div>
+            <div className="px-2 py-1.5 text-xs text-gray-500">
+              {m.sale_id ? "Venta" : m.purchase_order_id ? "O. Compra" : "Manual"}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

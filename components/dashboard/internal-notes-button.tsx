@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { MessageSquare } from "lucide-react"
 import { InternalNotesSidebar } from "./internal-notes-sidebar"
 import { getActiveNotesCount } from "@/lib/actions/internal-notes"
@@ -15,60 +13,37 @@ export function InternalNotesButton() {
   useEffect(() => {
     loadActiveCount()
     const cleanup = subscribeToNotes()
-
-    return () => {
-      cleanup()
-    }
+    return () => { cleanup() }
   }, [])
 
   async function loadActiveCount() {
-    try {
-      const count = await getActiveNotesCount()
-      setActiveCount(count)
-    } catch (error) {
-      console.error("Error loading active notes count:", error)
-    }
+    try { const count = await getActiveNotesCount(); setActiveCount(count) }
+    catch (error) { console.error("Error loading notes count:", error) }
   }
 
   function subscribeToNotes() {
     const supabase = createClient()
-
-    const channel = supabase
-      .channel("internal_notes_count_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "internal_notes" },
-        () => loadActiveCount()
-      )
+    const channel = supabase.channel("internal_notes_count_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "internal_notes" }, () => loadActiveCount())
       .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }
 
   return (
     <>
-      <Button
+      <button
         onClick={() => setIsOpen(true)}
-        variant="ghost"
-        size="icon"
-        className="relative"
-        aria-label="Abrir notas internas"
+        className="relative w-8 h-8 flex items-center justify-center hover:bg-[#0000aa] text-white"
+        aria-label="Notas internas"
         title="Notas Internas"
       >
-        <MessageSquare className="h-5 w-5" />
+        <MessageSquare className="h-4 w-4" />
         {activeCount > 0 && (
-          <Badge
-            variant="destructive"
-            className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-            aria-label={`${activeCount} notas activas`}
-          >
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center border border-white">
             {activeCount > 99 ? "99+" : activeCount}
-          </Badge>
+          </span>
         )}
-      </Button>
-
+      </button>
       <InternalNotesSidebar isOpen={isOpen} onClose={() => setIsOpen(false)} />
     </>
   )

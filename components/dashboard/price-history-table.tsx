@@ -2,32 +2,7 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { CalendarIcon, Filter, X, Download, TrendingUp, TrendingDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Filter, X, TrendingUp, TrendingDown, Download } from "lucide-react"
 import { exportPriceChangesToCSV } from "@/lib/actions/price-changes"
 import { toast } from "sonner"
 import type { PriceChange } from "@/lib/types/erp"
@@ -39,351 +14,144 @@ interface PriceHistoryTableProps {
   currencySymbol?: string
 }
 
-export function PriceHistoryTable({ 
-  changes, 
-  employees = [], 
-  products = [],
-  currencySymbol = "$"
-}: PriceHistoryTableProps) {
-  const [filteredChanges, setFilteredChanges] = useState(changes)
-  const [priceTypeFilter, setPriceTypeFilter] = useState<string>("all")
-  const [employeeFilter, setEmployeeFilter] = useState<string>("all")
-  const [productFilter, setProductFilter] = useState<string>("all")
-  const [dateFrom, setDateFrom] = useState<Date>()
-  const [dateTo, setDateTo] = useState<Date>()
-  const [isExporting, setIsExporting] = useState(false)
+export function PriceHistoryTable({ changes, employees = [], products = [], currencySymbol = "$" }: PriceHistoryTableProps) {
+  const [filtered, setFiltered] = useState(changes)
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [empFilter, setEmpFilter] = useState("all")
+  const [prodFilter, setProdFilter] = useState("all")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+  const [exporting, setExporting] = useState(false)
 
-  // Apply filters
   const applyFilters = () => {
-    let filtered = changes
-
-    if (priceTypeFilter !== "all") {
-      filtered = filtered.filter(c => c.price_type === priceTypeFilter)
-    }
-
-    if (employeeFilter !== "all") {
-      filtered = filtered.filter(c => c.changed_by === employeeFilter)
-    }
-
-    if (productFilter !== "all") {
-      filtered = filtered.filter(c => c.product_id === productFilter)
-    }
-
-    if (dateFrom) {
-      filtered = filtered.filter(c => new Date(c.created_at) >= dateFrom)
-    }
-
-    if (dateTo) {
-      const endOfDay = new Date(dateTo)
-      endOfDay.setHours(23, 59, 59, 999)
-      filtered = filtered.filter(c => new Date(c.created_at) <= endOfDay)
-    }
-
-    setFilteredChanges(filtered)
+    let f = changes
+    if (typeFilter !== "all") f = f.filter(c => c.price_type === typeFilter)
+    if (empFilter !== "all") f = f.filter(c => c.changed_by === empFilter)
+    if (prodFilter !== "all") f = f.filter(c => c.product_id === prodFilter)
+    if (dateFrom) f = f.filter(c => new Date(c.created_at) >= new Date(dateFrom))
+    if (dateTo) { const end = new Date(dateTo); end.setHours(23,59,59,999); f = f.filter(c => new Date(c.created_at) <= end); }
+    setFiltered(f)
   }
 
-  // Clear filters
   const clearFilters = () => {
-    setPriceTypeFilter("all")
-    setEmployeeFilter("all")
-    setProductFilter("all")
-    setDateFrom(undefined)
-    setDateTo(undefined)
-    setFilteredChanges(changes)
+    setTypeFilter("all"); setEmpFilter("all"); setProdFilter("all"); setDateFrom(""); setDateTo(""); setFiltered(changes)
   }
 
-  // Export to CSV
   const handleExport = async () => {
-    setIsExporting(true)
+    setExporting(true)
     try {
       const filters: any = {}
-      
-      if (priceTypeFilter !== "all") filters.priceType = priceTypeFilter
-      if (employeeFilter !== "all") filters.employeeId = employeeFilter
-      if (productFilter !== "all") filters.productId = productFilter
-      if (dateFrom) filters.dateFrom = dateFrom.toISOString()
-      if (dateTo) filters.dateTo = dateTo.toISOString()
-
+      if (typeFilter !== "all") filters.priceType = typeFilter
+      if (empFilter !== "all") filters.employeeId = empFilter
+      if (prodFilter !== "all") filters.productId = prodFilter
+      if (dateFrom) filters.dateFrom = new Date(dateFrom).toISOString()
+      if (dateTo) filters.dateTo = new Date(dateTo).toISOString()
       const csv = await exportPriceChangesToCSV(filters)
-      
-      // Create download link
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      const url = URL.createObjectURL(blob)
-      link.setAttribute('href', url)
-      link.setAttribute('download', `historial-precios-${format(new Date(), 'yyyy-MM-dd')}.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const link = document.createElement("a")
+      link.href = URL.createObjectURL(blob)
+      link.download = `historial-precios-${format(new Date(), "yyyy-MM-dd")}.csv`
       link.click()
-      document.body.removeChild(link)
-      
-      toast.success("Historial exportado correctamente")
-    } catch (error) {
-      console.error("Error exporting:", error)
-      toast.error("Error al exportar el historial")
-    } finally {
-      setIsExporting(false)
-    }
+      toast.success("Exportado correctamente")
+    } catch { toast.error("Error al exportar") }
+    finally { setExporting(false) }
   }
 
-  // Get price type label and color
-  const getPriceTypeInfo = (type: string) => {
-    return type === 'sale_price' 
-      ? { label: "Precio de Venta", variant: "default" as const }
-      : { label: "Precio de Costo", variant: "secondary" as const }
-  }
-
-  // Format currency
-  const formatCurrency = (value: number) => {
-    return `${currencySymbol}${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
-  }
-
-  // Calculate difference
-  const calculateDifference = (oldValue: number, newValue: number) => {
-    const diff = newValue - oldValue
-    const percentage = oldValue > 0 ? ((diff / oldValue) * 100).toFixed(1) : "0.0"
-    return { diff, percentage }
-  }
+  const fmt = (n: number) => `${currencySymbol}${n.toFixed(2)}`
+  const f = "border border-[#808080] bg-white text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 text-black">
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 p-4 bg-muted/50 rounded-lg">
-        <div className="flex-1 min-w-[180px]">
-          <label className="text-sm font-medium mb-2 block">Tipo de precio</label>
-          <Select value={priceTypeFilter} onValueChange={setPriceTypeFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="sale_price">Precio de Venta</SelectItem>
-              <SelectItem value="cost_price">Precio de Costo</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="bg-[#d4d0c8] border border-[#808080] p-2 flex flex-wrap gap-2 items-end">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-bold">Tipo</span>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className={f}>
+            <option value="all">Todos</option>
+            <option value="sale_price">Precio Venta</option>
+            <option value="cost_price">Precio Costo</option>
+          </select>
         </div>
-
         {products.length > 0 && (
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium mb-2 block">Producto</label>
-            <Select value={productFilter} onValueChange={setProductFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {products.map(prod => (
-                  <SelectItem key={prod.id} value={prod.id}>
-                    {prod.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold">Producto</span>
+            <select value={prodFilter} onChange={e => setProdFilter(e.target.value)} className={f + " max-w-[160px]"}>
+              <option value="all">Todos</option>
+              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
           </div>
         )}
-
         {employees.length > 0 && (
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-sm font-medium mb-2 block">Empleado</label>
-            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {employees.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold">Empleado</span>
+            <select value={empFilter} onChange={e => setEmpFilter(e.target.value)} className={f}>
+              <option value="all">Todos</option>
+              {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
           </div>
         )}
-
-        <div className="flex-1 min-w-[180px]">
-          <label className="text-sm font-medium mb-2 block">Desde</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !dateFrom && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Seleccionar"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={dateFrom}
-                onSelect={setDateFrom}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-bold">Desde</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={f} />
         </div>
-
-        <div className="flex-1 min-w-[180px]">
-          <label className="text-sm font-medium mb-2 block">Hasta</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !dateTo && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateTo ? format(dateTo, "PPP", { locale: es }) : "Seleccionar"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={dateTo}
-                onSelect={setDateTo}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-bold">Hasta</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={f} />
         </div>
-
-        <div className="flex items-end gap-2">
-          <Button onClick={applyFilters}>
-            <Filter className="mr-2 h-4 w-4" />
-            Filtrar
-          </Button>
-          <Button variant="outline" onClick={clearFilters}>
-            <X className="mr-2 h-4 w-4" />
-            Limpiar
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleExport}
-            disabled={isExporting || filteredChanges.length === 0}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Exportar CSV
-          </Button>
-        </div>
-      </div>
-
-      {/* Results count */}
-      <div className="text-sm text-muted-foreground">
-        Mostrando {filteredChanges.length} de {changes.length} cambios de precio
+        <button onClick={applyFilters} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+          <Filter className="h-3 w-3" /> Filtrar
+        </button>
+        <button onClick={clearFilters} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 text-red-700">
+          <X className="h-3 w-3" /> Limpiar
+        </button>
+        <button onClick={handleExport} disabled={exporting || filtered.length === 0} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1 disabled:opacity-50">
+          <Download className="h-3 w-3" /> CSV
+        </button>
+        <span className="text-xs text-gray-600 ml-auto">{filtered.length} de {changes.length} cambios</span>
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha y Hora</TableHead>
-              <TableHead>Producto</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="text-right">Precio Anterior</TableHead>
-              <TableHead className="text-right">Precio Nuevo</TableHead>
-              <TableHead className="text-right">Diferencia</TableHead>
-              <TableHead>Empleado</TableHead>
-              <TableHead>Razón</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredChanges.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  No se encontraron cambios de precio
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredChanges.map((change) => {
-                const typeInfo = getPriceTypeInfo(change.price_type)
-                const { diff, percentage } = calculateDifference(change.old_value, change.new_value)
-                
-                return (
-                  <TableRow key={change.id}>
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {format(new Date(change.created_at), "dd/MM/yyyy", { locale: es })}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(change.created_at), "HH:mm:ss")}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{change.product?.name || "Producto eliminado"}</span>
-                        {change.product?.sku && (
-                          <span className="text-xs text-muted-foreground">
-                            SKU: {change.product.sku}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={typeInfo.variant}>
-                        {typeInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(change.old_value)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-medium">
-                      {formatCurrency(change.new_value)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-1">
-                          {diff > 0 ? (
-                            <TrendingUp className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <TrendingDown className="h-4 w-4 text-red-600" />
-                          )}
-                          <span className={cn(
-                            "font-medium font-mono",
-                            diff > 0 ? "text-green-600" : "text-red-600"
-                          )}>
-                            {diff > 0 ? "+" : ""}{formatCurrency(diff)}
-                          </span>
-                        </div>
-                        <span className={cn(
-                          "text-xs",
-                          diff > 0 ? "text-green-600" : "text-red-600"
-                        )}>
-                          ({diff > 0 ? "+" : ""}{percentage}%)
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{change.changed_by_name}</span>
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {change.changed_by_role}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[250px]">
-                      {change.reason ? (
-                        <span className="text-sm text-muted-foreground">
-                          {change.reason}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
+      <div className="border border-[#808080] bg-white overflow-x-auto">
+        <div className="grid grid-cols-[120px_1fr_100px_110px_110px_110px_120px_1fr] border-b-2 border-[#808080] bg-[#d4d0c8] min-w-[900px]">
+          {["Fecha/Hora", "Producto", "Tipo", "Precio Ant.", "Precio Nuevo", "Diferencia", "Empleado", "Razón"].map((h, i) => (
+            <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+          ))}
+        </div>
+        {filtered.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-xs text-gray-500">Sin cambios de precio</div>
+        ) : filtered.map((c, idx) => {
+          const diff = c.new_value - c.old_value
+          const pct = c.old_value > 0 ? ((diff / c.old_value) * 100).toFixed(1) : "0.0"
+          return (
+            <div key={c.id} className={`grid grid-cols-[120px_1fr_100px_110px_110px_110px_120px_1fr] border-b border-[#e0e0e0] text-black min-w-[900px] ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+              <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">
+                <div className="font-medium">{format(new Date(c.created_at), "dd/MM/yyyy")}</div>
+                <div className="text-gray-500">{format(new Date(c.created_at), "HH:mm:ss")}</div>
+              </div>
+              <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">
+                <div className="font-medium truncate">{c.product?.name ?? "—"}</div>
+                {c.product?.sku && <div className="text-gray-500">SKU: {c.product.sku}</div>}
+              </div>
+              <div className="px-2 py-1.5 text-xs font-bold border-r border-[#e0e0e0] text-blue-700">
+                {c.price_type === "sale_price" ? "Venta" : "Costo"}
+              </div>
+              <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0]">{fmt(c.old_value)}</div>
+              <div className="px-2 py-1.5 text-xs text-right font-mono font-bold border-r border-[#e0e0e0]">{fmt(c.new_value)}</div>
+              <div className="px-2 py-1.5 text-xs text-right font-mono border-r border-[#e0e0e0]">
+                <span className={`flex items-center justify-end gap-0.5 ${diff > 0 ? "text-green-700" : "text-red-600"}`}>
+                  {diff > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {diff > 0 ? "+" : ""}{fmt(diff)}
+                </span>
+                <span className={`text-[10px] ${diff > 0 ? "text-green-700" : "text-red-600"}`}>({diff > 0 ? "+" : ""}{pct}%)</span>
+              </div>
+              <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0]">
+                <div className="font-medium truncate">{c.changed_by_name}</div>
+                <div className="text-gray-500 capitalize">{c.changed_by_role}</div>
+              </div>
+              <div className="px-2 py-1.5 text-xs text-gray-600 truncate">{c.reason ?? "—"}</div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

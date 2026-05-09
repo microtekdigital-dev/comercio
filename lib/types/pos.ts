@@ -54,6 +54,7 @@ export interface POSSaleRequest {
   discount_value: number;
   notes: string | null;
   opening_id: string | null;
+  invoice_type?: 'consumidor_final' | 'factura_a' | 'factura_b';
 }
 
 // =====================================================

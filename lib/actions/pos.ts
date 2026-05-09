@@ -615,6 +615,7 @@ export async function createPOSSale(
         payment_status: "paid",
         payment_method: saleRequest.payments[0]?.payment_method ?? "Efectivo",
         notes: saleRequest.notes,
+        invoice_type: saleRequest.invoice_type ?? "consumidor_final",
         created_by: user.id,
       })
       .select("id, sale_number")
@@ -833,20 +834,28 @@ export async function generatePOSTicket(
       (sale.customers as { name?: string } | null)?.name ?? "Cliente Genérico";
 
     // Items rows
+    const isFacturaA = (sale as any).invoice_type === "factura_a";
+
     const itemsRows = (sale.sale_items as Array<{
       product_name: string;
       variant_name?: string | null;
       quantity: number;
       unit_price: number;
+      tax_rate: number;
       total: number;
     }>)
       .map((item) => {
         const label = item.variant_name
           ? `${item.product_name} (${item.variant_name})`
           : item.product_name;
-        const line = `${label}`;
+        if (isFacturaA) {
+          const neto = item.total / (1 + (item.tax_rate || 21) / 100);
+          const iva = item.total - neto;
+          const detail = `  ${item.quantity} x ${fmt(item.unit_price)} | Neto: ${fmt(neto)} | IVA: ${fmt(iva)} | Total: ${fmt(item.total)}`;
+          return `<div>${label}</div><div style="padding-left:8px;font-size:11px;">${detail}</div>`;
+        }
         const detail = `  ${item.quantity} x ${fmt(item.unit_price)} = ${fmt(item.total)}`;
-        return `<div>${line}</div><div style="padding-left:8px;">${detail}</div>`;
+        return `<div>${label}</div><div style="padding-left:8px;">${detail}</div>`;
       })
       .join("");
 
@@ -878,17 +887,33 @@ export async function generatePOSTicket(
         ? `<div style="display:flex;justify-content:space-between;"><span>Descuento</span><span>-${fmt(sale.discount_amount)}</span></div>`
         : "";
 
-    // Tax row
-    const taxRow =
-      sale.tax_amount > 0
-        ? `<div style="display:flex;justify-content:space-between;"><span>Impuestos</span><span>${fmt(sale.tax_amount)}</span></div>`
-        : "";
+    // Tax row — for Factura A show discriminated IVA
+    const netoTotal = isFacturaA
+      ? (sale.sale_items as Array<{ total: number; tax_rate: number }>)
+          .reduce((s, i) => s + i.total / (1 + (i.tax_rate || 21) / 100), 0)
+      : 0;
+    const ivaTotal = isFacturaA ? sale.total - netoTotal : 0;
+
+    const taxRow = isFacturaA
+      ? `<div style="display:flex;justify-content:space-between;"><span>Neto gravado</span><span>${fmt(netoTotal)}</span></div>
+         <div style="display:flex;justify-content:space-between;"><span>IVA 21%</span><span>${fmt(ivaTotal)}</span></div>`
+      : sale.tax_amount > 0
+      ? `<div style="display:flex;justify-content:space-between;"><span>Impuestos</span><span>${fmt(sale.tax_amount)}</span></div>`
+      : "";
+
+    // Invoice type header
+    const invoiceTypeHeader = isFacturaA
+      ? `<div style="text-align:center;font-weight:bold;border:1px solid #000;padding:2px;margin-bottom:4px;">FACTURA A</div>`
+      : (sale as any).invoice_type === "factura_b"
+      ? `<div style="text-align:center;font-weight:bold;border:1px solid #000;padding:2px;margin-bottom:4px;">FACTURA B</div>`
+      : "";
 
     const sep = `<div style="border-top:1px dashed #000;margin:6px 0;"></div>`;
 
     const html = `
 <div style="font-family:monospace;width:80mm;font-size:12px;padding:8px;box-sizing:border-box;">
   <div style="text-align:center;font-size:16px;font-weight:bold;margin-bottom:4px;">${companyName}</div>
+  ${invoiceTypeHeader}
   ${sep}
   <div style="display:flex;justify-content:space-between;"><span>Venta #${sale.sale_number}</span><span>${dateStr} ${timeStr}</span></div>
   <div>Cliente: ${customerName}</div>

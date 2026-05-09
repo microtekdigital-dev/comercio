@@ -1,362 +1,161 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Building2, Users, Shield, Zap, ArrowRight, Check, Star } from "lucide-react"
+import { ArrowRight, Star } from "lucide-react"
+
+const FEATURES = [
+  { icon: "📦", title: "Control de Inventario", desc: "Gestiona productos, categorías y stock en tiempo real. Alertas de stock bajo automáticas." },
+  { icon: "🛒", title: "Ventas y Facturación", desc: "Registra ventas rápidamente, genera facturas y llevá el control de clientes y pagos." },
+  { icon: "📊", title: "Reportes y Análisis", desc: "Visualizá el rendimiento de tu negocio con reportes detallados basados en datos reales." },
+]
+
+const BENEFITS = [
+  "Sin inversión inicial — pagá solo por lo que usás",
+  "Actualizaciones automáticas sin costo adicional",
+  "Acceso desde cualquier lugar con internet",
+  "Respaldos automáticos de tus datos",
+  "Escala con tu negocio cuando lo necesites",
+  "Soporte técnico incluido en todos los planes",
+  "Comenzá en minutos, sin instalaciones",
+  "Seguridad de nivel bancario",
+  "Múltiples usuarios con distintos accesos",
+  "Cancelá cuando quieras, sin contratos",
+]
+
+const TESTIMONIALS = [
+  { initials: "MC", name: "María Contreras", biz: "Bazar Lili, Buenos Aires", text: "Antes llevaba todo en cuadernos. Ahora veo mi inventario en tiempo real y sé exactamente qué productos se venden más." },
+  { initials: "JR", name: "Juan Rodríguez", biz: "Ferretería El Tornillo, Córdoba", text: "Puedo acceder desde mi celular cuando estoy fuera. Mis empleados registran ventas y yo veo todo en tiempo real." },
+  { initials: "AS", name: "Andrea Silva", biz: "Librería Mundo Papel, Rosario", text: "En menos de una hora ya estaba cargando productos y haciendo ventas. El soporte responde rápido." },
+  { initials: "PM", name: "Pedro Morales", biz: "Minimarket Don Pedro, Mendoza", text: "Tengo dos locales y ahora controlo el stock de ambos desde un solo lugar. Me ahorra muchísimo tiempo." },
+  { initials: "LG", name: "Laura González", biz: "Boutique Elegancia, Mar del Plata", text: "Los reportes me ayudan a tomar mejores decisiones. Las facturas se generan automáticamente." },
+  { initials: "CF", name: "Carlos Fuentes", biz: "Repuestos Automotriz CF, Tucumán", text: "El más completo por el precio. Inventario, ventas, clientes, proveedores. Y no necesito instalar nada." },
+]
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#008080] font-sans text-black">
+
       {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="bg-[#000080] border-b-2 border-[#808080]">
+        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Building2 className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-lg">Sistema de gestión para comercios</span>
+            <span className="text-white text-base font-bold">🏢 Sistema de Gestión para Comercios</span>
           </div>
-          <div className="flex items-center gap-4">
-            <Button asChild variant="ghost">
-              <Link href="/auth/login">Iniciar sesión</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/auth/sign-up">Comenzar</Link>
-            </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/auth/login" className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+              Iniciar sesión
+            </Link>
+            <Link href="/auth/sign-up" className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+              Comenzar gratis
+            </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="container mx-auto px-4 py-24 text-center">
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-balance">
-          ¿No sabés cuánto ganás
-          <br />
-          <span className="text-muted-foreground">realmente cada día?</span>
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 text-pretty">
-          Entrá ahora, probá 14 días sin costo y empezá a ver tus resultados hoy mismo
-          <br />
-          <span className="text-sm">Sin tarjeta • Sin contratos • Fácil de usar desde el primer minuto</span>
-        </p>
-        <div className="flex items-center justify-center gap-4">
-          <Button asChild size="lg">
-            <Link href="/auth/sign-up">
-              Iniciar prueba gratuita
-              <ArrowRight className="ml-2 h-4 w-4" />
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+
+        {/* Hero window */}
+        <div className="border-2 border-[#808080] shadow-[4px_4px_0px_#000] bg-[#d4d0c8]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">🚀 Bienvenido al Sistema de Gestión</span>
+          </div>
+          <div className="p-8 text-center space-y-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-black leading-tight">
+              ¿No sabés cuánto ganás<br />
+              <span className="text-[#000080]">realmente cada día?</span>
+            </h1>
+            <p className="text-sm text-gray-700 max-w-xl mx-auto">
+              Entrá ahora, probá 14 días sin costo y empezá a ver tus resultados hoy mismo.<br />
+              <span className="font-bold">Sin tarjeta · Sin contratos · Fácil desde el primer minuto</span>
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Link href="/auth/sign-up"
+                className="border-2 border-[#808080] bg-[#d4d0c8] px-6 py-2 text-sm font-bold shadow-[3px_3px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] flex items-center gap-2">
+                Iniciar prueba gratuita <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/auth/login"
+                className="border border-[#808080] bg-[#d4d0c8] px-4 py-2 text-sm font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+                Iniciar sesión
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000] bg-[#d4d0c8]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">⚙ Funcionalidades Principales</span>
+          </div>
+          <div className="p-4 grid md:grid-cols-3 gap-3">
+            {FEATURES.map((f, i) => (
+              <div key={i} className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-4">
+                <div className="text-2xl mb-2">{f.icon}</div>
+                <h3 className="text-sm font-bold mb-1">{f.title}</h3>
+                <p className="text-xs text-gray-600">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Benefits */}
+        <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000] bg-[#d4d0c8]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">✅ ¿Por qué elegir un sistema en la nube?</span>
+          </div>
+          <div className="p-4 grid md:grid-cols-2 gap-2">
+            {BENEFITS.map((b, i) => (
+              <div key={i} className="flex items-start gap-2 border border-[#808080] bg-white px-3 py-2 shadow-[inset_1px_1px_2px_#808080]">
+                <span className="text-green-700 font-bold text-xs shrink-0 mt-0.5">✔</span>
+                <span className="text-xs">{b}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000] bg-[#d4d0c8]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">⭐ Lo que dicen nuestros clientes</span>
+          </div>
+          <div className="p-4 grid md:grid-cols-3 gap-3">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="border-2 border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080] p-3 space-y-2">
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, j) => <Star key={j} className="h-3 w-3 fill-yellow-400 text-yellow-400" />)}
+                </div>
+                <p className="text-xs text-gray-700 italic">"{t.text}"</p>
+                <div className="flex items-center gap-2 pt-1 border-t border-[#e0e0e0]">
+                  <div className="w-7 h-7 bg-[#000080] text-white flex items-center justify-center text-[10px] font-bold border border-[#808080]">
+                    {t.initials}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">{t.name}</div>
+                    <div className="text-[10px] text-gray-500">{t.biz}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000] bg-[#d4d0c8]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">🎯 Comenzá hoy</span>
+          </div>
+          <div className="p-6 text-center space-y-3">
+            <p className="text-sm font-bold">14 días gratis · Sin tarjeta · Sin contratos</p>
+            <Link href="/auth/sign-up"
+              className="inline-flex items-center gap-2 border-2 border-[#808080] bg-[#d4d0c8] px-8 py-2.5 text-sm font-bold shadow-[3px_3px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0]">
+              Crear cuenta gratis <ArrowRight className="h-4 w-4" />
             </Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/auth/login">Iniciar sesión</Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="container mx-auto px-4 py-24">
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="p-6 rounded-lg border bg-card">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 mb-4">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Control de Inventario</h3>
-            <p className="text-muted-foreground">
-              Gestiona tus productos, categorías y stock en tiempo real. 
-              Recibe alertas de stock bajo y mantén tu inventario siempre actualizado.
-            </p>
-          </div>
-          <div className="p-6 rounded-lg border bg-card">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 mb-4">
-              <Shield className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Ventas y Facturación</h3>
-            <p className="text-muted-foreground">
-              Registra ventas rápidamente, genera facturas profesionales y 
-              lleva el control de tus clientes y pagos de forma sencilla.
-            </p>
-          </div>
-          <div className="p-6 rounded-lg border bg-card">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 mb-4">
-              <Zap className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Reportes y Análisis</h3>
-            <p className="text-muted-foreground">
-              Visualiza el rendimiento de tu negocio con reportes detallados. 
-              Toma decisiones informadas basadas en datos reales de tu comercio.
-            </p>
           </div>
         </div>
-      </section>
 
-      {/* Benefits Section */}
-      <section className="container mx-auto px-4 py-24 bg-muted/30">
-        <div className="max-w-3xl mx-auto text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            ¿Por qué elegir un sistema en la nube?
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Beneficios del modelo SaaS para tu comercio PYME
-          </p>
-        </div>
-        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Sin inversión inicial</h4>
-              <p className="text-sm text-muted-foreground">
-                No necesitas comprar servidores ni licencias costosas. Paga solo por lo que usas con planes mensuales flexibles
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Actualizaciones automáticas</h4>
-              <p className="text-sm text-muted-foreground">
-                Siempre tendrás la última versión con nuevas funciones y mejoras sin costo adicional
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Acceso desde cualquier lugar</h4>
-              <p className="text-sm text-muted-foreground">
-                Gestiona tu negocio desde casa, la tienda o en movimiento. Solo necesitas internet
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Respaldos automáticos</h4>
-              <p className="text-sm text-muted-foreground">
-                Tus datos se respaldan automáticamente. Nunca perderás información importante
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Escala con tu negocio</h4>
-              <p className="text-sm text-muted-foreground">
-                Comienza con lo básico y agrega más funciones conforme tu negocio crece
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Soporte técnico incluido</h4>
-              <p className="text-sm text-muted-foreground">
-                No necesitas contratar personal de IT. Nosotros nos encargamos del mantenimiento
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Comienza en minutos</h4>
-              <p className="text-sm text-muted-foreground">
-                Regístrate y empieza a usar el sistema de inmediato. Sin instalaciones complicadas
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Seguridad empresarial</h4>
-              <p className="text-sm text-muted-foreground">
-                Protección de datos con encriptación y servidores seguros de nivel bancario
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Múltiples usuarios</h4>
-              <p className="text-sm text-muted-foreground">
-                Agrega empleados con diferentes niveles de acceso según sus responsabilidades
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 p-4">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold mb-1">Cancela cuando quieras</h4>
-              <p className="text-sm text-muted-foreground">
-                Sin contratos a largo plazo. Cancela tu suscripción en cualquier momento sin penalizaciones
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-
-      {/* Testimonials Section */}
-      <section className="container mx-auto px-4 py-24 bg-muted/30">
-        <div className="max-w-3xl mx-auto text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Lo que dicen nuestros clientes
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Comercios reales que han transformado su gestión con nuestro sistema
-          </p>
-        </div>
-        
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {/* Testimonio 1 */}
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              ))}
-            </div>
-            <p className="text-sm mb-4">
-              "Antes llevaba todo en cuadernos y Excel. Ahora con este sistema puedo ver mi inventario en tiempo real y saber exactamente qué productos se venden más. Ha sido un cambio total para mi negocio."
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold">MC</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm">María Contreras</p>
-                <p className="text-xs text-muted-foreground">Bazar Lili, Buenos Aires</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Testimonio 2 */}
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              ))}
-            </div>
-            <p className="text-sm mb-4">
-              "Lo mejor es que puedo acceder desde mi celular cuando estoy fuera de la tienda. Mis empleados registran las ventas y yo puedo ver todo en tiempo real. Muy recomendado para pequeños comercios."
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold">JR</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Juan Rodríguez</p>
-                <p className="text-xs text-muted-foreground">Ferretería El Tornillo, Córdoba</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Testimonio 3 */}
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              ))}
-            </div>
-            <p className="text-sm mb-4">
-              "El sistema es muy fácil de usar. En menos de una hora ya estaba cargando mis productos y haciendo ventas. El soporte técnico responde rápido cuando tengo dudas. Excelente relación precio-calidad."
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold">AS</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Andrea Silva</p>
-                <p className="text-xs text-muted-foreground">Librería Mundo Papel, Rosario</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Testimonio 4 */}
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              ))}
-            </div>
-            <p className="text-sm mb-4">
-              "Tengo dos locales y antes era un caos controlar el stock de ambos. Ahora puedo ver el inventario de las dos tiendas desde un solo lugar. Me ahorra muchísimo tiempo y evita errores."
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold">PM</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Pedro Morales</p>
-                <p className="text-xs text-muted-foreground">Minimarket Don Pedro, Mendoza</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Testimonio 5 */}
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              ))}
-            </div>
-            <p className="text-sm mb-4">
-              "Los reportes me ayudan a tomar mejores decisiones. Puedo ver qué productos no se venden y cuáles necesito comprar más. Además, las facturas se generan automáticamente. Muy profesional."
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold">LG</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Laura González</p>
-                <p className="text-xs text-muted-foreground">Boutique Elegancia, Mar del Plata</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Testimonio 6 */}
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              ))}
-            </div>
-            <p className="text-sm mb-4">
-              "Probé varios sistemas antes y este es el más completo por el precio. Tiene todo lo que necesito: inventario, ventas, clientes, proveedores. Y lo mejor es que no necesito instalar nada."
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold">CF</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Carlos Fuentes</p>
-                <p className="text-xs text-muted-foreground">Repuestos Automotriz CF, Tucumán</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
 
       {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Sistema de gestión para comercios. Todos los derechos reservados.</p>
+      <footer className="bg-[#000080] border-t-2 border-[#808080] py-3 mt-6">
+        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-blue-200">
+          © {new Date().getFullYear()} Sistema de Gestión para Comercios. Todos los derechos reservados.
         </div>
       </footer>
     </div>

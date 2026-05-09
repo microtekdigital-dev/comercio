@@ -9,7 +9,7 @@ import {
   canAccessAccountsSettlement,
   canAccessRepairs
 } from "@/lib/utils/plan-limits";
-import { DashboardSidebar } from "./sidebar";
+import { SidebarClientWrapper } from "./sidebar-client-wrapper";
 import type { FeaturePermission } from "@/lib/types/plans";
 
 // Deshabilitar caché para que los permisos se actualicen inmediatamente
@@ -65,8 +65,8 @@ export async function DashboardSidebarServer() {
   };
 
   return (
-    <DashboardSidebar 
-      user={serializedUser} 
+    <SidebarClientWrapper
+      user={serializedUser}
       permissions={permissions}
     />
   );

@@ -8,28 +8,27 @@ import { NotificationSettings } from "@/components/dashboard/notification-settin
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   const company = await getCompanyInfo();
-
   if (!user) return null;
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Configuración</h1>
-        <p className="text-muted-foreground mt-1">
-          Gestiona tu perfil y configuración de la empresa
-        </p>
-      </div>
-
-      <div className="grid gap-8 max-w-4xl">
-        <ThemeSettings />
-        <NotificationSettings />
-        <ProfileSettings user={user} />
-        {(user.role === "owner" || user.role === "admin") && company && (
-          <CompanySettingsAdvanced 
-            company={company} 
-            onUpdate={updateCompanySettings}
-          />
-        )}
+    <div className="space-y-4 text-black">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1">
+          <span className="text-white text-sm font-bold">⚙ Configuración</span>
+        </div>
+        <div className="bg-[#d4d0c8] p-4 space-y-6">
+          <ThemeSettings />
+          <div className="border-t border-[#808080]" />
+          <NotificationSettings />
+          <div className="border-t border-[#808080]" />
+          <ProfileSettings user={user} />
+          {(user.role === "owner" || user.role === "admin") && company && (
+            <>
+              <div className="border-t border-[#808080]" />
+              <CompanySettingsAdvanced company={company} onUpdate={updateCompanySettings} />
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

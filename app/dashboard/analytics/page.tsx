@@ -2,19 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import {
-  canAccessAdvancedReports,
-  canAccessCompleteReports,
-  canAccessSuppliers,
-  canAccessPurchaseOrders,
-  canExportToExcel,
-} from "@/lib/utils/plan-limits";
+import { canAccessAdvancedReports, canAccessCompleteReports, canAccessSuppliers, canAccessPurchaseOrders, canExportToExcel } from "@/lib/utils/plan-limits";
 import { BasicReports } from "@/components/dashboard/analytics/basic-reports";
 import { AdvancedReports } from "@/components/dashboard/analytics/advanced-reports";
 import { CompleteReports } from "@/components/dashboard/analytics/complete-reports";
 import { UpgradePrompt } from "@/components/dashboard/analytics/upgrade-prompt";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
@@ -29,117 +22,90 @@ export default function AnalyticsPage() {
   const [completeMessage, setCompleteMessage] = useState("");
 
   useEffect(() => {
-    checkAccess();
+    const check = async () => {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase.from("profiles").select("company_id").eq("id", user.id).single();
+        if (!profile?.company_id) return;
+        setCompanyId(profile.company_id);
+        const [adv, comp, sup, po, exp] = await Promise.all([
+          canAccessAdvancedReports(profile.company_id),
+          canAccessCompleteReports(profile.company_id),
+          canAccessSuppliers(profile.company_id),
+          canAccessPurchaseOrders(profile.company_id),
+          canExportToExcel(profile.company_id),
+        ]);
+        setHasAdvancedAccess(adv.allowed);
+        setHasCompleteAccess(comp.allowed);
+        setHasSupplierAccess(sup.allowed);
+        setHasPurchaseOrderAccess(po.allowed);
+        setCanExport(exp.allowed);
+        setAdvancedMessage(adv.message || "");
+        setCompleteMessage(comp.message || "");
+        setCurrentPlan(comp.allowed ? "Empresarial" : adv.allowed ? "Pro" : "Básico");
+      } finally { setLoading(false); }
+    };
+    check();
   }, []);
-
-  const checkAccess = async () => {
-    setLoading(true);
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("company_id")
-        .eq("id", user.id)
-        .single();
-
-      if (!profile?.company_id) {
-        setLoading(false);
-        return;
-      }
-
-      setCompanyId(profile.company_id);
-
-      // Check all access levels
-      const [advancedAccess, completeAccess, supplierAccess, poAccess, exportAccess] = await Promise.all([
-        canAccessAdvancedReports(profile.company_id),
-        canAccessCompleteReports(profile.company_id),
-        canAccessSuppliers(profile.company_id),
-        canAccessPurchaseOrders(profile.company_id),
-        canExportToExcel(profile.company_id),
-      ]);
-
-      setHasAdvancedAccess(advancedAccess.allowed);
-      setHasCompleteAccess(completeAccess.allowed);
-      setHasSupplierAccess(supplierAccess.allowed);
-      setHasPurchaseOrderAccess(poAccess.allowed);
-      setCanExport(exportAccess.allowed);
-      setAdvancedMessage(advancedAccess.message || "");
-      setCompleteMessage(completeAccess.message || "");
-
-      // Determine current plan based on access
-      if (completeAccess.allowed) {
-        setCurrentPlan("Empresarial");
-      } else if (advancedAccess.allowed) {
-        setCurrentPlan("Pro");
-      } else {
-        setCurrentPlan("Básico");
-      }
-    } catch (error) {
-      console.error("Error checking access:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-4 md:space-y-6 p-4 md:p-8 pt-4 md:pt-6">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-[400px] w-full" />
-        <Skeleton className="h-[400px] w-full" />
+      <div className="flex items-center justify-center py-16 gap-2 text-sm text-gray-500">
+        <Loader2 className="h-4 w-4 animate-spin" /> Cargando reportes...
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-6 md:space-y-8 p-4 md:p-8 pt-4 md:pt-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Analítica y Reportes</h2>
-        <p className="text-sm md:text-base text-muted-foreground">
-          Análisis detallado de tu negocio • Plan actual: <span className="font-semibold">{currentPlan}</span>
-        </p>
+    <div className="space-y-4 text-black">
+      {/* Header */}
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
+          <span className="text-white text-sm font-bold">📊 Analítica y Reportes</span>
+          <span className="text-blue-200 text-xs">Plan: {currentPlan}</span>
+        </div>
       </div>
 
-      {/* Basic Reports - Always visible */}
-      <BasicReports canExport={canExport} />
+      {/* Basic Reports */}
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1">
+          <span className="text-white text-sm font-bold">📈 Reportes Básicos</span>
+        </div>
+        <div className="bg-[#d4d0c8] p-3">
+          <BasicReports canExport={canExport} />
+        </div>
+      </div>
 
-      <Separator className="my-8" />
+      {/* Advanced Reports */}
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1">
+          <span className="text-white text-sm font-bold">📉 Reportes Avanzados</span>
+        </div>
+        <div className="bg-[#d4d0c8] p-3">
+          {hasAdvancedAccess ? (
+            <AdvancedReports hasSupplierAccess={hasSupplierAccess} hasPurchaseOrderAccess={hasPurchaseOrderAccess} />
+          ) : (
+            <UpgradePrompt currentPlan={currentPlan} requiredPlan="Pro" featureName="Reportes Avanzados" message={advancedMessage} />
+          )}
+        </div>
+      </div>
 
-      {/* Advanced Reports - Conditional */}
-      {hasAdvancedAccess ? (
-        <AdvancedReports
-          hasSupplierAccess={hasSupplierAccess}
-          hasPurchaseOrderAccess={hasPurchaseOrderAccess}
-        />
-      ) : (
-        <UpgradePrompt
-          currentPlan={currentPlan}
-          requiredPlan="Pro"
-          featureName="Reportes Avanzados"
-          message={advancedMessage}
-        />
-      )}
-
-      <Separator className="my-8" />
-
-      {/* Complete Reports - Conditional */}
-      {hasCompleteAccess ? (
-        <CompleteReports />
-      ) : (
-        <UpgradePrompt
-          currentPlan={currentPlan}
-          requiredPlan="Empresarial"
-          featureName="Reportes Completos"
-          message={completeMessage}
-        />
-      )}
+      {/* Complete Reports */}
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1">
+          <span className="text-white text-sm font-bold">📋 Reportes Completos</span>
+        </div>
+        <div className="bg-[#d4d0c8] p-3">
+          {hasCompleteAccess ? (
+            <CompleteReports />
+          ) : (
+            <UpgradePrompt currentPlan={currentPlan} requiredPlan="Empresarial" featureName="Reportes Completos" message={completeMessage} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

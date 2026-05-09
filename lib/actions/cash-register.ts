@@ -339,36 +339,36 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
       return { error: "No se encontró la empresa" }
     }
 
-    // Find corresponding opening - buscar en aperturas activas por turno
+    // Find the active opening (one without a closure) — ignore shift filter
+    // The shift selected in the closure form is just a label, not used to match the opening
     let opening: CashRegisterOpening | null = null
     
-    if (formData.shift) {
-      // Get all openings and closures to find active openings
+    {
       const [allOpenings, allClosures] = await Promise.all([
         getCashRegisterOpenings(),
         getCashRegisterClosures()
       ])
       
-      // Filter openings that don't have a corresponding closure
-      const activeOpenings = allOpenings.filter(op => {
-        const hasMatchingClosure = allClosures.some(closure => 
-          closure.opening_id === op.id
-        )
-        return !hasMatchingClosure
-      })
+      const closedIds = new Set(allClosures.map(c => c.opening_id).filter(Boolean))
       
-      // Find opening that matches the selected shift
-      opening = activeOpenings.find(op => op.shift === formData.shift) || null
+      // Get the most recent opening that has no closure
+      const activeOpenings = allOpenings
+        .filter(op => !closedIds.has(op.id))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      
+      opening = activeOpenings[0] || null
     }
 
     // Get sales for the specified date
-    const closureDate = new Date(formData.closure_date)
-    const startOfDay = new Date(closureDate)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(closureDate)
-    endOfDay.setHours(23, 59, 59, 999)
+    // Build UTC range directly from YYYY-MM-DD treating it as Argentina local (UTC-3)
+    const [cYear, cMonth, cDay] = formData.closure_date.split('-').map(Number)
+    const startUTC = new Date(Date.UTC(cYear, cMonth - 1, cDay, 3, 0, 0, 0))
+    const endUTC = new Date(Date.UTC(cYear, cMonth - 1, cDay + 1, 2, 59, 59, 999))
+    // Keep startOfDay/endOfDay for supplier payments date filter (uses date string)
+    const startOfDay = new Date(Date.UTC(cYear, cMonth - 1, cDay, 0, 0, 0, 0))
+    const endOfDay = new Date(Date.UTC(cYear, cMonth - 1, cDay, 23, 59, 59, 999))
 
-    // Get existing closures for this date and shift to find the last closure timestamp
+    // Get existing closures for this date — used only for reference, not for filtering sales
     const { data: existingClosures } = await supabase
       .from("cash_register_closures")
       .select("created_at")
@@ -378,42 +378,25 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
       .order("created_at", { ascending: false })
       .limit(1)
 
-    // If there's a previous closure for this date, only get sales after that closure
-    const lastClosureTime = existingClosures && existingClosures.length > 0 
-      ? existingClosures[0].created_at 
-      : null
-
-    let salesQuery = supabase
+    // Query ALL sales for the day using UTC-adjusted range
+    // We use sale_date (when the sale happened) not created_at to avoid timezone issues
+    const { data: sales, error: salesError } = await supabase
       .from("sales")
       .select("total, payment_method, created_at, discount_amount, payments:sale_payments(amount, payment_method)")
       .eq("company_id", profile.company_id)
       .eq("status", "completed")
-      .gte("sale_date", startOfDay.toISOString())
-      .lte("sale_date", endOfDay.toISOString())
-
-    // Only get sales created after the last closure
-    if (lastClosureTime) {
-      salesQuery = salesQuery.gt("created_at", lastClosureTime)
-    }
-
-    const { data: sales, error: salesError } = await salesQuery
+      .gte("sale_date", startUTC.toISOString())
+      .lte("sale_date", endUTC.toISOString())
 
     if (salesError) throw salesError
 
     // Get supplier payments for the specified date
-    let paymentsQuery = supabase
+    const { data: supplierPayments, error: paymentsError } = await supabase
       .from("supplier_payments")
       .select("amount, payment_method, created_at")
       .eq("company_id", profile.company_id)
-      .gte("payment_date", startOfDay.toISOString().split('T')[0])
-      .lte("payment_date", endOfDay.toISOString().split('T')[0])
-
-    // Only get payments created after the last closure
-    if (lastClosureTime) {
-      paymentsQuery = paymentsQuery.gt("created_at", lastClosureTime)
-    }
-
-    const { data: supplierPayments, error: paymentsError } = await paymentsQuery
+      .gte("payment_date", formData.closure_date)
+      .lte("payment_date", formData.closure_date)
 
     if (paymentsError) throw paymentsError
 
@@ -514,20 +497,14 @@ export async function createCashRegisterClosure(formData: CashRegisterClosureFor
     }
 
     // Get returns (cash/transfer refunds) for this period
-    let returnsQuery = supabase
+    const { data: returns } = await supabase
       .from("sale_returns")
       .select("total_amount, refund_method, created_at")
       .eq("company_id", profile.company_id)
       .eq("status", "completed")
       .in("refund_method", ["cash", "transfer"])
-      .gte("return_date", startOfDay.toISOString())
-      .lte("return_date", endOfDay.toISOString())
-
-    if (lastClosureTime) {
-      returnsQuery = returnsQuery.gt("created_at", lastClosureTime)
-    }
-
-    const { data: returns } = await returnsQuery
+      .gte("return_date", startUTC.toISOString())
+      .lte("return_date", endUTC.toISOString())
 
     let totalReturnsCash = 0
     let totalReturnsTransfer = 0
@@ -717,13 +694,11 @@ export async function getSalesForClosure(
   const supabase = await createClient()
   
   try {
-    const date = new Date(closureDate)
-    const startOfDay = new Date(date)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(date)
-    endOfDay.setHours(23, 59, 59, 999)
+    const [year, month, day] = closureDate.split('T')[0].split('-').map(Number)
+    const startUTC = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0))
+    const endUTC = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999))
 
-    let query = supabase
+    const { data, error } = await supabase
       .from("sales")
       .select(`
         *,
@@ -732,17 +707,9 @@ export async function getSalesForClosure(
       `)
       .eq("company_id", companyId)
       .eq("status", "completed")
-      .gte("sale_date", startOfDay.toISOString())
-      .lte("sale_date", endOfDay.toISOString())
-
-    // Only get sales created after the last closure
-    if (lastClosureTime) {
-      query = query.gt("created_at", lastClosureTime)
-    }
-
-    query = query.order("sale_date", { ascending: true })
-
-    const { data, error } = await query
+      .gte("sale_date", startUTC.toISOString())
+      .lte("sale_date", endUTC.toISOString())
+      .order("sale_date", { ascending: true })
 
     if (error) throw error
     return data || []
@@ -795,8 +762,8 @@ export async function getSupplierPaymentsForClosure(
         supplier:suppliers(name)
       `)
       .eq("company_id", companyId)
-      .gte("payment_date", startOfDay.toISOString().split('T')[0])
-      .lte("payment_date", endOfDay.toISOString().split('T')[0])
+      .gte("payment_date", closureDate.split('T')[0])
+      .lte("payment_date", closureDate.split('T')[0])
 
     // Only get payments created after the last closure
     if (lastClosureTime) {
@@ -907,5 +874,142 @@ export async function getClosureReportData(closureId: string) {
   } catch (error: any) {
     console.error("Error fetching closure report data:", error)
     return { error: error.message || "Error al obtener datos del reporte" }
+  }
+}
+
+// =====================================================
+// Preview cierre de caja (server action)
+// Usa exactamente la misma lógica que createCashRegisterClosure
+// =====================================================
+
+export async function previewCashRegisterClosure(closureDate: string): Promise<{
+  totalSalesCount: number
+  totalSalesAmount: number
+  cashSales: number
+  cardSales: number
+  transferSales: number
+  otherSales: number
+  supplierPaymentsTotal: number
+  supplierPaymentsCash: number
+  supplierPaymentsCount: number
+  opening: { id: string; initial_cash_amount: number; opened_by_name: string; shift: string } | null
+  error?: string
+}> {
+  const supabase = await createClient()
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "No autenticado", totalSalesCount: 0, totalSalesAmount: 0, cashSales: 0, cardSales: 0, transferSales: 0, otherSales: 0, supplierPaymentsTotal: 0, supplierPaymentsCash: 0, supplierPaymentsCount: 0, opening: null }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.company_id) return { error: "Empresa no encontrada", totalSalesCount: 0, totalSalesAmount: 0, cashSales: 0, cardSales: 0, transferSales: 0, otherSales: 0, supplierPaymentsTotal: 0, supplierPaymentsCash: 0, supplierPaymentsCount: 0, opening: null }
+
+    // Date range — build directly in UTC to avoid timezone issues with setHours
+    // closureDate is "YYYY-MM-DD", treat it as Argentina local date (UTC-3)
+    // So "2026-05-08" local = "2026-05-08T03:00:00Z" start, "2026-05-09T02:59:59Z" end
+    const [year, month, day] = closureDate.split('-').map(Number)
+    // Argentina is UTC-3, so local midnight = UTC+3h
+    const startUTC = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0))
+    const endUTC = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999))
+
+    console.log("[previewCashRegisterClosure] closureDate:", closureDate)
+    console.log("[previewCashRegisterClosure] startUTC:", startUTC.toISOString())
+    console.log("[previewCashRegisterClosure] endUTC:", endUTC.toISOString())
+    console.log("[previewCashRegisterClosure] company_id:", profile.company_id)
+    console.log("[previewCashRegisterClosure] user_id:", user.id)
+
+    // Get ALL sales for the day
+    const { data: sales, error: salesError } = await supabase
+      .from("sales")
+      .select("total, payment_method, payments:sale_payments(amount, payment_method)")
+      .eq("company_id", profile.company_id)
+      .eq("status", "completed")
+      .gte("sale_date", startUTC.toISOString())
+      .lte("sale_date", endUTC.toISOString())
+
+    console.log("[previewCashRegisterClosure] salesError:", salesError)
+    console.log("[previewCashRegisterClosure] sales count:", sales?.length ?? 0)
+
+    // Get supplier payments
+    const { data: supplierPayments } = await supabase
+      .from("supplier_payments")
+      .select("amount, payment_method")
+      .eq("company_id", profile.company_id)
+      .gte("payment_date", closureDate)
+      .lte("payment_date", closureDate)
+
+    // Find active opening
+    const { data: allOpenings } = await supabase
+      .from("cash_register_openings")
+      .select("id, shift, initial_cash_amount, opened_by_name, created_at")
+      .eq("company_id", profile.company_id)
+      .order("created_at", { ascending: false })
+
+    const { data: allClosures } = await supabase
+      .from("cash_register_closures")
+      .select("opening_id")
+      .eq("company_id", profile.company_id)
+
+    const closedIds = new Set((allClosures ?? []).map((c: any) => c.opening_id).filter(Boolean))
+    const activeOpening = (allOpenings ?? []).find((o: any) => !closedIds.has(o.id)) ?? null
+
+    // Calculate totals
+    let totalSalesCount = 0, totalSalesAmount = 0
+    let cashSales = 0, cardSales = 0, transferSales = 0, otherSales = 0
+
+    for (const sale of sales ?? []) {
+      totalSalesCount++
+      totalSalesAmount += Number(sale.total)
+      const payments = (sale as any).payments ?? []
+      if (payments.length > 0) {
+        for (const p of payments) {
+          const amt = Number(p.amount)
+          const m = (p.payment_method ?? "").toLowerCase()
+          if (m.includes("efectivo")) cashSales += amt
+          else if (m.includes("tarjeta") || m.includes("débito") || m.includes("crédito")) cardSales += amt
+          else if (m.includes("transferencia")) transferSales += amt
+          else otherSales += amt
+        }
+      } else {
+        const m = ((sale as any).payment_method ?? "").toLowerCase()
+        const amt = Number(sale.total)
+        if (m.includes("efectivo")) cashSales += amt
+        else if (m.includes("tarjeta") || m.includes("débito") || m.includes("crédito")) cardSales += amt
+        else if (m.includes("transferencia")) transferSales += amt
+        else otherSales += amt
+      }
+    }
+
+    let supplierPaymentsTotal = 0, supplierPaymentsCash = 0
+    for (const p of supplierPayments ?? []) {
+      supplierPaymentsTotal += Number(p.amount)
+      if ((p.payment_method ?? "").toLowerCase().includes("efectivo")) supplierPaymentsCash += Number(p.amount)
+    }
+
+    return {
+      totalSalesCount,
+      totalSalesAmount,
+      cashSales,
+      cardSales,
+      transferSales,
+      otherSales,
+      supplierPaymentsTotal,
+      supplierPaymentsCash,
+      supplierPaymentsCount: (supplierPayments ?? []).length,
+      opening: activeOpening ? {
+        id: activeOpening.id,
+        initial_cash_amount: activeOpening.initial_cash_amount,
+        opened_by_name: activeOpening.opened_by_name,
+        shift: activeOpening.shift,
+      } : null,
+    }
+  } catch (error: any) {
+    console.error("Error in previewCashRegisterClosure:", error)
+    return { error: error.message, totalSalesCount: 0, totalSalesAmount: 0, cashSales: 0, cardSales: 0, transferSales: 0, otherSales: 0, supplierPaymentsTotal: 0, supplierPaymentsCash: 0, supplierPaymentsCount: 0, opening: null }
   }
 }

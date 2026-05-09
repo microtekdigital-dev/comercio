@@ -4,65 +4,37 @@ import { canAccessStockHistory } from "@/lib/utils/plan-limits"
 import { getStockMovements } from "@/lib/actions/stock-movements"
 import { getProducts } from "@/lib/actions/products"
 import { StockHistoryTable } from "@/components/dashboard/stock-history-table"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { History } from "lucide-react"
 
 export default async function StockHistoryPage() {
   const user = await getCurrentUser()
-  
-  if (!user?.company_id) {
-    redirect("/dashboard")
-  }
+  if (!user?.company_id) redirect("/pos")
 
-  // Verificar permisos server-side
   const permission = await canAccessStockHistory(user.company_id)
-  
-  if (!permission.allowed) {
-    redirect("/dashboard?error=insufficient_permissions")
-  }
+  if (!permission.allowed) redirect("/pos?error=insufficient_permissions")
 
   const [movements, products] = await Promise.all([
     getStockMovements(),
     getProducts(),
   ])
 
-  // Get unique employees from movements
   const employeesMap = new Map()
-  movements.forEach(movement => {
-    if (!employeesMap.has(movement.created_by)) {
-      employeesMap.set(movement.created_by, {
-        id: movement.created_by,
-        name: movement.created_by_name
-      })
+  movements.forEach(m => {
+    if (!employeesMap.has(m.created_by)) {
+      employeesMap.set(m.created_by, { id: m.created_by, name: m.created_by_name })
     }
   })
   const employees = Array.from(employeesMap.values())
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-          <History className="h-6 w-6 text-primary" />
+    <div className="space-y-3 text-black">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        <div className="bg-[#000080] px-3 py-1">
+          <span className="text-white text-sm font-bold">📈 Historial de Stock ({movements.length} movimientos)</span>
         </div>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Historial de Stock</h2>
-          <p className="text-muted-foreground">
-            Registro completo de todos los movimientos de inventario
-          </p>
+        <div className="bg-[#d4d0c8] p-3">
+          <StockHistoryTable movements={movements} employees={employees} />
         </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Movimientos de Inventario</CardTitle>
-          <CardDescription>
-            Visualiza y filtra todos los movimientos de stock de tu empresa
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <StockHistoryTable movements={movements} employees={employees} />
-        </CardContent>
-      </Card>
     </div>
   )
 }
