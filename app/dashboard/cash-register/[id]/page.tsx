@@ -4,17 +4,16 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getClosureReportData } from "@/lib/actions/cash-register";
 import { getCompanySettings } from "@/lib/actions/company-settings";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { CashClosureReport } from "@/components/dashboard/cash-closure-report";
 import { CashClosureReportActions } from "@/components/dashboard/cash-closure-report-actions";
-import type { 
-  CashRegisterClosure, 
-  CashRegisterOpening, 
-  Sale, 
-  CashMovement, 
+import type {
+  CashRegisterClosure,
+  CashRegisterOpening,
+  Sale,
+  CashMovement,
   SupplierPayment,
   CompanySettings
 } from "@/lib/types/erp";
@@ -33,47 +32,30 @@ export default function CashRegisterClosureDetailPage() {
   const [supplierPayments, setSupplierPayments] = useState<SupplierPayment[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [companyInfo, setCompanyInfo] = useState<{
-    name: string;
-    address?: string;
-    phone?: string;
-    email?: string;
-    taxId?: string;
-    logoUrl?: string;
+    name: string; address?: string; phone?: string; email?: string; taxId?: string; logoUrl?: string;
   }>({ name: "Mi Empresa" });
 
   useEffect(() => {
     loadReportData();
-    loadSettings();
+    getCompanySettings().then(setSettings).catch(console.error);
   }, [closureId]);
-
-  const loadSettings = async () => {
-    try {
-      const data = await getCompanySettings();
-      setSettings(data);
-    } catch (error) {
-      console.error("Error loading settings:", error);
-    }
-  };
 
   const loadReportData = async () => {
     try {
       setLoading(true);
       const result = await getClosureReportData(closureId);
-
       if ("error" in result) {
         toast.error(result.error);
         router.push("/dashboard/cash-register");
         return;
       }
-
       setClosure(result.closure);
       setOpening(result.opening || null);
       setSales(result.sales);
       setCashMovements(result.cashMovements);
       setSupplierPayments(result.supplierPayments);
       setCompanyInfo(result.companyInfo);
-    } catch (error) {
-      console.error("Error loading report data:", error);
+    } catch {
       toast.error("Error al cargar el reporte");
       router.push("/dashboard/cash-register");
     } finally {
@@ -83,72 +65,69 @@ export default function CashRegisterClosureDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Cargando reporte...</p>
-        </div>
+      <div className="flex items-center justify-center py-16 gap-2 text-sm text-gray-500">
+        <Loader2 className="h-5 w-5 animate-spin" /> Cargando reporte...
       </div>
     );
   }
 
   if (!closure || !settings) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">No se encontró el cierre</p>
-          <Link href="/dashboard/cash-register">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver a la lista
-            </Button>
-          </Link>
+      <div className="space-y-3 text-black">
+        <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+          <div className="bg-[#000080] px-3 py-1">
+            <span className="text-white text-sm font-bold">💰 Informe de Cierre</span>
+          </div>
+          <div className="bg-[#d4d0c8] p-6 text-center space-y-3">
+            <p className="text-sm font-bold">No se encontró el cierre</p>
+            <Link href="/dashboard/cash-register"
+              className="inline-block border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
+              ← Volver a la lista
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between no-print">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/cash-register">
-            <Button variant="ghost" size="icon">
+    <div className="space-y-3 text-black select-none">
+      <div className="border-2 border-[#808080] shadow-[2px_2px_0px_#000]">
+        {/* Title bar */}
+        <div className="bg-[#000080] px-3 py-1 flex items-center justify-between no-print">
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/cash-register" className="text-blue-200 hover:text-white">
               <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Informe de Cierre de Caja</h2>
-            <p className="text-muted-foreground">
-              Detalle completo del cierre
-            </p>
+            </Link>
+            <span className="text-white text-sm font-bold">💰 Informe de Cierre de Caja</span>
           </div>
+          <CashClosureReportActions
+            closureId={closureId}
+            closureDate={closure.closure_date}
+            reportRef={reportRef}
+            closure={closure}
+            opening={opening}
+            sales={sales}
+            cashMovements={cashMovements}
+            supplierPayments={supplierPayments}
+            companyInfo={companyInfo}
+            settings={settings}
+          />
         </div>
-        <CashClosureReportActions
-          closureId={closureId}
-          closureDate={closure.closure_date}
-          reportRef={reportRef}
-          closure={closure}
-          opening={opening}
-          sales={sales}
-          cashMovements={cashMovements}
-          supplierPayments={supplierPayments}
-          companyInfo={companyInfo}
-          settings={settings}
-        />
-      </div>
 
-      <div className="bg-white rounded-lg shadow-sm border">
-        <CashClosureReport
-          ref={reportRef}
-          closure={closure}
-          opening={opening}
-          sales={sales}
-          cashMovements={cashMovements}
-          supplierPayments={supplierPayments}
-          settings={settings}
-          companyInfo={companyInfo}
-        />
+        {/* Report body */}
+        <div className="bg-white">
+          <CashClosureReport
+            ref={reportRef}
+            closure={closure}
+            opening={opening}
+            sales={sales}
+            cashMovements={cashMovements}
+            supplierPayments={supplierPayments}
+            settings={settings}
+            companyInfo={companyInfo}
+          />
+        </div>
       </div>
     </div>
   );
