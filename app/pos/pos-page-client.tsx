@@ -107,6 +107,22 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
 
   useEffect(() => { codeRef.current?.focus(); }, []);
 
+  // Devolver foco al input de código cuando se hace click en cualquier parte
+  // que no sea un input, select, textarea, o el modal de pago
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const tag = target.tagName.toLowerCase();
+      // No robar foco si el click fue en un campo de texto o select
+      if (tag === "input" || tag === "select" || tag === "textarea") return;
+      // No robar foco si hay un modal/dialog abierto
+      if (target.closest("[role='dialog']") || target.closest(".fixed.inset-0")) return;
+      setTimeout(() => codeRef.current?.focus(), 50);
+    };
+    document.addEventListener("mouseup", handler);
+    return () => document.removeEventListener("mouseup", handler);
+  }, []);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (customerRef.current && !customerRef.current.contains(e.target as Node)) {
@@ -777,7 +793,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
             )}
 
             <button
-              onClick={() => { clearCart(); setCustomer(null); setStockAlert(null); setLastSale(null); }}
+              onClick={() => { clearCart(); setCustomer(null); setStockAlert(null); setLastSale(null); setTimeout(() => codeRef.current?.focus(), 50); }}
               disabled={isEmpty}
               className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] disabled:opacity-40">
               Limpiar
