@@ -1,34 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { deleteCashMovement } from "@/lib/actions/cash-movements"
 import { getCompanySettings } from "@/lib/actions/company-settings"
 import { formatCompanyCurrency } from "@/lib/utils/currency"
-import type { CompanySettings } from "@/lib/types/erp"
-import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
-import { TrendingUp, TrendingDown, Trash2, User, Calendar } from "lucide-react"
-import type { CashMovement } from "@/lib/types/erp"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import type { CompanySettings, CashMovement } from "@/lib/types/erp"
+import { toast } from "sonner"
+import { TrendingUp, TrendingDown, Trash2, Loader2 } from "lucide-react"
 
 interface CashMovementsListProps {
   movements: CashMovement[]
@@ -39,248 +17,133 @@ export function CashMovementsList({ movements, onDelete }: CashMovementsListProp
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [settings, setSettings] = useState<CompanySettings | null>(null)
-  const { toast } = useToast()
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    loadSettings()
+    getCompanySettings().then(setSettings).catch(console.error)
   }, [])
 
-  const loadSettings = async () => {
-    try {
-      const data = await getCompanySettings()
-      setSettings(data)
-    } catch (error) {
-      console.error("Error loading settings:", error)
-    }
+  const fmt = (n: number) => settings ? formatCompanyCurrency(n, settings) : `$${n.toFixed(2)}`
+
+  const fmtDate = (d: string) => {
+    const dt = new Date(d)
+    return `${dt.getDate().toString().padStart(2,"0")}/${(dt.getMonth()+1).toString().padStart(2,"0")}/${dt.getFullYear()} ${dt.getHours().toString().padStart(2,"0")}:${dt.getMinutes().toString().padStart(2,"0")}`
   }
 
-  const formatCurrency = (amount: number) => {
-    return settings 
-      ? formatCompanyCurrency(amount, settings)
-      : `$${amount.toFixed(2)}`
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const day = date.getDate().toString().padStart(2, "0")
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const year = date.getFullYear()
-    const hours = date.getHours().toString().padStart(2, "0")
-    const minutes = date.getMinutes().toString().padStart(2, "0")
-    return `${day}/${month}/${year} ${hours}:${minutes}`
-  }
-
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!deleteId) return
-
     setLoading(true)
     try {
       const result = await deleteCashMovement(deleteId)
-
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        })
-        return
-      }
-
-      toast({
-        title: "Éxito",
-        description: "Movimiento eliminado correctamente",
-      })
-
-      if (onDelete) {
-        onDelete()
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al eliminar el movimiento",
-        variant: "destructive",
-      })
+      if (result.error) { toast.error(result.error); return }
+      toast.success("Movimiento eliminado")
+      onDelete?.()
+    } catch {
+      toast.error("Error al eliminar el movimiento")
     } finally {
       setLoading(false)
       setDeleteId(null)
     }
-  }
+  }, [deleteId, onDelete])
 
-  // Calculate totals
-  const totalIncome = movements
-    .filter((m) => m.movement_type === "income")
-    .reduce((sum, m) => sum + m.amount, 0)
-
-  const totalWithdrawals = movements
-    .filter((m) => m.movement_type === "withdrawal")
-    .reduce((sum, m) => sum + m.amount, 0)
-
-  const netMovement = totalIncome - totalWithdrawals
+  const totalIncome = movements.filter(m => m.movement_type === "income").reduce((s, m) => s + m.amount, 0)
+  const totalWithdrawals = movements.filter(m => m.movement_type === "withdrawal").reduce((s, m) => s + m.amount, 0)
+  const net = totalIncome - totalWithdrawals
 
   if (movements.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No hay movimientos</h3>
-          <p className="text-muted-foreground text-center">
-            Los ingresos y retiros de caja aparecerán aquí
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-8 gap-2 text-gray-500">
+        <TrendingUp className="h-8 w-8 opacity-30" />
+        <p className="text-xs">Sin movimientos en este turno</p>
+      </div>
     )
   }
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Totals Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                Total Ingresos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(totalIncome)}
+      {/* Confirm delete dialog */}
+      {deleteId && (
+        <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="border-2 border-[#808080] shadow-[4px_4px_0px_#000] w-80">
+            <div className="bg-[#000080] px-3 py-1">
+              <span className="text-white text-sm font-bold">⚠ Confirmar eliminación</span>
+            </div>
+            <div className="bg-[#d4d0c8] p-4 space-y-3">
+              <p className="text-xs">¿Estás seguro? Esta acción no se puede deshacer.</p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setDeleteId(null)} disabled={loading}
+                  className="border border-[#808080] bg-[#d4d0c8] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button onClick={handleDelete} disabled={loading}
+                  className="border border-[#808080] bg-[#ffcccc] px-4 py-1.5 text-xs font-bold shadow-[2px_2px_0px_#808080] hover:bg-[#ffaaaa] disabled:opacity-50 flex items-center gap-1">
+                  {loading ? <><Loader2 className="h-3 w-3 animate-spin" /> Eliminando...</> : "🗑 Eliminar"}
+                </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </div>
+      )}
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-red-600" />
-                Total Retiros
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(totalWithdrawals)}
+      <div className="space-y-2">
+        {/* Totales */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: "Ingresos", value: fmt(totalIncome), color: "text-green-700", icon: <TrendingUp className="h-3 w-3" /> },
+            { label: "Retiros", value: fmt(totalWithdrawals), color: "text-red-700", icon: <TrendingDown className="h-3 w-3" /> },
+            { label: "Neto", value: fmt(net), color: net >= 0 ? "text-green-700" : "text-red-700", icon: null },
+          ].map((s, i) => (
+            <div key={i} className="border-2 border-[#808080] bg-white p-2 shadow-[inset_1px_1px_2px_#808080]">
+              <div className="flex items-center gap-1 text-gray-500 mb-1">
+                {s.icon}<span className="text-[10px]">{s.label}</span>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Movimiento Neto</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div
-                className={`text-2xl font-bold ${
-                  netMovement > 0
-                    ? "text-green-600"
-                    : netMovement < 0
-                    ? "text-red-600"
-                    : ""
-                }`}
-              >
-                {formatCurrency(netMovement)}
-              </div>
-            </CardContent>
-          </Card>
+              <div className={`text-sm font-bold font-mono ${s.color}`}>{s.value}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Movements Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalle de Movimientos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Monto</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {movements.map((movement) => (
-                  <TableRow key={movement.id}>
-                    <TableCell>
-                      <Badge
-                        variant={movement.movement_type === "income" ? "default" : "destructive"}
-                        className="flex items-center gap-1 w-fit"
-                      >
-                        {movement.movement_type === "income" ? (
-                          <>
-                            <TrendingUp className="h-3 w-3" />
-                            Ingreso
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="h-3 w-3" />
-                            Retiro
-                          </>
-                        )}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`font-semibold ${
-                          movement.movement_type === "income" ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {formatCurrency(movement.amount)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {movement.description}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <User className="h-3 w-3" />
-                        {movement.created_by_name}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(movement.created_at)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteId(movement.id)}
-                        disabled={loading}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+        {/* Tabla */}
+        <div className="border-2 border-[#808080] overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-[#d4d0c8] border-b-2 border-[#808080]">
+                {["Tipo", "Monto", "Descripción", "Usuario", "Fecha", ""].map((h, i) => (
+                  <th key={i} className={`px-2 py-1 font-bold border-r border-[#808080] last:border-r-0 ${i >= 1 && i <= 2 ? "text-left" : i >= 3 ? "text-left" : "text-left"}`}>{h}</th>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              </tr>
+            </thead>
+            <tbody>
+              {movements.map((m, idx) => (
+                <tr key={m.id} className={`border-b border-[#e0e0e0] ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                  <td className="px-2 py-1.5 border-r border-[#e0e0e0]">
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold border ${
+                      m.movement_type === "income"
+                        ? "bg-[#d4edda] border-[#28a745] text-[#155724]"
+                        : "bg-[#f8d7da] border-[#dc3545] text-[#721c24]"
+                    }`}>
+                      {m.movement_type === "income"
+                        ? <><TrendingUp className="h-2.5 w-2.5" /> Ingreso</>
+                        : <><TrendingDown className="h-2.5 w-2.5" /> Retiro</>}
+                    </span>
+                  </td>
+                  <td className={`px-2 py-1.5 border-r border-[#e0e0e0] font-mono font-bold ${m.movement_type === "income" ? "text-green-700" : "text-red-700"}`}>
+                    {fmt(m.amount)}
+                  </td>
+                  <td className="px-2 py-1.5 border-r border-[#e0e0e0] max-w-[180px] truncate">{m.description}</td>
+                  <td className="px-2 py-1.5 border-r border-[#e0e0e0] text-gray-600">{m.created_by_name}</td>
+                  <td className="px-2 py-1.5 border-r border-[#e0e0e0] text-gray-600 whitespace-nowrap">{fmtDate(m.created_at)}</td>
+                  <td className="px-2 py-1.5 text-center">
+                    <button onClick={() => setDeleteId(m.id)} disabled={loading}
+                      className="text-red-600 hover:text-red-800 disabled:opacity-40">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. El movimiento será eliminado permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={loading}>
-              {loading ? "Eliminando..." : "Eliminar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
