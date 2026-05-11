@@ -33,7 +33,7 @@ export default function LoginPage() {
     if (error) { setError(error.message); setGoogleLoading(false) }
   }
 
-  const f = "border border-[#808080] bg-white text-sm px-2 py-1.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full"
+  const f = "border border-[#808080] bg-white text-black text-sm px-2 py-1.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080] w-full"
   const l = "text-xs font-bold text-black block mb-0.5"
 
   return (
