@@ -132,6 +132,43 @@ export async function searchPOSProducts(
     .limit(limit);
 
   if (query.trim()) {
+    // Try exact barcode match first for scanner accuracy
+    const exactMatch = await supabase
+      .from("products")
+      .select(`*, variants:product_variants(*)`)
+      .eq("company_id", profile.company_id)
+      .eq("is_active", true)
+      .eq("barcode", query.trim())
+      .limit(1);
+
+    if (!exactMatch.error && exactMatch.data && exactMatch.data.length > 0) {
+      return exactMatch.data.map((product) => ({
+        ...product,
+        variants: (product.variants ?? []).filter(
+          (v: { is_active: boolean }) => v.is_active
+        ),
+      }));
+    }
+
+    // Also try exact SKU match
+    const skuMatch = await supabase
+      .from("products")
+      .select(`*, variants:product_variants(*)`)
+      .eq("company_id", profile.company_id)
+      .eq("is_active", true)
+      .eq("sku", query.trim())
+      .limit(1);
+
+    if (!skuMatch.error && skuMatch.data && skuMatch.data.length > 0) {
+      return skuMatch.data.map((product) => ({
+        ...product,
+        variants: (product.variants ?? []).filter(
+          (v: { is_active: boolean }) => v.is_active
+        ),
+      }));
+    }
+
+    // Fallback: partial search by name/sku/barcode/description
     productsQuery = productsQuery.or(
       `name.ilike.%${query}%,sku.ilike.%${query}%,barcode.ilike.%${query}%,description.ilike.%${query}%`
     );
