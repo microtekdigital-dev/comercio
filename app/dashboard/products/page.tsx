@@ -8,7 +8,7 @@ import { canExportToExcel } from "@/lib/utils/plan-limits";
 import { createClient } from "@/lib/supabase/client";
 import { getCompanySettings } from "@/lib/actions/company-settings";
 import { formatCompanyCurrency } from "@/lib/utils/currency";
-import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users, Upload, Loader2 } from "lucide-react";
+import { Plus, Package, Search, Filter, X, AlertTriangle, Download, FileSpreadsheet, FileText, Users, Upload, Loader2, Barcode } from "lucide-react";
 import { CsvImportModal } from "@/components/dashboard/csv-import-modal";
 import Link from "next/link";
 import { exportProductsToExcel, exportProductsToCSV, exportProductsReportToPDF } from "@/lib/utils/export";
@@ -103,6 +103,9 @@ export default function ProductsPage() {
                 <button onClick={() => setShowCsvImportModal(true)} className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
                   <Upload className="h-3 w-3" /> CSV
                 </button>
+                <Link href="/dashboard/products/scan" className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
+                  <Barcode className="h-3 w-3" /> Escáner
+                </Link>
                 <Link href="/dashboard/products/new" className="border border-[#808080] bg-[#d4d0c8] px-2 py-0.5 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] flex items-center gap-1">
                   <Plus className="h-3 w-3" /> Nuevo
                 </Link>
