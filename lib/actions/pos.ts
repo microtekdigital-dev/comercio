@@ -118,72 +118,70 @@ export async function searchPOSProducts(
 
   if (!profile?.company_id) return [];
 
-  let productsQuery = supabase
+  const q = query.trim();
+
+  const mapProducts = (data: any[]) =>
+    data.map((product) => ({
+      ...product,
+      variants: (product.variants ?? []).filter(
+        (v: { is_active: boolean }) => v.is_active
+      ),
+    }));
+
+  if (q) {
+    // 1. Exact barcode match (scanner — fastest, most accurate)
+    const { data: barcodeData, error: barcodeError } = await supabase
+      .from("products")
+      .select(`*, variants:product_variants(*)`)
+      .eq("company_id", profile.company_id)
+      .eq("is_active", true)
+      .eq("barcode", q)
+      .limit(1);
+
+    if (!barcodeError && barcodeData && barcodeData.length > 0) {
+      return mapProducts(barcodeData);
+    }
+
+    // 2. Exact SKU match
+    const { data: skuData, error: skuError } = await supabase
+      .from("products")
+      .select(`*, variants:product_variants(*)`)
+      .eq("company_id", profile.company_id)
+      .eq("is_active", true)
+      .eq("sku", q)
+      .limit(1);
+
+    if (!skuError && skuData && skuData.length > 0) {
+      return mapProducts(skuData);
+    }
+
+    // 3. Partial search by name/sku/barcode/description
+    const { data, error } = await supabase
+      .from("products")
+      .select(`*, variants:product_variants(*)`)
+      .eq("company_id", profile.company_id)
+      .eq("is_active", true)
+      .or(`name.ilike.%${q}%,sku.ilike.%${q}%,barcode.ilike.%${q}%,description.ilike.%${q}%`)
+      .order("name")
+      .limit(limit);
+
+    if (error || !data) return [];
+    return mapProducts(data);
+  }
+
+  // No query — return all active products
+  const { data, error } = await supabase
     .from("products")
-    .select(
-      `
-      *,
-      variants:product_variants(*)
-    `
-    )
+    .select(`*, variants:product_variants(*)`)
     .eq("company_id", profile.company_id)
     .eq("is_active", true)
     .order("name")
     .limit(limit);
 
-  if (query.trim()) {
-    // Try exact barcode match first for scanner accuracy
-    const exactMatch = await supabase
-      .from("products")
-      .select(`*, variants:product_variants(*)`)
-      .eq("company_id", profile.company_id)
-      .eq("is_active", true)
-      .eq("barcode", query.trim())
-      .limit(1);
-
-    if (!exactMatch.error && exactMatch.data && exactMatch.data.length > 0) {
-      return exactMatch.data.map((product) => ({
-        ...product,
-        variants: (product.variants ?? []).filter(
-          (v: { is_active: boolean }) => v.is_active
-        ),
-      }));
-    }
-
-    // Also try exact SKU match
-    const skuMatch = await supabase
-      .from("products")
-      .select(`*, variants:product_variants(*)`)
-      .eq("company_id", profile.company_id)
-      .eq("is_active", true)
-      .eq("sku", query.trim())
-      .limit(1);
-
-    if (!skuMatch.error && skuMatch.data && skuMatch.data.length > 0) {
-      return skuMatch.data.map((product) => ({
-        ...product,
-        variants: (product.variants ?? []).filter(
-          (v: { is_active: boolean }) => v.is_active
-        ),
-      }));
-    }
-
-    // Fallback: partial search by name/sku/barcode/description
-    productsQuery = productsQuery.or(
-      `name.ilike.%${query}%,sku.ilike.%${query}%,barcode.ilike.%${query}%,description.ilike.%${query}%`
-    );
-  }
-
-  const { data, error } = await productsQuery;
   if (error || !data) return [];
-
-  return data.map((product) => ({
-    ...product,
-    variants: (product.variants ?? []).filter(
-      (v: { is_active: boolean }) => v.is_active
-    ),
-  }));
+  return mapProducts(data);
 }
+
 
 /**
  * Get products by category for POS grid.

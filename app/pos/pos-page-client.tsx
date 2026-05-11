@@ -209,13 +209,14 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
     if (e.key !== "Enter") return;
     const code = codeInput.trim();
     if (!code) return;
+    if (searching) return; // ignorar si ya hay una búsqueda en curso
     setSearching(true);
     setStockAlert(null);
+    setCodeInput(""); // limpiar inmediatamente para que el escáner pueda escribir el siguiente
     try {
       const results = await searchPOSProducts(code);
       if (results.length === 0) {
         toast.error(`No se encontró: "${code}"`);
-        setCodeInput("");
         return;
       }
       const product = results[0];
@@ -229,7 +230,6 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
         }
       }
       addItem(invoiceType === "factura_a" ? product : { ...product, tax_rate: 0 });
-      setCodeInput("");
     } finally {
       setSearching(false);
       codeRef.current?.focus();
@@ -654,7 +654,6 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
             onChange={(e) => setCodeInput(e.target.value)}
             onKeyDown={handleCodeEnter}
             placeholder="Escanear o escribir código → Enter"
-            disabled={searching}
             className="w-56 border border-[#808080] bg-white text-sm px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
           />
           {searching && <Loader2 className="h-4 w-4 animate-spin text-[#000080]" />}
