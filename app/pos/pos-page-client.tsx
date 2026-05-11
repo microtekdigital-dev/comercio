@@ -332,40 +332,40 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 px-2 py-1.5 bg-[#d4d0c8] border-b-2 border-[#808080] shrink-0">
+      <div className="flex items-center gap-1 px-2 py-1.5 bg-[#d4d0c8] border-b-2 border-[#808080] shrink-0 overflow-x-auto">
         {[
           { id: "customers" as const, icon: "👥", label: "Clientes" },
           { id: "products" as const, icon: "📦", label: "Productos" },
-          { id: "sales" as const, icon: "📊", label: "Ventas del día" },
+          { id: "sales" as const, icon: "📊", label: "Ventas" },
         ].map(btn => (
           <button
             key={btn.id}
             onClick={() => openPanel(btn.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border border-[#808080] shadow-[2px_2px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px transition-none
+            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-bold border border-[#808080] shadow-[2px_2px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px transition-none shrink-0
               ${activePanel === btn.id ? "bg-[#000080] text-white shadow-none translate-x-px translate-y-px" : "bg-[#d4d0c8] text-black hover:bg-[#c0c0c0]"}`}
           >
             <span className="text-base">{btn.icon}</span>
-            <span>{btn.label}</span>
+            <span className="hidden sm:inline">{btn.label}</span>
           </button>
         ))}
         <div className="flex-1" />
         <Link href="/dashboard"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-bold border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
-          🖥 Dashboard
+          className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-bold border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] shrink-0">
+          🖥 <span className="hidden sm:inline">Dashboard</span>
         </Link>
         <Link href="/dashboard/cash-register/new"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-bold border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0]">
-          🏦 Cerrar Caja
+          className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-bold border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] hover:bg-[#c0c0c0] shrink-0">
+          🏦 <span className="hidden sm:inline">Cerrar Caja</span>
         </Link>
         <button
           onClick={() => setActivePanel(prev => prev === "menu" ? null : "menu")}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold border border-[#808080] shadow-[2px_2px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px transition-none
+          className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-bold border border-[#808080] shadow-[2px_2px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px transition-none shrink-0
             ${activePanel === "menu" ? "bg-[#000080] text-white shadow-none translate-x-px translate-y-px" : "bg-[#d4d0c8] text-black hover:bg-[#c0c0c0]"}`}
         >
-          🖥 Menú ▾
+          🖥 <span className="hidden sm:inline">Menú</span> ▾
         </button>
         {/* Notifications + Notas internas — right side */}
-        <div className="flex items-center border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] [&_button]:text-black [&_button]:hover:bg-[#c0c0c0] [&_svg]:text-black">
+        <div className="flex items-center border border-[#808080] bg-[#d4d0c8] shadow-[2px_2px_0px_#808080] shrink-0 [&_button]:text-black [&_button]:hover:bg-[#c0c0c0] [&_svg]:text-black">
           <InternalNotesButton />
           <div className="w-px h-6 bg-[#808080]" />
           <NotificationsPopover />
@@ -445,27 +445,36 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
                 </button>
               </div>
               {showNewCustomerForm && (
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-[#808080] bg-[#f0f0f0] shrink-0">
-                  <input value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)} placeholder="Nombre *" className="flex-1 border border-[#808080] bg-white text-xs px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none" />
-                  <input value={newCustomerPhone} onChange={e => setNewCustomerPhone(e.target.value)} placeholder="Teléfono" className="w-32 border border-[#808080] bg-white text-xs px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none" />
+                <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#808080] bg-[#f0f0f0] shrink-0">
+                  <input value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)} placeholder="Nombre *" className="flex-1 min-w-[120px] border border-[#808080] bg-white text-xs px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none" />
+                  <input value={newCustomerPhone} onChange={e => setNewCustomerPhone(e.target.value)} placeholder="Teléfono" className="w-28 border border-[#808080] bg-white text-xs px-2 py-1 shadow-[inset_1px_1px_2px_#808080] focus:outline-none" />
                   <button onClick={handleSaveNewCustomer} disabled={savingCustomer} className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[1px_1px_0px_#808080] hover:bg-[#c0c0c0] disabled:opacity-50">
                     {savingCustomer ? "..." : "✔ Guardar"}
                   </button>
                 </div>
               )}
               <div className="flex-1 overflow-y-auto">
-                <div className="grid grid-cols-[1fr_120px_120px_80px] border-b-2 border-[#808080] bg-[#d4d0c8] sticky top-0">
+                <div className="hidden sm:grid grid-cols-[1fr_120px_120px_80px] border-b-2 border-[#808080] bg-[#d4d0c8] sticky top-0">
                   {["Nombre", "Teléfono", "Email", ""].map((h, i) => <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>)}
                 </div>
                 {loadingPanelCustomers ? (
                   <div className="flex items-center justify-center py-4 gap-2 text-xs text-gray-500"><Loader2 className="h-3 w-3 animate-spin" /> Cargando...</div>
                 ) : panelCustomers.map((c, idx) => (
-                  <div key={c.id} className={`grid grid-cols-[1fr_120px_120px_80px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black cursor-pointer ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
-                    <div className="px-2 py-1.5 text-xs font-semibold border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{c.name}</div>
-                    <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{c.phone ?? "—"}</div>
-                    <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{c.email ?? "—"}</div>
-                    <div className="px-2 py-1.5 text-xs text-center">
-                      <button onClick={() => { setCustomer(c); setActivePanel(null); }} className="text-[#000080] group-hover:text-white underline text-xs">Seleccionar</button>
+                  <div key={c.id} onClick={() => { setCustomer(c); setActivePanel(null); }}
+                    className={`cursor-pointer border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                    {/* Desktop row */}
+                    <div className="hidden sm:grid grid-cols-[1fr_120px_120px_80px]">
+                      <div className="px-2 py-1.5 text-xs font-semibold border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{c.name}</div>
+                      <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{c.phone ?? "—"}</div>
+                      <div className="px-2 py-1.5 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{c.email ?? "—"}</div>
+                      <div className="px-2 py-1.5 text-xs text-center">
+                        <span className="text-[#000080] group-hover:text-white underline text-xs">Sel.</span>
+                      </div>
+                    </div>
+                    {/* Mobile row */}
+                    <div className="sm:hidden px-3 py-2">
+                      <div className="font-bold text-sm">{c.name}</div>
+                      {c.phone && <div className="text-xs text-gray-500">{c.phone}</div>}
                     </div>
                   </div>
                 ))}
@@ -564,7 +573,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
       <div className="flex-1 flex flex-col overflow-hidden border-2 border-[#808080] bg-[#d4d0c8]">
 
         {/* Row 1: Tipo / Número / Vendedor / Fecha */}
-        <div className="flex items-center gap-4 px-3 py-2 border-b border-[#808080] shrink-0">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#808080] shrink-0">
           <select
             value={invoiceType}
             onChange={(e) => {
@@ -574,7 +583,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
             }}
             className="border border-[#808080] bg-white text-sm px-1 py-0.5 font-bold shadow-[inset_1px_1px_2px_#808080] focus:outline-none"
           >
-            <option value="consumidor_final">Consumidor Final</option>
+            <option value="consumidor_final">Cons. Final</option>
             <option value="factura_a">Factura A</option>
             <option value="factura_b">Factura B</option>
           </select>
@@ -582,16 +591,16 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
           <div className="flex items-center gap-1">
             <span className="text-sm font-bold">N°</span>
             <input readOnly value={invoiceNumber}
-              className="w-32 border border-[#808080] bg-[#f0f0f0] text-sm px-1 py-0.5 text-center shadow-[inset_1px_1px_2px_#808080]" />
+              className="w-24 border border-[#808080] bg-[#f0f0f0] text-sm px-1 py-0.5 text-center shadow-[inset_1px_1px_2px_#808080]" />
           </div>
 
-          <div className="flex items-center gap-1 flex-1">
+          <div className="hidden sm:flex items-center gap-1 flex-1">
             <span className="text-sm font-bold">Vendedor</span>
             <input readOnly value={sellerName}
               className="flex-1 border border-[#808080] bg-[#f0f0f0] text-sm px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080]" />
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1">
             <span className="text-sm font-bold">Fecha</span>
             <input readOnly value={todayStr()}
               className="w-28 border border-[#808080] bg-[#f0f0f0] text-sm px-1 py-0.5 text-center shadow-[inset_1px_1px_2px_#808080]" />
@@ -599,24 +608,20 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
         </div>
 
         {/* Row 2: Datos del cliente */}
-        <div className={`grid grid-cols-[80px_1fr_1fr_140px_160px] gap-x-2 px-3 py-1.5 border-b shrink-0 items-end ${
+        <div className={`flex flex-wrap gap-x-2 gap-y-1 px-3 py-1.5 border-b shrink-0 items-end ${
           (invoiceType === "factura_a" || invoiceType === "factura_b") && !customer
             ? "border-red-500 bg-red-50"
             : "border-[#808080]"
         }`}>
           {(invoiceType === "factura_a" || invoiceType === "factura_b") && !customer && (
-            <div className="col-span-5 text-xs text-red-600 font-bold mb-1">
+            <div className="w-full text-xs text-red-600 font-bold mb-1">
               ⚠ Factura {invoiceType === "factura_a" ? "A" : "B"} requiere seleccionar un cliente
             </div>
           )}
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-bold text-[#000080]">Cód Cliente</span>
-            <input readOnly value={customer?.id?.slice(0, 6) ?? ""}
-              className="w-full border border-[#808080] bg-[#f0f0f0] text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080]" />
-          </div>
 
-          <div className="flex flex-col gap-0.5 relative" ref={customerRef}>
-            <span className="text-xs font-bold text-[#000080]">Nombre</span>
+          {/* Cliente nombre — siempre visible */}
+          <div className="flex flex-col gap-0.5 flex-1 min-w-[140px] relative" ref={customerRef}>
+            <span className="text-xs font-bold text-[#000080]">Cliente</span>
             <input
               value={customer ? customer.name : customerSearch}
               onChange={(e) => { setCustomerSearch(e.target.value); setCustomer(null); setCustomerDropOpen(true); }}
@@ -642,19 +647,15 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
             )}
           </div>
 
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-bold text-[#000080]">Dirección</span>
-            <input readOnly value={customer?.address ?? ""}
-              className="w-full border border-[#808080] bg-[#f0f0f0] text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080]" />
-          </div>
-
-          <div className="flex flex-col gap-0.5">
+          {/* Cuit/DNI — visible en sm+ */}
+          <div className="hidden sm:flex flex-col gap-0.5 w-32">
             <span className="text-xs font-bold text-[#000080]">Cuit/DNI</span>
             <input readOnly value={customer?.document_number ?? ""}
               className="w-full border border-[#808080] bg-[#f0f0f0] text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080]" />
           </div>
 
-          <div className="flex flex-col gap-0.5">
+          {/* Condición IVA — visible en sm+ */}
+          <div className="hidden sm:flex flex-col gap-0.5 w-36">
             <span className="text-xs font-bold text-[#000080]">Condición IVA</span>
             <input readOnly value={IVA_LABELS[invoiceType]}
               className="w-full border border-[#808080] bg-[#f0f0f0] text-xs px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080]" />
@@ -662,104 +663,131 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
         </div>
 
         {/* Row 3: Código */}
-        <div className="flex items-center gap-3 px-3 py-1.5 border-b border-[#808080] shrink-0">
-          <span className="text-sm font-bold">Código:</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#808080] shrink-0">
+          <span className="text-sm font-bold shrink-0">Código:</span>
           <input
             ref={codeRef}
             value={codeInput}
             onChange={(e) => setCodeInput(e.target.value)}
             onKeyDown={handleCodeEnter}
-            placeholder="Escanear o escribir código → Enter"
-            className="w-56 border border-[#808080] bg-white text-sm px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
+            placeholder="Escanear o escribir → Enter"
+            className="flex-1 min-w-0 border border-[#808080] bg-white text-sm px-1 py-0.5 shadow-[inset_1px_1px_2px_#808080] focus:outline-none focus:border-[#000080]"
           />
-          {searching && <Loader2 className="h-4 w-4 animate-spin text-[#000080]" />}
-          {stockAlert && <span className="text-sm text-red-600 font-semibold">{stockAlert}</span>}
+          {searching && <Loader2 className="h-4 w-4 animate-spin text-[#000080] shrink-0" />}
+          {stockAlert && <span className="hidden sm:block text-xs text-red-600 font-semibold truncate max-w-[200px]">{stockAlert}</span>}
           <button
             onClick={() => setProductModalOpen(true)}
-            className="ml-auto border border-[#808080] bg-[#d4d0c8] px-3 py-0.5 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] flex items-center gap-1"
+            className="shrink-0 border border-[#808080] bg-[#d4d0c8] px-2 sm:px-3 py-0.5 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] flex items-center gap-1"
           >
             <Plus className="h-3 w-3" />
-            Agregar artículo
+            <span className="hidden sm:inline">Agregar artículo</span>
           </button>
         </div>
+        {/* Stock alert — mobile only */}
+        {stockAlert && (
+          <div className="sm:hidden px-3 py-1 bg-red-50 border-b border-red-300 text-xs text-red-600 font-semibold">{stockAlert}</div>
+        )}
 
-        {/* Table */}
+        {/* Table — desktop */}
         <div className="flex-1 overflow-hidden flex flex-col mx-3 my-2 border border-[#808080] bg-white shadow-[inset_1px_1px_2px_#808080]">
-          {/* Table header — extra IVA column for Factura A */}
-          {invoiceType === "factura_a" ? (
-            <div className="grid grid-cols-[50px_80px_1fr_100px_70px_80px_80px_100px_40px] border-b-2 border-[#808080] bg-[#d4d0c8] shrink-0">
-              {["Cant", "Cód.", "Descripción", "Precio", "Desc.", "Neto", "IVA 21%", "Total", ""].map((h, i) => (
-                <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-[50px_80px_1fr_100px_70px_100px_40px] border-b-2 border-[#808080] bg-[#d4d0c8] shrink-0">
-              {["Cant", "Cód.", "Descripción", "Precio", "Desc.", "Total", ""].map((h, i) => (
-                <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
-              ))}
-            </div>
-          )}
+          {/* Table header — desktop only */}
+          <div className="hidden sm:block shrink-0">
+            {invoiceType === "factura_a" ? (
+              <div className="grid grid-cols-[50px_80px_1fr_100px_70px_80px_80px_100px_40px] border-b-2 border-[#808080] bg-[#d4d0c8]">
+                {["Cant", "Cód.", "Descripción", "Precio", "Desc.", "Neto", "IVA 21%", "Total", ""].map((h, i) => (
+                  <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-[50px_80px_1fr_100px_70px_100px_40px] border-b-2 border-[#808080] bg-[#d4d0c8]">
+                {["Cant", "Cód.", "Descripción", "Precio", "Desc.", "Total", ""].map((h, i) => (
+                  <div key={i} className="text-xs font-bold px-2 py-1 border-r border-[#808080] last:border-r-0">{h}</div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="flex-1 overflow-y-auto">
             {isEmpty ? (
-              <div className="flex items-center justify-center h-full text-sm text-gray-400">
+              <div className="flex items-center justify-center h-full text-sm text-gray-400 px-4 text-center">
                 Sin artículos — escaneá un código para comenzar
               </div>
             ) : cart.items.map((item, idx) => {
               const neto = item.subtotal / (1 + item.tax_rate / 100);
               const iva = item.subtotal - neto;
-              return invoiceType === "factura_a" ? (
-                <div key={item.id}
-                  className={`grid grid-cols-[50px_80px_1fr_100px_70px_80px_80px_100px_40px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
-                  <div className="px-1 py-1 border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
-                    <input type="number" min={1} value={item.quantity}
-                      onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) updateQuantity(item.id, v); }}
-                      className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black" />
-                  </div>
-                  <div className="px-2 py-1 text-xs font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{item.product_sku ?? "—"}</div>
-                  <div className="px-2 py-1 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
-                    {item.product_name}{item.variant_name && <span className="ml-1 opacity-70">({item.variant_name})</span>}
-                  </div>
-                  <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.unit_price, currencySymbol)}</div>
-                  <div className="px-1 py-1 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
-                    <input
-                      type="number" min={0} max={100} step={1}
-                      value={item.discount_percent ?? 0}
-                      onChange={e => updateItemDiscount(item.id, parseFloat(e.target.value) || 0)}
-                      className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black"
-                    />
-                  </div>
-                  <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(neto, currencySymbol)}</div>
-                  <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] text-blue-700 group-hover:text-blue-200">{fmt(iva, currencySymbol)}</div>
-                  <div className="px-2 py-1 text-xs text-right font-mono font-bold border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.subtotal, currencySymbol)}</div>
-                  <div className="flex items-center justify-center">
-                    <button onClick={() => removeItem(item.id)} className="text-red-500 group-hover:text-red-300 text-xs px-1 hover:font-bold" title="Eliminar">✕</button>
-                  </div>
-                </div>
-              ) : (
-                <div key={item.id}
-                  className={`grid grid-cols-[50px_80px_1fr_100px_70px_100px_40px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
-                  <div className="px-1 py-1 border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
-                    <input type="number" min={1} value={item.quantity}
-                      onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) updateQuantity(item.id, v); }}
-                      className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black" />
-                  </div>
-                  <div className="px-2 py-1 text-xs font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{item.product_sku ?? "—"}</div>
-                  <div className="px-2 py-1 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
-                    {item.product_name}{item.variant_name && <span className="ml-1 opacity-70">({item.variant_name})</span>}
-                  </div>
-                  <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.unit_price, currencySymbol)}</div>
-                  <div className="px-1 py-1 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
-                    <input
-                      type="number" min={0} max={100} step={1}
-                      value={item.discount_percent ?? 0}
-                      onChange={e => updateItemDiscount(item.id, parseFloat(e.target.value) || 0)}
-                      className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black"
-                    />
-                  </div>
-                  <div className="px-2 py-1 text-xs text-right font-mono font-bold border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.subtotal, currencySymbol)}</div>
-                  <div className="flex items-center justify-center">
-                    <button onClick={() => removeItem(item.id)} className="text-red-500 group-hover:text-red-300 text-xs px-1 hover:font-bold" title="Eliminar">✕</button>
+              return (
+                <div key={item.id}>
+                  {/* Desktop row */}
+                  {invoiceType === "factura_a" ? (
+                    <div className={`hidden sm:grid grid-cols-[50px_80px_1fr_100px_70px_80px_80px_100px_40px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                      <div className="px-1 py-1 border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                        <input type="number" min={1} value={item.quantity}
+                          onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) updateQuantity(item.id, v); }}
+                          className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black" />
+                      </div>
+                      <div className="px-2 py-1 text-xs font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{item.product_sku ?? "—"}</div>
+                      <div className="px-2 py-1 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
+                        {item.product_name}{item.variant_name && <span className="ml-1 opacity-70">({item.variant_name})</span>}
+                      </div>
+                      <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.unit_price, currencySymbol)}</div>
+                      <div className="px-1 py-1 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                        <input type="number" min={0} max={100} step={1} value={item.discount_percent ?? 0}
+                          onChange={e => updateItemDiscount(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black" />
+                      </div>
+                      <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(neto, currencySymbol)}</div>
+                      <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] text-blue-700 group-hover:text-blue-200">{fmt(iva, currencySymbol)}</div>
+                      <div className="px-2 py-1 text-xs text-right font-mono font-bold border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.subtotal, currencySymbol)}</div>
+                      <div className="flex items-center justify-center">
+                        <button onClick={() => removeItem(item.id)} className="text-red-500 group-hover:text-red-300 text-xs px-1 hover:font-bold" title="Eliminar">✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`hidden sm:grid grid-cols-[50px_80px_1fr_100px_70px_100px_40px] border-b border-[#e0e0e0] hover:bg-[#000080] hover:text-white group text-black ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                      <div className="px-1 py-1 border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                        <input type="number" min={1} value={item.quantity}
+                          onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) updateQuantity(item.id, v); }}
+                          className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black" />
+                      </div>
+                      <div className="px-2 py-1 text-xs font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">{item.product_sku ?? "—"}</div>
+                      <div className="px-2 py-1 text-xs border-r border-[#e0e0e0] group-hover:border-[#3333aa] truncate">
+                        {item.product_name}{item.variant_name && <span className="ml-1 opacity-70">({item.variant_name})</span>}
+                      </div>
+                      <div className="px-2 py-1 text-xs text-right font-mono border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.unit_price, currencySymbol)}</div>
+                      <div className="px-1 py-1 text-xs text-center border-r border-[#e0e0e0] group-hover:border-[#3333aa]">
+                        <input type="number" min={0} max={100} step={1} value={item.discount_percent ?? 0}
+                          onChange={e => updateItemDiscount(item.id, parseFloat(e.target.value) || 0)}
+                          className="w-full text-center text-xs text-black bg-transparent focus:outline-none focus:bg-white focus:text-black" />
+                      </div>
+                      <div className="px-2 py-1 text-xs text-right font-mono font-bold border-r border-[#e0e0e0] group-hover:border-[#3333aa]">{fmt(item.subtotal, currencySymbol)}</div>
+                      <div className="flex items-center justify-center">
+                        <button onClick={() => removeItem(item.id)} className="text-red-500 group-hover:text-red-300 text-xs px-1 hover:font-bold" title="Eliminar">✕</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mobile card */}
+                  <div className={`sm:hidden border-b border-[#e0e0e0] px-3 py-2 ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold truncate">{item.product_name}</div>
+                        {item.variant_name && <div className="text-xs text-gray-500">{item.variant_name}</div>}
+                        <div className="text-xs text-gray-500 font-mono">{item.product_sku ?? ""}</div>
+                      </div>
+                      <button onClick={() => removeItem(item.id)} className="text-red-500 text-lg leading-none px-1 shrink-0">✕</button>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                      {/* Quantity */}
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          className="w-7 h-7 border border-[#808080] bg-[#d4d0c8] font-bold text-sm flex items-center justify-center">−</button>
+                        <span className="w-8 text-center text-sm font-bold font-mono">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="w-7 h-7 border border-[#808080] bg-[#d4d0c8] font-bold text-sm flex items-center justify-center">+</button>
+                      </div>
+                      <div className="text-xs text-gray-600">× {fmt(item.unit_price, currencySymbol)}</div>
+                      <div className="ml-auto text-base font-bold font-mono">{fmt(item.subtotal, currencySymbol)}</div>
+                    </div>
                   </div>
                 </div>
               );
@@ -768,7 +796,7 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
 
           {/* IVA summary row for Factura A */}
           {invoiceType === "factura_a" && !isEmpty && (
-            <div className="border-t-2 border-[#808080] bg-[#d4d0c8] px-3 py-1.5 flex justify-end gap-6 shrink-0">
+            <div className="border-t-2 border-[#808080] bg-[#d4d0c8] px-3 py-1.5 flex justify-end gap-4 sm:gap-6 shrink-0 flex-wrap">
               <span className="text-xs text-gray-600">Neto: <strong className="font-mono">{fmt(cart.items.reduce((s, i) => s + i.subtotal / (1 + i.tax_rate / 100), 0), currencySymbol)}</strong></span>
               <span className="text-xs text-blue-700">IVA 21%: <strong className="font-mono">{fmt(cart.items.reduce((s, i) => s + (i.subtotal - i.subtotal / (1 + i.tax_rate / 100)), 0), currencySymbol)}</strong></span>
               <span className="text-xs font-bold">Total: <strong className="font-mono">{fmt(cart.total, currencySymbol)}</strong></span>
@@ -777,25 +805,25 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t-2 border-[#808080] bg-[#d4d0c8] shrink-0">
-          <div className="text-xs text-gray-600 space-y-0.5">
+        <div className="flex items-center justify-between px-3 py-2 border-t-2 border-[#808080] bg-[#d4d0c8] shrink-0 gap-2">
+          <div className="hidden sm:block text-xs text-gray-600 space-y-0.5">
             <div>Enter — Agregar producto por código</div>
             <div>F2 — Buscar cliente</div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             {lastSale && (
               <button onClick={handlePrintTicket} disabled={printingTicket}
-                className="flex items-center gap-1 border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] disabled:opacity-50">
+                className="flex items-center gap-1 border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] disabled:opacity-50 shrink-0">
                 {printingTicket ? <Loader2 className="h-3 w-3 animate-spin" /> : <Printer className="h-3 w-3" />}
-                Imprimir
+                <span className="hidden sm:inline">Imprimir</span>
               </button>
             )}
 
             <button
               onClick={() => { clearCart(); setCustomer(null); setStockAlert(null); setLastSale(null); setTimeout(() => codeRef.current?.focus(), 50); }}
               disabled={isEmpty}
-              className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] disabled:opacity-40">
+              className="border border-[#808080] bg-[#d4d0c8] px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_#808080] active:shadow-none hover:bg-[#c0c0c0] disabled:opacity-40 shrink-0">
               Limpiar
             </button>
 
@@ -808,13 +836,13 @@ export function POSPageClient({ currencySymbol, openingId, sellerName, financial
                 setPaymentOpen(true);
               }}
               disabled={isEmpty || processing}
-              className="border-2 border-[#808080] bg-[#d4d0c8] px-6 py-2 font-bold shadow-[3px_3px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px hover:bg-[#c0c0c0] disabled:opacity-40 min-w-[160px] text-right">
+              className="flex-1 sm:flex-none border-2 border-[#808080] bg-[#d4d0c8] px-4 sm:px-6 py-2 font-bold shadow-[3px_3px_0px_#808080] active:shadow-none active:translate-x-px active:translate-y-px hover:bg-[#c0c0c0] disabled:opacity-40 text-right">
               {processing
                 ? <span className="flex items-center gap-2 justify-end text-sm"><Loader2 className="h-4 w-4 animate-spin" />Procesando...</span>
                 : (
                   <span className="flex flex-col items-end leading-tight">
                     <span className="text-xs text-gray-600 font-normal">TOTAL</span>
-                    <span className="text-2xl font-bold tracking-tight">{currencySymbol} {cart.total.toFixed(2)}</span>
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight">{currencySymbol} {cart.total.toFixed(2)}</span>
                   </span>
                 )}
             </button>
