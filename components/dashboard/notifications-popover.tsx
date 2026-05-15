@@ -37,7 +37,9 @@ export function NotificationsPopover() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -51,10 +53,24 @@ export function NotificationsPopover() {
     return () => clearInterval(interval);
   }, []);
 
+  // Calcular posición del dropdown al abrir
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [open]);
+
   // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        dropRef.current && !dropRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -80,10 +96,13 @@ export function NotificationsPopover() {
     if (n && !n.is_read) setUnreadCount(p => Math.max(0, p - 1));
   };
 
+  const panelWidth = Math.min(320, window.innerWidth - 8);
+
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       {/* Bell button */}
       <button
+        ref={btnRef}
         onClick={() => setOpen(!open)}
         className="relative w-8 h-8 flex items-center justify-center hover:bg-[#0000aa] text-white"
         title="Notificaciones"
@@ -96,9 +115,13 @@ export function NotificationsPopover() {
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown — fixed position to escape overflow:hidden containers */}
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-80 bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000]">
+        <div
+          ref={dropRef}
+          className="fixed z-[9999] bg-[#d4d0c8] border-2 border-[#808080] shadow-[4px_4px_0px_#000]"
+          style={{ top: dropPos.top, right: dropPos.right, width: panelWidth }}
+        >
           {/* Title bar */}
           <div className="bg-[#000080] px-3 py-1 flex items-center justify-between">
             <span className="text-white text-xs font-bold">🔔 Notificaciones</span>
@@ -117,7 +140,7 @@ export function NotificationsPopover() {
           </div>
 
           {/* Content */}
-          <div className="max-h-96 overflow-y-auto bg-white">
+          <div className="max-h-[60vh] overflow-y-auto bg-white">
             {loading ? (
               <div className="flex items-center justify-center py-8 gap-2 text-xs text-gray-500">
                 <Loader2 className="h-3 w-3 animate-spin" /> Cargando...
