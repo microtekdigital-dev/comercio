@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#000080"/>
+  <!-- Window frame -->
+  <rect x="40" y="60" width="432" height="392" fill="#d4d0c8" stroke="#808080" stroke-width="4"/>
+  <!-- Title bar -->
+  <rect x="40" y="60" width="432" height="36" fill="#000080"/>
+  <!-- Title text area -->
+  <rect x="52" y="70" width="16" height="16" fill="#d4d0c8"/>
+  <!-- Window buttons -->
+  <rect x="420" y="68" width="20" height="20" fill="#d4d0c8" stroke="#808080" stroke-width="2"/>
+  <rect x="444" y="68" width="20" height="20" fill="#d4d0c8" stroke="#808080" stroke-width="2"/>
+  <!-- Receipt icon in center -->
+  <rect x="160" y="130" width="192" height="240" fill="white" stroke="#808080" stroke-width="3"/>
+  <!-- Receipt lines -->
+  <rect x="180" y="160" width="152" height="8" fill="#d4d0c8"/>
+  <rect x="180" y="185" width="100" height="6" fill="#e0e0e0"/>
+  <rect x="180" y="205" width="120" height="6" fill="#e0e0e0"/>
+  <rect x="180" y="225" width="90" height="6" fill="#e0e0e0"/>
+  <rect x="180" y="245" width="110" height="6" fill="#e0e0e0"/>
+  <!-- Divider -->
+  <rect x="180" y="270" width="152" height="2" fill="#808080"/>
+  <!-- Total line -->
+  <rect x="180" y="285" width="152" height="10" fill="#000080"/>
+  <!-- Barcode at bottom -->
+  <rect x="180" y="320" width="8" height="30" fill="#333"/>
+  <rect x="192" y="320" width="4" height="30" fill="#333"/>
+  <rect x="200" y="320" width="10" height="30" fill="#333"/>
+  <rect x="214" y="320" width="6" height="30" fill="#333"/>
+  <rect x="224" y="320" width="8" height="30" fill="#333"/>
+  <rect x="236" y="320" width="4" height="30" fill="#333"/>
+  <rect x="244" y="320" width="10" height="30" fill="#333"/>
+  <rect x="258" y="320" width="6" height="30" fill="#333"/>
+  <rect x="268" y="320" width="8" height="30" fill="#333"/>
+  <rect x="280" y="320" width="4" height="30" fill="#333"/>
+  <rect x="288" y="320" width="10" height="30" fill="#333"/>
+  <rect x="302" y="320" width="6" height="30" fill="#333"/>
+  <rect x="312" y="320" width="8" height="30" fill="#333"/>
+  <rect x="324" y="320" width="4" height="30" fill="#333"/>
+</svg>
